@@ -3,13 +3,13 @@
  *
  * Created on 19. avril 2000, 12:05
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
  import javax.swing.JLabel;
 

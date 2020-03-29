@@ -3,13 +3,13 @@
  *
  * Created on 11. avril 2002, 22:17
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 public class DialogNewPart extends javax.swing.JDialog {
   boolean newPart = false;

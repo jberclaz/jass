@@ -1,11 +1,11 @@
 /*
  *                 Sun Public License Notice
- * 
+ *
  * The contents of this file are subject to the Sun Public License
  * Version 1.0 (the "License"). You may not use this file except in
  * compliance with the License. A copy of the License is available at
  * http://www.sun.com/
- * 
+ *
  * The Original Code is NetBeans. The Initial Developer of the Original
  * Code is Sun Microsystems, Inc. Portions Copyright 1997-2000 Sun
  * Microsystems, Inc. All Rights Reserved.
@@ -68,10 +68,10 @@ public class AbsoluteConstraints implements java.io.Serializable {
     /** Creates a new AbsoluteConstraints for specified position and size.
     * @param x      The X position to be represented by this AbsoluteConstraints
     * @param y      The Y position to be represented by this AbsoluteConstraints
-    * @param width  The width to be represented by this AbsoluteConstraints or -1 if the 
-    *               component's preferred width should be used  
+    * @param width  The width to be represented by this AbsoluteConstraints or -1 if the
+    *               component's preferred width should be used
     * @param height The height to be represented by this AbsoluteConstraints or -1 if the
-    *               component's preferred height should be used  
+    *               component's preferred height should be used
     */
     public AbsoluteConstraints(int x, int y, int width, int height) {
         this.x = x;
@@ -91,14 +91,14 @@ public class AbsoluteConstraints implements java.io.Serializable {
     }
 
     /** @return The width represented by this AbsoluteConstraints or -1 if the
-    * component's preferred width should be used 
+    * component's preferred width should be used
     */
     public int getWidth () {
         return width;
     }
 
     /** @return The height represented by this AbsoluteConstraints or -1 if the
-    * component's preferred height should be used 
+    * component's preferred height should be used
     */
     public int getHeight () {
         return height;
@@ -109,4 +109,3 @@ public class AbsoluteConstraints implements java.io.Serializable {
     }
 
 }
-

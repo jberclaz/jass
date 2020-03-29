@@ -3,13 +3,13 @@
  *
  * Created on 19. avril 2000, 11:23
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 import java.awt.*;
 
@@ -37,9 +37,9 @@ public class CanvasLastPlie extends Canvas {
         g.drawImage(cards[i], 120 + 30 * i, 5, 71, 96, this);
     if (atout < 4)
       g.drawImage(colors[atout], 380, 8, 15, 15, this);
-    g.drawString("Dernière plie:", 20, 20);
+    g.drawString("DerniÃ¨re plie:", 20, 20);
     g.drawString("Atout:", 340, 20);
     g.drawString("Nous: " + String.valueOf(ourScore), 420, 13);
     g.drawString("Eux : " + String.valueOf(theirScore), 420, 27);
   }
-} 
+}

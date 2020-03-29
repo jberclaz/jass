@@ -1,7 +1,7 @@
 //Title:        FlatJassServer
-//Version:      
+//Version:
 //Copyright:    Copyright (c) 1998
-//Author:       Pierre Métrailler & Jérome Berclaz
+//Author:       Pierre MÃ©trailler & JÃ©rome Berclaz
 //Company:      Flat
 //Description:  Your description
 
@@ -31,7 +31,7 @@ public class ServerNetwork {
 
 	System.out.println("Waiting for connections");
 	try {
-        
+
 	    myClientSocket=myServerSocket.accept();
 
 	    //streams
@@ -95,7 +95,4 @@ public class ServerNetwork {
 	    System.exit(1);
 	}
     }
-} 
-
-
-
+}

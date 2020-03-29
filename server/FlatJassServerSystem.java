@@ -1,7 +1,7 @@
 //Title:        FlatJassServer
 //Version:      1.2
 //Copyright:    Copyright (c) 1998
-//Author:       Pierre Métrailler & Jérome Berclaz
+//Author:       Pierre MÃ©trailler & JÃ©rome Berclaz
 //Company:      Flat(r)
 //Description:  This is the server for the Jass Card Game made by and
 //              for the proud members of the FLAT(r)
@@ -17,13 +17,13 @@ import java.util.*;
 public class FlatJassServerSystem {
     private int atout;
     private int firstToPlay;   // celui qui commence la partie et fait atout
-    private int playersConnected;    // nombre de joueurs connectés
+    private int playersConnected;    // nombre de joueurs connectÃ©s
     private Plie currentPlie;  // plie en cours
     private Player[] players = new Player[4]; // les 4 joueurs
-    private Team[] teams = new Team[2];      // les 2 équipes
-  
+    private Team[] teams = new Team[2];      // les 2 Ã©quipes
+
     // ***************** PROVISOIRE ****************************************
-    // static final int[] cards = {0,1,2,3,8,10,15,16,18, 11,12,13,17,19,20,21,30,34, 
+    // static final int[] cards = {0,1,2,3,8,10,15,16,18, 11,12,13,17,19,20,21,30,34,
     //   				14,22,23,25,28,29,31,35,32, 4,5,6,7,33,9,24,26,27};
     //**********************************************************************
 
@@ -39,9 +39,9 @@ public class FlatJassServerSystem {
     public FlatJassServerSystem(int port) {
 	port_num = port;
 
-	for (int i=0; i<4; i++)       // création des joueurs
+	for (int i=0; i<4; i++)       // crÃ©ation des joueurs
 	    players[i] = new Player();
-	for (int i=0; i<2; i++)       // création des équipes
+	for (int i=0; i<2; i++)       // crÃ©ation des Ã©quipes
 	    teams[i] = new Team();
 	currentPlie = new Plie();
 
@@ -67,26 +67,26 @@ public class FlatJassServerSystem {
 		while (playersConnected < 4) {  // attend 4 connexions
 		    playersConnected = waitConnect();
 		}
-		
+
 		Integer temp;
 		String[] instr = new String[10];
-	    
+
 		do {
-		    chooseTeam();     // détermine les équipes
-		    
-		    // Play one game (until 1500) 
+		    chooseTeam();     // dÃ©termine les Ã©quipes
+
+		    // Play one game (until 1500)
 		    playPart();
-		    
+
 		    // ask whether they want to play another part
 		    myServerNetwork[0].sendStr("22");
-		    
-		    instr = decode(myServerNetwork[0].rcvStr()); // réponse
+
+		    instr = decode(myServerNetwork[0].rcvStr()); // rÃ©ponse
 		    temp = Integer.valueOf(instr[1]);
-		    
+
 		    teams[0].resetScore();
 		    teams[1].resetScore();
 		} while (temp.intValue() != 0);
-		
+
 	    } catch (ClientLeftException e) {
 		int id = e.getClientId();
 		for (int i=0; (i<=playersConnected) && (i!=4); i++)
@@ -100,21 +100,21 @@ public class FlatJassServerSystem {
 		}
 		System.out.println("Wakeup...");
 	    }
-	    
+
 	    // close sockets and remove players
 	    for(int i=0; (i<=playersConnected) && (i!=4); i++)
 		myServerNetwork[i].close();
 	    playersConnected = 0;
 	} while(true); //  loop forever
-    }    
+    }
 
     // attend la connexion d'un joueur
     public int waitConnect() throws ClientLeftException{
 	int newPlayers = playersConnected;
 	if (myServerNetwork[playersConnected] == null)
 	    myServerNetwork[playersConnected]=new ServerNetwork();
-	if (myServerNetwork[playersConnected].connect(myServerSocket)) {  
-	    // la connexion a réussi
+	if (myServerNetwork[playersConnected].connect(myServerSocket)) {
+	    // la connexion a rÃ©ussi
 
 	    myServerNetwork[playersConnected].setClientId(playersConnected);
 	    myServerNetwork[playersConnected].sendStr("1 " + String.valueOf(playersConnected)); // donne son id et demande des infos
@@ -126,25 +126,25 @@ public class FlatJassServerSystem {
 	    players[playersConnected].iD = playersConnected;
 
 	    System.out.println(instr[1] + " " +instr[2] + " is connected");
-	
-	    for (int i=0; i<playersConnected; i++) {
-		// infos SUR LES joueurs déjà connectés
-		myServerNetwork[playersConnected].sendStr("2 " + String.valueOf(i) + " " + players[i].firstName + " " + players[i].lastName);
-		instr[1] = myServerNetwork[playersConnected].rcvStr(); // attend la réponse
 
-		// infos AUX joueurs déjà connectés
+	    for (int i=0; i<playersConnected; i++) {
+		// infos SUR LES joueurs dÃ©jÃ  connectÃ©s
+		myServerNetwork[playersConnected].sendStr("2 " + String.valueOf(i) + " " + players[i].firstName + " " + players[i].lastName);
+		instr[1] = myServerNetwork[playersConnected].rcvStr(); // attend la rÃ©ponse
+
+		// infos AUX joueurs dÃ©jÃ  connectÃ©s
 		myServerNetwork[i].sendStr("2 " + String.valueOf(playersConnected) + " " + players[playersConnected].firstName + " " + players[playersConnected].lastName);
-		instr[1] = myServerNetwork[i].rcvStr(); // attend la réponse
+		instr[1] = myServerNetwork[i].rcvStr(); // attend la rÃ©ponse
 	    }
-	    newPlayers++;      // incrémente le nombre de joueurs connectés
+	    newPlayers++;      // incrÃ©mente le nombre de joueurs connectÃ©s
 	}
 	return newPlayers;
     }
 
     public static void main(String[] args) {
 	Integer temp = null;
-	if (args.length > 1) 
-	    if (args[0].compareTo("-p") == 0) 
+	if (args.length > 1)
+	    if (args[0].compareTo("-p") == 0)
 		temp = Integer.valueOf(args[1]);
 	    else {
 		System.out.println("Syntax : java FlatJassServerSystem -p <port_number>");
@@ -160,7 +160,7 @@ public class FlatJassServerSystem {
     private boolean invokedStandalone = false;
 
 
-    // Procédure de décodage des instructions
+    // ProcÃ©dure de dÃ©codage des instructions
     private String[] decode(String instr) {
 	int cmpt = 0;
 	int cursor = 0;
@@ -174,9 +174,9 @@ public class FlatJassServerSystem {
 	table[cmpt] = instr.substring(cursor, instr.length());
 	return table;
     }
-  
-  
-    // Procédure de décodage des instructions en integer
+
+
+    // ProcÃ©dure de dÃ©codage des instructions en integer
     private int[] decodint(String instr) {
 	int cmpt = 0;
 	int cursor = 0;
@@ -189,31 +189,31 @@ public class FlatJassServerSystem {
 		cursor = i + 1;
 		cmpt++;
 	    }
-	temp = Integer.valueOf(instr.substring(cursor, instr.length()));  
+	temp = Integer.valueOf(instr.substring(cursor, instr.length()));
 	table[cmpt] = temp.intValue();
 	return table;
     }
-  
+
 
     private void chooseTeam() throws ClientLeftException{
-	myServerNetwork[0].sendStr("3");    // demande de choisir le mode de tirage des équipes
+	myServerNetwork[0].sendStr("3");    // demande de choisir le mode de tirage des Ã©quipes
 	String[] instr = new String[10];
-	instr = decode(myServerNetwork[0].rcvStr()); // réponse
+	instr = decode(myServerNetwork[0].rcvStr()); // rÃ©ponse
 	Integer temp = Integer.valueOf(instr[1]);
 	if (temp.intValue() == 1) { // choisir au hasard
 	    for (int i=0; i<4; i++) {       // i<4 normalement !!!
-		myServerNetwork[i].sendStr("4");    // préparation du tirage des équipes
-		instr[1] = myServerNetwork[i].rcvStr(); //réponse
+		myServerNetwork[i].sendStr("4");    // prÃ©paration du tirage des Ã©quipes
+		instr[1] = myServerNetwork[i].rcvStr(); //rÃ©ponse
 	    }
 	    int[] cards = new int[36];
 	    boolean tirageOk = false;
-	    int[] cardsChoosen = new int[4];    // cartes tirées
+	    int[] cardsChoosen = new int[4];    // cartes tirÃ©es
 	    do {
 		cards = chooseCards();
 		for (int i=0; i<4; i++) {
 		    myServerNetwork[i].sendStr("5");  // demande de choisir une carte
-		    instr = decode(myServerNetwork[i].rcvStr());  //réponse
-		  
+		    instr = decode(myServerNetwork[i].rcvStr());  //rÃ©ponse
+
 		    temp = Integer.valueOf(instr[1]);
 		    cardsChoosen[i] = cards[temp.intValue()];
 		    for (int j=0; j<4; j++) {    // communique la carte choisie
@@ -226,8 +226,8 @@ public class FlatJassServerSystem {
 		    Thread.sleep(2000);
 		} catch (InterruptedException e) {
 		}
-	      
-		// détermine les équipes
+
+		// dÃ©termine les Ã©quipes
 		tirageOk = calculateTeam(cardsChoosen);
 		if (!tirageOk)
 		    for (int i=0; i<4; i++) {
@@ -238,7 +238,7 @@ public class FlatJassServerSystem {
 	}
 	else {       // choisir son partenaire
 	    myServerNetwork[0].sendStr("9");    // demande de choisir le partenaire
-	    instr = decode(myServerNetwork[0].rcvStr()); // réponse
+	    instr = decode(myServerNetwork[0].rcvStr()); // rÃ©ponse
 	    teams[0].players[0] = players[0];
 	    players[0].myTeam = 0;
 	    int j = 0;
@@ -263,7 +263,7 @@ public class FlatJassServerSystem {
 
 
 	// reorganize IDs correctly
-	for (int i=0; i<4;i++) 
+	for (int i=0; i<4;i++)
 	    players[i].iD = i;
     }
 
@@ -285,7 +285,7 @@ public class FlatJassServerSystem {
 	    players[i] = p[i];
 	    myServerNetwork[i] = c[i];
 	    myServerNetwork[i].setClientId(p[i].iD);
-	    
+
 	}
     }
 
@@ -334,7 +334,7 @@ public class FlatJassServerSystem {
 
     // distribue les cartes
     int[] chooseCards() {
-	final int[] cards = new int[36]; 
+	final int[] cards = new int[36];
 	boolean[] usedCards = new boolean[36];
 	Random rand = new Random();
 	for (int i=0; i<36; i++)
@@ -373,7 +373,7 @@ public class FlatJassServerSystem {
 		j++;
 	    }
 
-	    if (nextPlayer != -1) {    // si personne n'a gagné : on continue normalement
+	    if (nextPlayer != -1) {    // si personne n'a gagnÃ© : on continue normalement
 		// 5 de der
 		if (atout == 0)
 		    teams[players[currentPlie.owner].myTeam].addScore(10);
@@ -383,10 +383,10 @@ public class FlatJassServerSystem {
 		for (int i=0; i<4; i++) {   // envoie le score
 		    myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
 					       + " " + String.valueOf(teams[(players[i].myTeam + 1)%2].getScore()));
-		    answer = myServerNetwork[i].rcvStr();  // réponse
+		    answer = myServerNetwork[i].rcvStr();  // rÃ©ponse
 		}
 
-		/* waits a few seconds so that the players can see the last 
+		/* waits a few seconds so that the players can see the last
 		 * cards and the score */
 		try {
 		    Thread.sleep(2000);
@@ -396,17 +396,17 @@ public class FlatJassServerSystem {
 		firstToPlay = (firstToPlay + 1) % 4;
 		distribute();
 	    }
-	    else { // si une équipe a gagné
+	    else { // si une Ã©quipe a gagnÃ©
 		for (int i=0; i<4; i++) {   // envoie le score
 		    myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
 					       + " " + String.valueOf(teams[(players[i].myTeam + 1)%2].getScore()));
-		    answer = myServerNetwork[i].rcvStr();  // réponse
+		    answer = myServerNetwork[i].rcvStr();  // rÃ©ponse
 		}
 	    }
 
-	    // répète jusqu'à ce qu'on gagne
-	} while ((!teams[0].won) && (!teams[1].won));       
-    
+	    // rÃ©pÃ¨te jusqu'Ã  ce qu'on gagne
+	} while ((!teams[0].won) && (!teams[1].won));
+
 	// Sends the winner to all player
 	int winner = teams[0].won ? 0 : 1;
 	for (int i=0; i<4; i++) {
@@ -428,19 +428,19 @@ public class FlatJassServerSystem {
     void chooseAtout() throws ClientLeftException {
 	myServerNetwork[firstToPlay].sendStr("11");   // demande de faire atout en premier
 	String[] instr = new String[10];
-	instr = decode(myServerNetwork[firstToPlay].rcvStr());  // réponse
+	instr = decode(myServerNetwork[firstToPlay].rcvStr());  // rÃ©ponse
 	Integer temp = Integer.valueOf(instr[1]);
 	if (temp.intValue() == 4) {     // si on passe
 	    int second = (firstToPlay + 2) % 4;
 	    myServerNetwork[second].sendStr("12");   // demande de faire atout en second
-	    instr = decode(myServerNetwork[second].rcvStr());  // réponse
+	    instr = decode(myServerNetwork[second].rcvStr());  // rÃ©ponse
 	}
 	temp = Integer.valueOf(instr[1]);
 	atout = temp.intValue();
 	for (int i=0; i<4; i++) {
 	    // envoie l'atout choisi
-	    myServerNetwork[i].sendStr("13 " + instr[1] + " " + firstToPlay); 
-	    instr[2] = myServerNetwork[i].rcvStr();  // réponse
+	    myServerNetwork[i].sendStr("13 " + instr[1] + " " + firstToPlay);
+	    instr[2] = myServerNetwork[i].rcvStr();  // rÃ©ponse
 	}
     }
 
@@ -450,7 +450,7 @@ public class FlatJassServerSystem {
 	int seven = 0;      // 7 de carreau
 	int[] cards = new int[36];
 	cards = chooseCards();     // choisir les cartes au hasard
-	String s;                  // chaîne à envoyer
+	String s;                  // chaÃ®ne Ã  envoyer
 	for (int i=0; i<4; i++) {
 	    s = "10";
 	    for (int j=0; j<9; j++) {
@@ -470,81 +470,81 @@ public class FlatJassServerSystem {
 	currentPlie.coupe = 0;
 	myServerNetwork[player].sendStr("14");    // demande de jouer en premier
 	String[] instr = new String[10];
-	instr = decode(myServerNetwork[player].rcvStr()); //réponse
+	instr = decode(myServerNetwork[player].rcvStr()); //rÃ©ponse
 	Integer temp = Integer.valueOf(instr[1]);
 	currentPlie.color = temp.intValue() / 9;
 	currentPlie.highest = temp.intValue() % 9;
 	temp = Integer.valueOf(instr[2]);
 	currentPlie.score = temp.intValue();
-    
+
 	temp = Integer.valueOf(instr[3]); // Annonces ?
 	int[] instr2 = new int[10];		// tableau d'instructions en integer
 	switch (temp.intValue()) {
 	    case 1 : 	// Annonces
     		System.out.println("Annonces");
-    		myServerNetwork[player].sendStr("19");  // demande des précisions sur l'annonce 
-    		instr2 = decodint(myServerNetwork[player].rcvStr()); //réponse
-    		for (int i=0; i<instr2[1]; i++) 
-		    players[player].addAnounce(instr2[2+ 2*i], instr2[3 + 2*i], instr2[0]);		
+    		myServerNetwork[player].sendStr("19");  // demande des prÃ©cisions sur l'annonce
+    		instr2 = decodint(myServerNetwork[player].rcvStr()); //rÃ©ponse
+    		for (int i=0; i<instr2[1]; i++)
+		    players[player].addAnounce(instr2[2+ 2*i], instr2[3 + 2*i], instr2[0]);
     		break;
-	    case 2 :	// Stöck
+	    case 2 :	// StÃ¶ck
     		System.out.println("Annonces");
     		players[player].addAnounce(0, 0, player);
     		break;
-	    case 3 :	// Stöck + annonces
+	    case 3 :	// StÃ¶ck + annonces
     		System.out.println("Annonces");
-    		myServerNetwork[player].sendStr("19");  // demande des précisions sur l'annonce 
-    		instr2 = decodint(myServerNetwork[player].rcvStr()); //réponse
-    		for (int i=0; i<instr2[1]; i++) 
-		    players[player].addAnounce(instr2[2+ 2*i], instr2[3 + 2*i], instr2[0]);		
-    		players[player].addAnounce(0, 0, player);   	
+    		myServerNetwork[player].sendStr("19");  // demande des prÃ©cisions sur l'annonce
+    		instr2 = decodint(myServerNetwork[player].rcvStr()); //rÃ©ponse
+    		for (int i=0; i<instr2[1]; i++)
+		    players[player].addAnounce(instr2[2+ 2*i], instr2[3 + 2*i], instr2[0]);
+    		players[player].addAnounce(0, 0, player);
 	}
 
-	for (int i=0; i<3; i++) {           // envoie la carte jouée aux autres
+	for (int i=0; i<3; i++) {           // envoie la carte jouÃ©e aux autres
 	    myServerNetwork[(player + i + 1) % 4].sendStr("15 " + String.valueOf(player)+" "+ instr[1]);
-	    instr[9] =  myServerNetwork[(player + i + 1) % 4].rcvStr();      // réponse
+	    instr[9] =  myServerNetwork[(player + i + 1) % 4].rcvStr();      // rÃ©ponse
 	}
 
 	int playedCard;
 	for (int i=0; i<3; i++) {     // demande de jouer
 	    myServerNetwork[(player + i + 1) % 4].sendStr("16 "+String.valueOf(currentPlie.highest)+" "+String.valueOf(currentPlie.color)+" "+String.valueOf(currentPlie.coupe));
-	    instr = decode(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
+	    instr = decode(myServerNetwork[(player + i + 1) % 4].rcvStr()); //rÃ©ponse
 	    temp = Integer.valueOf(instr[1]);
 	    playedCard = temp.intValue();
-      
+
 	    temp = Integer.valueOf(instr[3]); // Annonces ?
 	    switch (temp.intValue()) {
 		case 1 : 	// Annonces
 		    System.out.println("Annonces");
-		    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des précisions sur l'annonce 
-		    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
-		    for (int j=0; j<instr2[1]; j++) 
-    			players[(player + i + 1) % 4].addAnounce(instr2[2+ 2*j], instr2[3 + 2*j], instr2[0]);		
+		    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des prÃ©cisions sur l'annonce
+		    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //rÃ©ponse
+		    for (int j=0; j<instr2[1]; j++)
+    			players[(player + i + 1) % 4].addAnounce(instr2[2+ 2*j], instr2[3 + 2*j], instr2[0]);
 		    break;
-		case 2 :	// Stöck
+		case 2 :	// StÃ¶ck
 		    System.out.println("Annonces");
 		    players[(player + i + 1) % 4].addAnounce(0, 0, (player + i + 1) % 4);
 		    break;
-		case 3 :	// Stöck + annonces
+		case 3 :	// StÃ¶ck + annonces
 		    System.out.println("Annonces");
-		    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des précisions sur l'annonce 
-		    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
-		    for (int j=0; j<instr2[1]; j++) 
+		    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des prÃ©cisions sur l'annonce
+		    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //rÃ©ponse
+		    for (int j=0; j<instr2[1]; j++)
     			players[(player + i + 1) % 4].addAnounce(instr2[2+ 2*j], instr2[3 + 2*j], instr2[0]);
 		    /* stock */
-		    players[(player + i + 1) % 4].addAnounce(0, 0, (player + i + 1) % 4);   	
+		    players[(player + i + 1) % 4].addAnounce(0, 0, (player + i + 1) % 4);
 	    }
 
-	    for (int j=0; j<3; j++) {             // envoie la carte jouée aux autres
+	    for (int j=0; j<3; j++) {             // envoie la carte jouÃ©e aux autres
 		myServerNetwork[(player + j + i + 2) % 4].sendStr("15 " + String.valueOf((player + i + 1) % 4) + " " + instr[1]);
-		instr[9] =  myServerNetwork[(player + j + i + 2) % 4].rcvStr();      // réponse
+		instr[9] =  myServerNetwork[(player + j + i + 2) % 4].rcvStr();      // rÃ©ponse
 	    }
 	    if ((playedCard / 9) == atout) {
 		if (currentPlie.color != atout) { // si on coupe
 		    if (currentPlie.coupe == 1) { // already cut
 			switch (playedCard % 9) { // surcoupe
 			    case 3:  // si on joue le nell
-				if (currentPlie.highest != 5) {   
+				if (currentPlie.highest != 5) {
 				    currentPlie.highest = playedCard % 9;
 				    currentPlie.owner = (player + i + 1) % 4;
 				}
@@ -554,8 +554,8 @@ public class FlatJassServerSystem {
 				currentPlie.owner = (player + i + 1) % 4;
 				break;
 			    default: // sinon
-				if (((currentPlie.highest!=5) && 
-				     (currentPlie.highest!=3)) && 
+				if (((currentPlie.highest!=5) &&
+				     (currentPlie.highest!=3)) &&
 				    ((playedCard % 9) > currentPlie.highest)) {
 				    currentPlie.highest = playedCard % 9;
 				    currentPlie.owner = (player + i + 1) % 4;
@@ -569,7 +569,7 @@ public class FlatJassServerSystem {
 			currentPlie.owner = (player + i + 1) % 4;
 		    }
 		}
-		else         // si c'est joué atout
+		else         // si c'est jouÃ© atout
 		    switch (playedCard % 9) {
 			case 3 :  if (currentPlie.highest != 5) {   // si on joue le nell
 			    currentPlie.highest = playedCard % 9;
@@ -605,11 +605,11 @@ public class FlatJassServerSystem {
 	}
 
 	// communique qui a pris la plie
-	for (int i=0; i<4; i++) {       
+	for (int i=0; i<4; i++) {
 	    myServerNetwork[i].sendStr("17 " + String.valueOf(currentPlie.owner));
-	    instr[9] =  myServerNetwork[i].rcvStr();      // réponse
+	    instr[9] =  myServerNetwork[i].rcvStr();      // rÃ©ponse
 	}
-    
+
 	// choix et comptabilisation des annonces
 	int stock = -1;
 	int maxAnounce = 1;
@@ -620,30 +620,30 @@ public class FlatJassServerSystem {
 		System.out.println("player " + j + ", announce : " +
 				   players[j].anounces[i].type + ", height : "
 				   + Card.getHeight(players[j].anounces[i].card));
-    		if (players[j].anounces[i].type > maxAnounce) {  
+    		if (players[j].anounces[i].type > maxAnounce) {
 		    // plus grosse annonce
 		    anouncingTeam = j;
 		    maxAnounce = players[j].anounces[i].type;
 		    maxHeight = Card.getHeight(players[j].anounces[i].card);
-    		} 			
+    		}
     		else if ((players[j].anounces[i].type == maxAnounce) &&
-			 (Card.getHeight(players[j].anounces[i].card) > 
-			  maxHeight)) { 
-		    // même annonce plus haute
+			 (Card.getHeight(players[j].anounces[i].card) >
+			  maxHeight)) {
+		    // mÃªme annonce plus haute
 		    anouncingTeam = j;
 		    maxHeight = Card.getHeight(players[j].anounces[i].card);
     		}
 		else if ((players[j].anounces[i].type == maxAnounce) &&
-			 (Card.getHeight(players[j].anounces[i].card) 
+			 (Card.getHeight(players[j].anounces[i].card)
 			  == maxHeight)) {
 		    // meme annonce, meme hauteur
-		} 
+		}
     		if (players[j].anounces[i].type == 0)
 		    stock = j;
 	    }
 	String info;
 	System.out.println("Bigger 'annonce' : "+ anouncingTeam);
-    
+
 	if (anouncingTeam != -1) { // there are announces
 	    for (int i=0; i<4; i++) {
 		if (((i == anouncingTeam) || (i == ((anouncingTeam + 2) % 4)))
@@ -652,7 +652,7 @@ public class FlatJassServerSystem {
 
 		    info = "20 " + i + " " + players[i].nbrAnounces;
 		    for (int j=0; j<players[i].nbrAnounces; j++) {
-			info = info + " " + players[i].anounces[j].type + " " 
+			info = info + " " + players[i].anounces[j].type + " "
 			    + players[i].anounces[j].card;
 			if (atout == 0) // pique
 			    teams[players[i].myTeam].addScore(
@@ -665,9 +665,9 @@ public class FlatJassServerSystem {
 		    }
 		    for (int j=0; j<4; j++) {
 			// communique les annonces
-			myServerNetwork[j].sendStr(info);            
-			instr = decode(myServerNetwork[j].rcvStr()); // réponse
-		    } 	
+			myServerNetwork[j].sendStr(info);
+			instr = decode(myServerNetwork[j].rcvStr()); // rÃ©ponse
+		    }
 		} else  if (i == stock) { /* THIS CASE SHOULDN'T HAPPEN because
 					   * if we don't have any announce at
 					   * first plie, there is no need to
@@ -676,10 +676,10 @@ public class FlatJassServerSystem {
 		    for (int j=0; j<4; j++) {
 			// communique les annonces
 			myServerNetwork[j].sendStr(info);
-			instr = decode(myServerNetwork[j].rcvStr()); // réponse
-		    } 
+			instr = decode(myServerNetwork[j].rcvStr()); // rÃ©ponse
+		    }
 		    // add stock points
-		    if (atout == 0) 
+		    if (atout == 0)
 			teams[players[i].myTeam].addScore(
 			    2*Card.anounceValue[0]);
 		    else
@@ -694,10 +694,10 @@ public class FlatJassServerSystem {
 	    for (int j=0; j<4; j++) {
 		// communique les annonces
 		myServerNetwork[j].sendStr(info);
-		instr = decode(myServerNetwork[j].rcvStr()); // réponse
+		instr = decode(myServerNetwork[j].rcvStr()); // rÃ©ponse
 	    }
 	    // add stock points
-	    if (atout == 0) 
+	    if (atout == 0)
 		teams[players[stock].myTeam].addScore(
 		    2*Card.anounceValue[0]);
 	    else
@@ -705,7 +705,7 @@ public class FlatJassServerSystem {
 		    Card.anounceValue[0]);
 	    players[stock].clearAnounces();
 	}
- 
+
 	// comptabilisation des points
 	if (atout == 0)       // pique
 	    teams[players[currentPlie.owner].myTeam].addScore(currentPlie.score * 2);
@@ -730,23 +730,23 @@ class Player {
     // Variables
     public String firstName;
     public String lastName;
-    public int iD;		     // numéro de 0 à 3
+    public int iD;		     // numÃ©ro de 0 Ã  3
     public int myTeam;
     public int nbrAnounces;
     public Anounce[] anounces = new Anounce[4];	// annonces
-	
+
     // Constructeur
     public Player() {
 	nbrAnounces = 0;
 	for (int i=0; i<4; i++)
 	    anounces[i] = new Anounce();
     }
-	
-    // Méthodes
+
+    // MÃ©thodes
     public void clearAnounces() {
 	nbrAnounces = 0;
     }
-	
+
     public void addAnounce(int type, int card, int player) {
 	anounces[nbrAnounces].type   = type;
 	anounces[nbrAnounces].card   = card;
@@ -760,7 +760,7 @@ class Team {
     private int currentScore;
     public Player[] players;
     public boolean won;
-  	
+
 	// Constructeur
     public Team() {
 	won = false;
@@ -769,19 +769,19 @@ class Team {
 	    players[i] = new Player();
 	currentScore = 0;
     }
-	
-    // Méthodes
+
+    // MÃ©thodes
     public void resetScore() {
 	currentScore = 0;
 	won = false;
     }
-	
+
     public void addScore(int score) {
 	currentScore += score;
 	if (currentScore > 1499)
 	    won = true;
     }
-	
+
     public int getScore() {
 	return currentScore;
     }
@@ -789,43 +789,33 @@ class Team {
 
 class Plie {
     public int highest;   // la plus haute carte de la plie (celle qui tient la plie)
-    public int color;     // la couleur demandée
+    public int color;     // la couleur demandÃ©e
     public int score;     // la valeur de la plie
-    public int coupe;     // 0 : pas coupé, 1 : coupé
+    public int coupe;     // 0 : pas coupÃ©, 1 : coupÃ©
     public int owner;     // iD de celui qui tient la plie
 }
 
 /* ************************** REMARQUE ******************************
- 	Les cartes sont en fait représentées par des int de 0 à 35
- 	où "carte div 9" donne sa couleur et "carte mod 9" sa
- 	hauteur. La classe Card est donc utilisée ici que pour
- 	les méthodes statiques getColor et getHeight.
+ 	Les cartes sont en fait reprÃ©sentÃ©es par des int de 0 Ã  35
+ 	oÃ¹ "carte div 9" donne sa couleur et "carte mod 9" sa
+ 	hauteur. La classe Card est donc utilisÃ©e ici que pour
+ 	les mÃ©thodes statiques getColor et getHeight.
    *************************************************************** */
-   
+
 abstract class Card {
     static final int[] anounceValue = {20, 20, 50, 100, 100, 150, 200};
-	
+
     public static int getColor(int card) {
 	return card / 9;
     }
-	
+
     public static int getHeight(int card) {
 	return card % 9;
     }
 }
 
 class Anounce {
-    int type;     // 0: stöck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carré
+    int type;     // 0: stÃ¶ck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carrÃ©
     int card;   // plus haute carte de l'annonce
     int player;
 }
-
-
-
-
-
-
-
-
-
-

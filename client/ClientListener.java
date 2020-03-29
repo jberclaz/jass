@@ -3,12 +3,12 @@
  *
  * Created on 18. avril 2000, 18:15
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
+ * @author  Berclaz JÃ©rÃ´me
  * @version 1.2
  */
 
@@ -33,7 +33,7 @@ public class ClientListener extends Thread{
 	catch (IOException e) {
 	    System.out.println("LISTENER:Impossible stream");
 	}
-    }   
+    }
 
 /*  public ClientListener(FlatJassClientSystem app) {
     this.app = app;
@@ -55,7 +55,7 @@ public class ClientListener extends Thread{
 	    StringBuffer s = new StringBuffer(50);
 	    String answer;
 	    int len;
-	    System.out.println("Client Listener : prêt");
+	    System.out.println("Client Listener : prÃªt");
 	    try {
 	    while (true) {
 	    s.setLength(0);
@@ -89,7 +89,7 @@ public class ClientListener extends Thread{
 		System.out.println("LISTENER:Erreur reception");
 		//System.exit(1);
 	    }
-	} 
+	}
 
 	//this.stop();
     }

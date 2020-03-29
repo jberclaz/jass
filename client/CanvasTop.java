@@ -3,13 +3,13 @@
  *
  * Created on 18. avril 2000, 17:31
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 import java.awt.*;
 
@@ -17,7 +17,7 @@ public class CanvasTop extends JassCanvas{
     Image   cardBack;         // image de la carte
     int     nbrCards;           // nombre de cartes en main
     Image   card;
-    // mode:: 0 : tirage des équipes, 1 : jouer normalement
+    // mode:: 0 : tirage des Ã©quipes, 1 : jouer normalement
 
     // Constructeur
     public CanvasTop(String imgPath) {
@@ -57,4 +57,4 @@ public class CanvasTop extends JassCanvas{
 	if (atout)
 	    g.drawString("atout", name.length() * 7 + 60, 15);
     }
-} 
+}

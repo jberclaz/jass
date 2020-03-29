@@ -1,9 +1,9 @@
 
 //Titre :        Flat Jass Client System
-//Version :      
+//Version :
 //Copyright :    Copyright (c) 1998
-//Auteur :       Berclaz Jérome et Métrailler Pierre
-//Société :      Flat
+//Auteur :       Berclaz JÃ©rome et MÃ©trailler Pierre
+//SociÃ©tÃ© :      Flat
 //Description :  Client du jeu de Jass
 
 
@@ -16,7 +16,7 @@ public class CanvasBorder extends Canvas{
   Image card;
   int nbrCards;
   public String name;
-  public int mode;    // 0 : tirage des équipes, 1 : jouer normalement
+  public int mode;    // 0 : tirage des Ã©quipes, 1 : jouer normalement
 
   public CanvasBorder(String imgPath) {
     mode = 1;

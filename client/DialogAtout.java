@@ -3,13 +3,13 @@
  *
  * Created on 19. avril 2000, 11:52
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 public class DialogAtout extends javax.swing.JDialog {
   int number = 0;
@@ -24,7 +24,7 @@ public class DialogAtout extends javax.swing.JDialog {
     jComboBoxAtout.addItem("Pique");
     jComboBoxAtout.addItem("Coeur");
     jComboBoxAtout.addItem("Carreau");
-    jComboBoxAtout.addItem("Trèfle");
+    jComboBoxAtout.addItem("TrÃ¨fle");
   }
 
   /** This method is called from within the constructor to
@@ -99,7 +99,7 @@ public class DialogAtout extends javax.swing.JDialog {
     dispose ();
   }//GEN-LAST:event_closeDialog
 
-  
+
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JLabel jLabel1;

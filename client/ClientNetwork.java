@@ -3,12 +3,12 @@
  *
  * Created on 18. avril 2000, 18:17
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
+ * @author  Berclaz JÃ©rÃ´me
  * @version 1.2
  */
 
@@ -17,11 +17,11 @@ import java.io.*;
 
 public class ClientNetwork {
 
-    public static final int PORT_NUM=1500;
+    public static final int PORT_NUM=32107;
     Socket myClientSocket=null;
 
     PrintWriter os;
-  
+
     public ClientNetwork() {
 
     }
@@ -37,7 +37,9 @@ public class ClientNetwork {
 	}
 	catch (IOException e) {
 	    System.out.println("Unable to create socket");
+            System.out.println(e);
 	    //System.exit(1);
+            return null;
 	}
 
 	return this.myClientSocket;
@@ -45,7 +47,7 @@ public class ClientNetwork {
 
     public void sendTo(String msg) {
 	os.println(msg);
-	os.flush();     
+	os.flush();
 	System.out.println("Envoi au serveur : " + msg);
     }
 
@@ -58,10 +60,4 @@ public class ClientNetwork {
 	    //System.exit(1);
 	}
     }
-} 
-
-
-
-
-
-
+}

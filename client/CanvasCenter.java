@@ -3,20 +3,20 @@
  *
  * Created on 18. avril 2000, 18:04
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
+ * @author  Berclaz JÃ©rÃ´me
  * @version 1.1
  */
 import java.awt.*;
 
 public class CanvasCenter extends Canvas{
   private Image cardBack;
-  public int mode;        // 0 : rien, 1 : tirer les équipes
-                          // 2 : tirer les équipes et choisir une carte
+  public int mode;        // 0 : rien, 1 : tirer les Ã©quipes
+                          // 2 : tirer les Ã©quipes et choisir une carte
                           // 3 : jouer
   public int[] cardsChoosen = new int[36];
   private Image[] cards = new Image[36];

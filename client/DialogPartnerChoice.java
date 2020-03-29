@@ -3,13 +3,13 @@
  *
  * Created on 19. avril 2000, 11:44
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 public class DialogPartnerChoice extends javax.swing.JDialog {
   int number = 0;
@@ -75,7 +75,7 @@ public class DialogPartnerChoice extends javax.swing.JDialog {
     dispose ();
   }//GEN-LAST:event_closeDialog
 
- 
+
 
 
   // Variables declaration - do not modify//GEN-BEGIN:variables

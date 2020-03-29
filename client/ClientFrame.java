@@ -3,13 +3,13 @@
  *
  * Created on 18. avril 2000, 16:10
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 import java.awt.event.*;
 
@@ -21,11 +21,11 @@ public class ClientFrame extends javax.swing.JFrame {
     CanvasTop topCanvas;
     CanvasCenter centerCanvas;
     CanvasLastPlie lastPlieCanvas;
-  
+
     // Autres variables
     String path = "pics/";   // path where to find pictures
     FlatJassClientSystem app;
-  
+
   /** Creates new form ClientFrame */
     public ClientFrame(FlatJassClientSystem app) {
 	initComponents ();
@@ -52,7 +52,7 @@ public class ClientFrame extends javax.swing.JFrame {
 		    centerCanvas_mouseClicked(e);
 		}
 	    });
-    
+
 	pack ();
     }
 
@@ -89,47 +89,47 @@ public class ClientFrame extends javax.swing.JFrame {
 	rightPanel.setName ("rightPanel");
 
 
-	getContentPane ().add (rightPanel, new AbsoluteConstraints (510, 0, 120, 
+	getContentPane ().add (rightPanel, new AbsoluteConstraints (510, 0, 120,
 								    450));
 
 	leftPanel.setLayout (new java.awt.GridLayout (1, 1));
 	leftPanel.setName ("leftPanel");
 
 
-	getContentPane ().add (leftPanel, new AbsoluteConstraints (0, 0, 120, 
+	getContentPane ().add (leftPanel, new AbsoluteConstraints (0, 0, 120,
 								   450));
 
 	playerPanel.setLayout (new java.awt.GridLayout (1, 1));
 
 
-	getContentPane ().add (playerPanel, new AbsoluteConstraints (120, 330, 
+	getContentPane ().add (playerPanel, new AbsoluteConstraints (120, 330,
 								     390, 120));
 
 	topPanel.setLayout (new java.awt.GridLayout (1, 1));
 
 
-	getContentPane ().add (topPanel, new AbsoluteConstraints (120, 0, 390, 
+	getContentPane ().add (topPanel, new AbsoluteConstraints (120, 0, 390,
 								  120));
 
 	centerPanel.setLayout (new java.awt.GridLayout (1, 1));
 	centerPanel.setBackground (new java.awt.Color (51, 102, 0));
 
 
-	getContentPane ().add (centerPanel, new AbsoluteConstraints (120, 120, 
+	getContentPane ().add (centerPanel, new AbsoluteConstraints (120, 120,
 								     390, 210));
 
 	lastPliePanel.setLayout (new java.awt.GridLayout (1, 1));
 
 
-	getContentPane ().add (lastPliePanel, new AbsoluteConstraints (0, 450, 
+	getContentPane ().add (lastPliePanel, new AbsoluteConstraints (0, 450,
 								       630, 40));
 
 	jPanel1.setBorder (new javax.swing.border.BevelBorder(1));
 
-  
+
 	jPanel1.add (statusBar);
 	jPanel1.add (infoBar);
-    
+
 
 	getContentPane ().add (jPanel1, new AbsoluteConstraints (0, 490, 400, 40));
 
@@ -144,7 +144,7 @@ public class ClientFrame extends javax.swing.JFrame {
 	    );
 
 
-	getContentPane ().add (jButtonAnounce, new AbsoluteConstraints (530, 500, 
+	getContentPane ().add (jButtonAnounce, new AbsoluteConstraints (530, 500,
 									-1, -1));
 
 	jButtonConnect.setText ("Connexion");
@@ -156,7 +156,7 @@ public class ClientFrame extends javax.swing.JFrame {
 	    );
 
 
-	getContentPane ().add (jButtonConnect, new AbsoluteConstraints (410, 500, 
+	getContentPane ().add (jButtonConnect, new AbsoluteConstraints (410, 500,
 									-1, -1));
 
     }//GEN-END:initComponents
@@ -170,7 +170,7 @@ public class ClientFrame extends javax.swing.JFrame {
 	    dc.show();
 	    if (dc.ok) {      // Connexion
 		if (app.connect(dc.firstName, dc.lastName, dc.iP) != -1)
-		    jButtonConnect.setText("Déconnexion");
+		    jButtonConnect.setText("DÃ©connexion");
 	    }
 	}
 	else {
@@ -202,8 +202,8 @@ public class ClientFrame extends javax.swing.JFrame {
 	removeLastPlie();
 	lastPlieCanvas.atout = 4;
 	setScore(0,0);
-	repaint(31);	  
-	
+	repaint(31);
+
 	statusBar.setText("Deconnexion");
 	jButtonConnect.setText("Connexion");
     }
@@ -236,7 +236,7 @@ public class ClientFrame extends javax.swing.JFrame {
     // End of variables declaration//GEN-END:variables
 
 
-  //Fait un repaint des différents canvas
+  //Fait un repaint des diffÃ©rents canvas
     public void repaint(int nbr) {
 	if ((nbr & 1) == 1)
 	    playerCanvas.repaint();
@@ -274,7 +274,7 @@ public class ClientFrame extends javax.swing.JFrame {
 
     void playerCanvas_mouseClicked(MouseEvent e) {
 	if (playerCanvas.getMode() != 0)
-	    if (((e.getY() > 19)&&(e.getY() < 116)) && ((e.getX() > 19)&&(e.getX() 
+	    if (((e.getY() > 19)&&(e.getY() < 116)) && ((e.getX() > 19)&&(e.getX()
 									  < 371))) {
 		System.out.println("Click");      // supprimer
 		int x = e.getX();
@@ -295,7 +295,7 @@ public class ClientFrame extends javax.swing.JFrame {
 				    app.cards[i] = 37;
 				    found = true;
 				    repaint(17);
-		    
+
 				    // sends the card to the server
 				    if (app.atout == Card.getColor(playedCard))
 					app.sendCard(playedCard, Card.valueAtout[Card.getHeight(playedCard)]);        // modifier !!!!
@@ -346,26 +346,26 @@ public class ClientFrame extends javax.swing.JFrame {
 	    case 1 :  centerCanvas.cardsChoosen[position] = app.myPlayer;
                 centerCanvas.repaint();
                 rightCanvas.setCard(playerCanvas.cards[cardNumber]);
-                rightCanvas.setMode(0);      // tirage des équipes
+                rightCanvas.setMode(0);      // tirage des Ã©quipes
                 rightCanvas.repaint();
                 break;
 	    case 2 :  centerCanvas.cardsChoosen[position] = app.myPlayer;
                 centerCanvas.repaint();
                 topCanvas.setCard(playerCanvas.cards[cardNumber]);
-                topCanvas.setMode(0);      // tirage des équipes
+                topCanvas.setMode(0);      // tirage des Ã©quipes
                 topCanvas.repaint();
                 break;
 	    case 3 :  centerCanvas.cardsChoosen[position] = app.myPlayer;
                 centerCanvas.repaint();
                 leftCanvas.setCard(playerCanvas.cards[cardNumber]);
-                leftCanvas.setMode(0);      // tirage des équipes
+                leftCanvas.setMode(0);      // tirage des Ã©quipes
                 leftCanvas.repaint();
 	}
     }
 
     public void prepareTeamChoice() {
 	for (int i=0; i<36; i++)
-	    centerCanvas.cardsChoosen[i] = 10;   // carte présente
+	    centerCanvas.cardsChoosen[i] = 10;   // carte prÃ©sente
 	for (int i=0; i<9; i++)
 	    playerCanvas.hand[i] = 37; // effacer les cartes
 	leftCanvas.setNbrCards(0);
@@ -384,7 +384,7 @@ public class ClientFrame extends javax.swing.JFrame {
 
     void centerCanvas_mouseClicked(MouseEvent e) {
 	System.out.println("Click 1");
-	if (centerCanvas.mode == 2) {        // à ton tour de tirer une carte
+	if (centerCanvas.mode == 2) {        // Ã  ton tour de tirer une carte
 	    System.out.println("Click Center");
 	    if (((e.getY() < 137) && (e.getY() > 39)) && ((e.getX() > 9) && (e.getX() < 361))) {
 		int nbr = (e.getX() - 10) / 8;
@@ -425,7 +425,7 @@ public class ClientFrame extends javax.swing.JFrame {
 	}
     }
 
-    // prépare l'écran pour une nouvelle partie
+    // prÃ©pare l'Ã©cran pour une nouvelle partie
     void prepareMatch() {
 	for (int i=0; i<4; i++)
 	    centerCanvas.cardsChoosen[i] = 36;
@@ -437,7 +437,7 @@ public class ClientFrame extends javax.swing.JFrame {
 	removeLastPlie();
     }
 
-    // affiche une carte jouée
+    // affiche une carte jouÃ©e
     void showPlayedCard(int player, int number) {
 	int diff = player - app.myPlayer;
 	if (diff < 0)
@@ -456,7 +456,7 @@ public class ClientFrame extends javax.swing.JFrame {
                 leftCanvas.repaint();
 	}
 	centerCanvas.repaint();
-	statusBar.setText(app.players[player].getFirstName() + " a joué...");
+	statusBar.setText(app.players[player].getFirstName() + " a jouÃ©...");
     }
 
     // ramasse la plie
@@ -483,11 +483,11 @@ public class ClientFrame extends javax.swing.JFrame {
 	lastPlieCanvas.repaint();
     }
 
-  
+
     void setStatusBar(String text) {
 	statusBar.setText(text);
     }
-  
+
     void setAnounceEnabled(boolean b) {
 	jButtonAnounce.setEnabled(b);
     }
@@ -506,18 +506,15 @@ public class ClientFrame extends javax.swing.JFrame {
 	    case 0 :
 		playerCanvas.setAtout(true);
 		break;
-	    case 1 :  
+	    case 1 :
                 rightCanvas.setAtout(true);
                 break;
-	    case 2 :  
+	    case 2 :
                 topCanvas.setAtout(true);
                 break;
-	    case 3 :  
+	    case 3 :
                 leftCanvas.setAtout(true);
 	}
 	repaint(31);
     }
 }
-
-
-

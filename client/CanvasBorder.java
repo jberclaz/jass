@@ -3,13 +3,13 @@
  *
  * Created on 18. avril 2000, 16:49
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 
 import java.awt.*;
@@ -18,8 +18,8 @@ public class CanvasBorder extends JassCanvas {
     Image   cardBack;
     Image   card;
     int     nbrCards;
-    // mode:: 0 : tirage des équipes, 1 : jouer normalement
-    
+    // mode:: 0 : tirage des Ã©quipes, 1 : jouer normalement
+
 
     /** Creates new CanvasBorder */
     public CanvasBorder(String imgPath) {

@@ -3,13 +3,13 @@
  *
  * Created on 19. avril 2000, 11:37
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 public class DialogTeamChoice extends javax.swing.JDialog {
   boolean hasard = true;
@@ -34,7 +34,7 @@ public class DialogTeamChoice extends javax.swing.JDialog {
     getContentPane ().setLayout (new AbsoluteLayout ());
     setSize(330, 180);
     setResizable (false);
-    setTitle ("Choix des équipes");
+    setTitle ("Choix des Ã©quipes");
     addWindowListener (new java.awt.event.WindowAdapter () {
       public void windowClosing (java.awt.event.WindowEvent evt) {
         closeDialog (evt);
@@ -42,7 +42,7 @@ public class DialogTeamChoice extends javax.swing.JDialog {
     }
     );
 
-    jLabel1.setText ("Voulez-vous choisir les équipes au");
+    jLabel1.setText ("Voulez-vous choisir les Ã©quipes au");
 
 
     getContentPane ().add (jLabel1, new AbsoluteConstraints (30, 20, -1, -1));

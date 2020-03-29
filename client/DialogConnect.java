@@ -3,18 +3,18 @@
  *
  * Created on 18. avril 2000, 21:34
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 public class DialogConnect extends javax.swing.JDialog {
   boolean ok = false;
   String lastName, firstName, iP;
-  
+
   /** Creates new form DialogConnect */
   public DialogConnect(java.awt.Frame parent,boolean modal) {
     super (parent, modal);
@@ -51,20 +51,20 @@ public class DialogConnect extends javax.swing.JDialog {
 
     jPanel1.setLayout (new java.awt.GridBagLayout ());
     java.awt.GridBagConstraints gridBagConstraints2;
-    jPanel1.setBorder (new javax.swing.border.TitledBorder("Paramètres de connexion"));
+    jPanel1.setBorder (new javax.swing.border.TitledBorder("ParamÃ¨tres de connexion"));
     jPanel1.setName ("");
 
       jLabelFirstName.setText ("Nom");
-  
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 0;
       gridBagConstraints2.gridy = 0;
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.insets = new java.awt.Insets (14, 20, 0, 0);
       jPanel1.add (jLabelFirstName, gridBagConstraints2);
-  
-      jLabelLastName.setText ("Prénom");
-  
+
+      jLabelLastName.setText ("PrÃ©nom");
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 0;
       gridBagConstraints2.gridy = 2;
@@ -72,9 +72,9 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.insets = new java.awt.Insets (10, 20, 0, 0);
       jPanel1.add (jLabelLastName, gridBagConstraints2);
-  
+
       jLabel3.setText ("Serveur");
-  
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 0;
       gridBagConstraints2.gridy = 4;
@@ -82,8 +82,8 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.insets = new java.awt.Insets (10, 21, 0, 0);
       jPanel1.add (jLabel3, gridBagConstraints2);
-  
-  
+
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
       gridBagConstraints2.gridy = 0;
@@ -92,8 +92,8 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.ipadx = 146;
       gridBagConstraints2.insets = new java.awt.Insets (11, 61, 8, 0);
       jPanel1.add (jTextFieldFirstName, gridBagConstraints2);
-  
-  
+
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
       gridBagConstraints2.gridy = 2;
@@ -102,9 +102,9 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.ipadx = 146;
       gridBagConstraints2.insets = new java.awt.Insets (9, 61, 8, 0);
       jPanel1.add (jTextFieldLastName, gridBagConstraints2);
-  
+
       jTextFieldIP.setText ("localhost");
-  
+
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
       gridBagConstraints2.gridy = 4;
@@ -113,7 +113,7 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.ipadx = 77;
       gridBagConstraints2.insets = new java.awt.Insets (9, 61, 8, 0);
       jPanel1.add (jTextFieldIP, gridBagConstraints2);
-  
+
 
     gridBagConstraints1 = new java.awt.GridBagConstraints ();
     gridBagConstraints1.gridx = 0;

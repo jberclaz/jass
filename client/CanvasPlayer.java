@@ -3,13 +3,13 @@
  *
  * Created on 18. avril 2000, 17:31
  */
- 
 
 
-/** 
+
+/**
  *
- * @author  Berclaz Jérôme
- * @version 
+ * @author  Berclaz JÃ©rÃ´me
+ * @version
  */
 import java.awt.*;
 
