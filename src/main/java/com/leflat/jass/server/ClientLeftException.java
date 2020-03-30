@@ -1,4 +1,4 @@
-
+package com.leflat.jass.server;
 
 class ClientLeftException extends Exception {
     int clientID;

@@ -5,8 +5,8 @@
 //Company:      Flat
 //Description:  Your description
 
+package com.leflat.jass.server;
 
-//package FlatJassServerProject;
 
 import java.net.*;
 import java.io.*;

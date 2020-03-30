@@ -298,9 +298,9 @@ public class ClientFrame extends javax.swing.JFrame {
 
 				    // sends the card to the server
 				    if (app.atout == Card.getColor(playedCard))
-					app.sendCard(playedCard, Card.valueAtout[Card.getHeight(playedCard)]);        // modifier !!!!
+					app.sendCard(playedCard, Card.valueAtout[Card.getRank(playedCard)]);        // modifier !!!!
 				    else
-					app.sendCard(playedCard, Card.value[Card.getHeight(playedCard)]);
+					app.sendCard(playedCard, Card.value[Card.getRank(playedCard)]);
 				    break;
 				case -1 : // suivre
 				    System.out.println("Il faut suivre !!");

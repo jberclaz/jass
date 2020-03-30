@@ -8,13 +8,15 @@
 //
 //              Long life to the FLAT(r)!
 
+package com.leflat.jass.server;
 
-// package FlatJassServerProject;
 
 import java.net.*;
 import java.io.*;
 import java.util.*;
 import java.util.stream.Collectors;
+
+import com.leflat.jass.common.*;
 
 public class FlatJassServerSystem {
     private int atout;
@@ -139,7 +141,7 @@ public class FlatJassServerSystem {
             if (args[0].compareTo("-p") == 0) {
                 port = Integer.valueOf(args[1]);
             } else {
-                System.out.println("Syntax : java FlatJassServerSystem -p <port_number>");
+                System.out.println("Syntax : java leflat.jass.server.FlatJassServerSystem -p <port_number>");
                 System.exit(-1);
             }
         }
@@ -644,12 +646,8 @@ class Player {
     private int team;
     private ArrayList<Anouncement> anounces = new ArrayList<>(); // annonces
     private ServerNetwork connection;
-    private int tableOrder;
 
     // Constructeur
-    public Player() {
-    }
-
     public Player(String firstName, String lastName, int id, ServerNetwork connection) {
         this.firstName = firstName;
         this.lastName = lastName;
@@ -698,14 +696,6 @@ class Player {
 
     public void setTeam(int team) {
         this.team = team;
-    }
-
-    public int getTableOrder() {
-        return tableOrder;
-    }
-
-    public void setTableOrder(int tableOrder) {
-        this.tableOrder = tableOrder;
     }
 
     public int getNbrAnounces() {

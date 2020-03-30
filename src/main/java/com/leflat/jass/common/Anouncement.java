@@ -1,3 +1,5 @@
+package com.leflat.jass.common;
+
 public class Anouncement {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;

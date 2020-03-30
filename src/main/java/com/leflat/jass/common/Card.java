@@ -1,3 +1,5 @@
+package com.leflat.jass.common;
+
 /**
  * ************************** REMARQUE ******************************
  * Les cartes sont en fait représentées par des int de 0 à 35

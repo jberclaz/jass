@@ -21,10 +21,10 @@ public class FlatJassClientSystem extends Object {
     ClientListener listener;                       // classe qui écoute
     ClientNetwork network = new ClientNetwork();   // classe qui implémente socket
     public int myPlayer;                           // id du joueur
-    Player[] players = new Player[4];              // les 4 joueurs
+    leflat.jass.server.Player[] players = new leflat.jass.server.Player[4];              // les 4 joueurs
     int[] cards = new int[9];                      // main du joueur
     int atout;                                     // atout
-    Plie currentPlie = new Plie();                 // plie en cours
+    leflat.jass.server.Plie currentPlie = new leflat.jass.server.Plie();                 // plie en cours
     Anounce[] myAnounces = new Anounce[3];         // annonces
     int nbrAnounces;                               // nombre d'annonces
     int stock;                                     // 0:rien, 1:stöck, 2: joué un, 3:joué les deux
@@ -33,7 +33,7 @@ public class FlatJassClientSystem extends Object {
     /** Creates new FlatJassClientSystem */
     public FlatJassClientSystem() {
 	for (int i=0; i<4; i++)             // construire les objets player
-	    players[i] = new Player();
+	    players[i] = new leflat.jass.server.Player();
 	for (int i=0; i<3; i++)             // construire les objets Anounce
 	    myAnounces[i] = new Anounce();
 	frame.show();
@@ -255,9 +255,9 @@ public class FlatJassClientSystem extends Object {
                 currentPlie.color = temp.intValue();
                 temp = Integer.valueOf(tableInstr[3]);
                 if (temp.intValue() == 0)
-		    currentPlie.coupe = false;
+		    currentPlie.cut = false;
                 else
-		    currentPlie.coupe = true;
+		    currentPlie.cut = true;
                 frame.setStatusBar("A vous de jouer ...");
                 frame.setAnounceEnabled(true);
                 plieNbr++;
@@ -367,11 +367,11 @@ public class FlatJassClientSystem extends Object {
 
     // organise les joueurs dans le bon ordre
     private void organisePlayers(int id1, int id2, int id3, int id4) {
-	Player[] p = new Player[4];
-	p[0] = new Player(players[id1]);
-	p[1] = new Player(players[id2]);
-	p[2] = new Player(players[id3]);
-	p[3] = new Player(players[id4]);
+	leflat.jass.server.Player[] p = new leflat.jass.server.Player[4];
+	p[0] = new leflat.jass.server.Player(players[id1]);
+	p[1] = new leflat.jass.server.Player(players[id2]);
+	p[2] = new leflat.jass.server.Player(players[id3]);
+	p[3] = new leflat.jass.server.Player(players[id4]);
 	int myNewPlayer = 0;
 	for (int i=0; i<4; i++) {
 	    players[i] = p[i];
@@ -449,7 +449,7 @@ public class FlatJassClientSystem extends Object {
 	if (mode == 2) {
 	    if (Card.getColor(cardChoosen) != currentPlie.color) {
 		if (Card.getColor(cardChoosen) == atout) {
-		    if (currentPlie.coupe)
+		    if (currentPlie.cut)
 			switch (Card.getHeight(cardChoosen)) {
 			    case 5 :  answer = 0;            // bourg : ok!
 				break;
@@ -635,7 +635,7 @@ class TMember {
     }
 }
 
-// **************************** CLASS Player ***********************************
+// **************************** CLASS leflat.jass.server.Player ***********************************
 class Player extends TMember {
     // Variables
     private int iD;		// numéro d'identification du joueur
@@ -644,7 +644,7 @@ class Player extends TMember {
 	super();
     }
 
-    public Player(Player copyPlayer) {
+    public Player(leflat.jass.server.Player copyPlayer) {
 	super(copyPlayer.getFirstName(), copyPlayer.getLastName(),
 	      copyPlayer.getFunction());
 	this.iD = copyPlayer.getID();
@@ -663,6 +663,7 @@ class Player extends TMember {
 
 
 // **************************** CLASS Card *************************************
+/*
 abstract class Card {
     static final int[] value = {0,0,0,0,10,2,3,4,11};     // valeurs des cartes
     static final int[] valueAtout = {0,0,0,14,10,20,3,4,11};
@@ -679,8 +680,10 @@ abstract class Card {
     }
 }
 
+ */
 
-// **************************** CLASS Plie *************************************
+
+// **************************** CLASS leflat.jass.server.Plie *************************************
 class Plie {
     public int highest;       // plus haute carte (si coupé, plus haut atout)
     public int color;         // couleur demandée
