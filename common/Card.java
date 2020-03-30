@@ -18,6 +18,8 @@ public class Card {
     public static final int RANK_ROI = 7;
     public static final int RANK_AS = 8;
 
+    public static final int COLOR_SPADE = 0;
+
     private int number;
 
     public Card(int cardNumber) {

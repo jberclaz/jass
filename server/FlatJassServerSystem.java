@@ -321,7 +321,7 @@ public class FlatJassServerSystem {
     void playPart() throws ClientLeftException {
         /* randomly choose the cards and send them */
         // celui qui commence la partie et fait atout
-        int firstToPlay = distribute();
+        int firstToPlay = drawCards();
         int nextPlayer;
         do {
             atout = chooseAtout(firstToPlay);                     // choisit l'atout
@@ -335,14 +335,12 @@ public class FlatJassServerSystem {
 
             if (nextPlayer != -1) {    // si personne n'a gagné : on continue normalement
                 // 5 de der
-                if (atout == 0)
-                    teams[players[currentPlie.owner].myTeam].addScore(10);
-                else
-                    teams[players[currentPlie.owner].myTeam].addScore(5);
+                var player = tableOrder.get(currentPlie.owner);
+                teams[player.getTeam()].addScore(atout == Card.COLOR_SPADE ? 10 : 5);
 
-                for (int i = 0; i < 4; i++) {   // envoie le score
-                    myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
-                            + " " + String.valueOf(teams[(players[i].myTeam + 1) % 2].getScore()));
+                for (var p : players) {   // envoie le score
+                    p.sendMessage("18 " + teams[p.getTeam()].getScore()
+                            + " " + teams[(p.getTeam() + 1) % 2].getScore());
                 }
 
                 /* waits a few seconds so that the players can see the last
@@ -353,11 +351,11 @@ public class FlatJassServerSystem {
                 }
 
                 firstToPlay = (firstToPlay + 1) % 4;
-                distribute();
+                drawCards();
             } else { // si une équipe a gagné
-                for (int i = 0; i < 4; i++) {   // envoie le score
-                    myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
-                            + " " + String.valueOf(teams[(players[i].myTeam + 1) % 2].getScore()));
+                for (var p : players) {   // envoie le score
+                    p.sendMessage("18 " + teams[p.getTeam()].getScore()
+                            + " " + teams[(p.getTeam() + 1) % 2].getScore());
                 }
             }
 
@@ -394,7 +392,7 @@ public class FlatJassServerSystem {
     }
 
 
-    int distribute() throws ClientLeftException {
+    int drawCards() throws ClientLeftException {
         int playerWithDiamondSeven = 0;      // 7 de carreau
         int[] cards = shuffleCards();     // choisir les cartes au hasard
         StringBuilder s;                  // chaîne à envoyer
@@ -526,7 +524,7 @@ public class FlatJassServerSystem {
                         anounce.getType() + ", height : "
                         + anounce.getCard().getRank());
                 if (anounce.getType() == Anouncement.STOECK) {
-                    stoeck = p.getTeam();
+                    stoeck = p.getId();
                     continue;
                 }
                 if (anounce.getType() > maxAnounce) {
@@ -547,81 +545,49 @@ public class FlatJassServerSystem {
                 }
             }
         }
-        String info;
+        StringBuilder info;
         System.out.println("Bigger 'annonce' : " + anouncingTeam);
 
         if (anouncingTeam != -1) { // there are announces
-            for (int i = 0; i < 4; i++) {
-                if (((i == anouncingTeam) || (i == ((anouncingTeam + 2) % 4)))
-                        && (players[i].nbrAnounces > 0)) {
+            for (var p : players) {
+                if ((p.getTeam() == anouncingTeam) && (p.getNbrAnounces() > 0)) {
                     // annonceur
-
-                    info = "20 " + i + " " + players[i].nbrAnounces;
-                    for (int j = 0; j < players[i].nbrAnounces; j++) {
-                        info = info + " " + players[i].anounces[j].type + " "
-                                + players[i].anounces[j].card;
-                        if (atout == 0) // pique
-                            teams[players[i].myTeam].addScore(
-                                    2 * Card.anounceValue[players[i].anounces[j].
-                                            type]);
-                        else
-                            teams[players[i].myTeam].addScore(
-                                    Card.anounceValue[players[i].anounces[j].
-                                            type]);
+                    info = new StringBuilder("20 " + p.getId() + " " + p.getNbrAnounces());
+                    for (int j = 0; j < p.getNbrAnounces(); j++) {
+                        var annoucement = p.getAnouncement(j);
+                        info.append(" ").append(annoucement.getType()).append(" ").append(annoucement.getCard());
+                        int score = atout == Card.COLOR_SPADE ? 2 * annoucement.getValue() : annoucement.getValue();
+                        teams[anouncingTeam].addScore(score);
                     }
-                    for (int j = 0; j < 4; j++) {
-                        // communique les annonces
-                        myServerNetwork[j].sendStr(info);
-                        instr = decode(myServerNetwork[j].rcvStr()); // réponse
+                    sendMessageToAllPlayers(info.toString());
+                } else if (p.getId() == stoeck) {
+                    if (p.getTeam() == anouncingTeam) {
+                        System.out.println("Error: " + p.getFirstName() + " declared only stock on first plie");
+                    } else if (p.getNbrAnounces() > 1) {
+                        System.out.println("Info: not counting stoeck for now for player " + p.getFirstName());
                     }
-                } else if (i == stoeck) { /* THIS CASE SHOULDN'T HAPPEN because
-                 * if we don't have any announce at
-                 * first plie, there is no need to
-                 * declare stock */
-                    info = "20 " + i + " 1 0 0";
-                    for (int j = 0; j < 4; j++) {
-                        // communique les annonces
-                        myServerNetwork[j].sendStr(info);
-                        instr = decode(myServerNetwork[j].rcvStr()); // réponse
-                    }
-                    // add stock points
-                    if (atout == 0)
-                        teams[players[i].myTeam].addScore(
-                                2 * Card.anounceValue[0]);
-                    else
-                        teams[players[i].myTeam].addScore(
-                                Card.anounceValue[0]);
                 }
-                players[i].clearAnounces();
+                p.clearAnounces();
             }
         } else if (stoeck != -1) { // no announce but stock
-            info = "20 " + stoeck + " 1 0 0";
-            for (int j = 0; j < 4; j++) {
-                // communique les annonces
-                myServerNetwork[j].sendStr(info);
-                instr = decode(myServerNetwork[j].rcvStr()); // réponse
-            }
+            info = new StringBuilder("20 " + stoeck + " 1 0 0");
+            sendMessageToAllPlayers(info.toString());
+            int score = atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
             // add stock points
-            if (atout == 0)
-                teams[players[stoeck].myTeam].addScore(
-                        2 * Card.anounceValue[0]);
-            else
-                teams[players[stoeck].myTeam].addScore(
-                        Card.anounceValue[0]);
-            players[stoeck].clearAnounces();
+            var p = getPlayerById(stoeck);
+            teams[p.getTeam()].addScore(score);
+            p.clearAnounces();
         }
 
         // comptabilisation des points
-        if (atout == 0)       // pique
-            teams[players[currentPlie.owner].myTeam].addScore(currentPlie.score * 2);
-        else
-            teams[players[currentPlie.owner].myTeam].addScore(currentPlie.score);
+        player = tableOrder.get(currentPlie.owner);
+        teams[player.getTeam()].addScore(atout == Card.COLOR_SPADE ? currentPlie.score * 2 : currentPlie.score);
 
-        int returnValue = currentPlie.owner;
-        ;
-        if ((teams[0].won) || (teams[1].won))
-            returnValue = -1;
-        return returnValue;
+        if (teams[0].hasWon() || teams[1].hasWon()) {
+            return -1;
+        }
+
+        return currentPlie.owner;
     }
 
     void handleAnnoucements(Player player, int announcement) throws ClientLeftException {
