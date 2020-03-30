@@ -14,18 +14,17 @@
 import java.net.*;
 import java.io.*;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class FlatJassServerSystem {
     private int atout;
-    private int firstToPlay;         // celui qui commence la partie et fait atout
-    private int playersConnected;    // nombre de joueurs connectés
+    private int lastPlayerId;    // nombre de joueurs connectés
     private Plie currentPlie;        // plie en cours
-    private Player[] players = new Player[4]; // les 4 joueurs
+    private ArrayList<Player> players = new ArrayList<>(); // les 4 joueurs
     private Team[] teams = new Team[2];       // les 2 équipes
+    private ArrayList<Player> tableOrder = new ArrayList<>();
 
-    private int port_num;
     private ServerSocket myServerSocket = null;
-    private ServerNetwork[] myServerNetwork = new ServerNetwork[4];
 
     public static final int DEFAULT_PORT_NUMBER = 32107;
 
@@ -35,12 +34,10 @@ public class FlatJassServerSystem {
     }
 
     public FlatJassServerSystem(int port) {
-        port_num = port;
 
-        for (int i = 0; i < 4; i++)       // création des joueurs
-            players[i] = new Player();
-        for (int i = 0; i < 2; i++)       // création des équipes
+        for (int i = 0; i < 2; i++) {      // création des équipes
             teams[i] = new Team();
+        }
         currentPlie = new Plie();
 
         System.out.println("Flat Jass System Server");
@@ -48,12 +45,12 @@ public class FlatJassServerSystem {
         System.out.println("(c) 2000-2002 by FLAT(r)");
         System.out.println();
 
-        playersConnected = 0;
+        lastPlayerId = 0;
 
         // Create server socket
         try {
-            myServerSocket = new ServerSocket(port_num);
-            System.out.println("Server socket created on port " + port_num);
+            myServerSocket = new ServerSocket(port);
+            System.out.println("Server socket created on port " + port);
         } catch (IOException e) {
             System.err.println("ERROR: cannot create server socket");
             System.exit(1);
@@ -63,13 +60,23 @@ public class FlatJassServerSystem {
     public void run() {
         do {
             try {
-                while (playersConnected < 4) {  // attend 4 connexions
-                    playersConnected = waitConnect();
+                while (players.size() < 4) {  // attend 4 connexions
+                    Player newPlayer = waitForConnection();
+                    players.add(newPlayer);
                 }
+            } catch (ClientLeftException e) {
+                Player disconnectedPlayer = getPlayerById(e.getClientId());
+                for (Player player : players) {
+                    if (player != disconnectedPlayer) {
+                        player.sendMessage("23 " + disconnectedPlayer.getId());
+                    }
+                }
+                players.remove(disconnectedPlayer);
+                continue;
+            }
 
-                Integer temp;
-                String[] instr = new String[10];
-
+            try {
+                boolean playMore;
                 do {
                     chooseTeam();     // détermine les équipes
 
@@ -77,71 +84,53 @@ public class FlatJassServerSystem {
                     playPart();
 
                     // ask whether they want to play another part
-                    myServerNetwork[0].sendStr("22");
+                    players.get(0).sendMessage("22");
 
-                    instr = decode(myServerNetwork[0].rcvStr()); // réponse
-                    temp = Integer.valueOf(instr[1]);
+                    String[] instr = decode(players.get(0).waitForAnswer()); // réponse
+                    playMore = Integer.parseInt(instr[1]) != 0;
 
-                    teams[0].resetScore();
-                    teams[1].resetScore();
-                } while (temp.intValue() != 0);
+                    for (Team team : teams) {
+                        team.resetScore();
+                    }
+                } while (playMore);
 
             } catch (ClientLeftException e) {
-                int id = e.getClientId();
-                for (int i = 0; (i <= playersConnected) && (i != 4); i++) {
-                    if (i != id) {
-                        // inform other clients that a client has disconnected
-                        myServerNetwork[i].sendStr("23 " + String.valueOf(id));
+                Player disconnectedPlayer = getPlayerById(e.getClientId());
+                for (Player player : players) {
+                    if (player != disconnectedPlayer) {
+                        player.sendMessage("23 " + disconnectedPlayer.getId());
                     }
                 }
-
-                System.out.println("sleep...");
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException ex) {
-                }
-                System.out.println("Wakeup...");
+                players.remove(disconnectedPlayer);
             }
-
-            // close sockets and remove players
-            for (int i = 0; (i <= playersConnected) && (i != 4); i++)
-                myServerNetwork[i].close();
-            playersConnected = 0;
         } while (true); //  loop forever
     }
 
     // attend la connexion d'un joueur
-    public int waitConnect() throws ClientLeftException {
-        int newPlayers = playersConnected;
-        if (myServerNetwork[playersConnected] == null) {
-            myServerNetwork[playersConnected] = new ServerNetwork();
-        }
-        if (myServerNetwork[playersConnected].connect(myServerSocket)) {
+    public Player waitForConnection() throws ClientLeftException {
+        ServerNetwork clientConnection = new ServerNetwork();
+        if (clientConnection.connect(myServerSocket)) {
             // la connexion a réussi
+            clientConnection.setClientId(lastPlayerId);
+            clientConnection.sendStr("1 " + lastPlayerId); // donne son id et demande des infos
+            String[] instr = decode(clientConnection.rcvStr());  // attend les infos
 
-            myServerNetwork[playersConnected].setClientId(playersConnected);
-            myServerNetwork[playersConnected].sendStr("1 " + String.valueOf(playersConnected)); // donne son id et demande des infos
-            String[] instr = new String[10];
-            instr = decode(myServerNetwork[playersConnected].rcvStr());  // attend les infos
-
-            players[playersConnected].firstName = instr[1];
-            players[playersConnected].lastName = instr[2];
-            players[playersConnected].iD = playersConnected;
-
+            Player newPlayer = new Player(instr[1], instr[2], lastPlayerId, clientConnection);
             System.out.println(instr[1] + " " + instr[2] + " is connected");
 
-            for (int i = 0; i < playersConnected; i++) {
+            for (Player player : players) {
                 // infos SUR LES joueurs déjà connectés
-                myServerNetwork[playersConnected].sendStr("2 " + String.valueOf(i) + " " + players[i].firstName + " " + players[i].lastName);
-                instr[1] = myServerNetwork[playersConnected].rcvStr(); // attend la réponse
+                newPlayer.sendMessage("2 " + player.getId() + " " + player.getFirstName() + " " + player.getLastName());
+                newPlayer.waitForAnswer(); // attend la réponse
 
                 // infos AUX joueurs déjà connectés
-                myServerNetwork[i].sendStr("2 " + String.valueOf(playersConnected) + " " + players[playersConnected].firstName + " " + players[playersConnected].lastName);
-                instr[1] = myServerNetwork[i].rcvStr(); // attend la réponse
+                player.sendMessage("2 " + newPlayer.getId() + " " + newPlayer.getFirstName() + " " + newPlayer.getLastName());
+                player.waitForAnswer(); // attend la réponse
             }
-            newPlayers++;      // incrémente le nombre de joueurs connectés
+            lastPlayerId++;
+            return newPlayer;
         }
-        return newPlayers;
+        return null;
     }
 
     public static void main(String[] args) {
@@ -158,7 +147,7 @@ public class FlatJassServerSystem {
         if (port == null) {
             flatJassServerSystem = new FlatJassServerSystem();
         } else {
-            flatJassServerSystem = new FlatJassServerSystem(port.intValue());
+            flatJassServerSystem = new FlatJassServerSystem(port);
         }
 
         flatJassServerSystem.run();
@@ -176,7 +165,7 @@ public class FlatJassServerSystem {
                 cursor = i + 1;
                 cmpt++;
             }
-        table[cmpt] = instr.substring(cursor, instr.length());
+        table[cmpt] = instr.substring(cursor);
         return table;
     }
 
@@ -185,46 +174,42 @@ public class FlatJassServerSystem {
     private int[] decodint(String instr) {
         int cmpt = 0;
         int cursor = 0;
-        Integer temp;
+        int temp;
         int[] table = new int[10];
         for (int i = 1; i < instr.length(); i++)
             if (instr.charAt(i) == ' ') {
-                temp = Integer.valueOf(instr.substring(cursor, i));
-                table[cmpt] = temp.intValue();
+                temp = Integer.parseInt(instr.substring(cursor, i));
+                table[cmpt] = temp;
                 cursor = i + 1;
                 cmpt++;
             }
-        temp = Integer.valueOf(instr.substring(cursor, instr.length()));
-        table[cmpt] = temp.intValue();
+        temp = Integer.parseInt(instr.substring(cursor));
+        table[cmpt] = temp;
         return table;
     }
 
 
     private void chooseTeam() throws ClientLeftException {
-        myServerNetwork[0].sendStr("3");    // demande de choisir le mode de tirage des équipes
-        String[] instr = new String[10];
-        instr = decode(myServerNetwork[0].rcvStr()); // réponse
-        Integer temp = Integer.valueOf(instr[1]);
-        if (temp.intValue() == 1) { // choisir au hasard
-            for (int i = 0; i < 4; i++) {       // i<4 normalement !!!
-                myServerNetwork[i].sendStr("4");    // préparation du tirage des équipes
-                instr[1] = myServerNetwork[i].rcvStr(); //réponse
-            }
-            int[] cards = new int[36];
-            boolean tirageOk = false;
-            int[] cardsChoosen = new int[4];    // cartes tirées
-            do {
-                cards = chooseCards();
-                for (int i = 0; i < 4; i++) {
-                    myServerNetwork[i].sendStr("5");  // demande de choisir une carte
-                    instr = decode(myServerNetwork[i].rcvStr());  //réponse
+        for (Team t : teams) {
+            t.reset();
+        }
+        players.get(0).sendMessage("3");    // demande de choisir le mode de tirage des équipes
+        String[] instr = decode(players.get(0).waitForAnswer()); // réponse
+        int teamChoiceMethod = Integer.parseInt(instr[1]);
+        if (teamChoiceMethod == 1) { // choisir au hasard
+            sendMessageToAllPlayers("4");  // préparation du tirage des équipes
 
-                    temp = Integer.valueOf(instr[1]);
-                    cardsChoosen[i] = cards[temp.intValue()];
-                    for (int j = 0; j < 4; j++) {    // communique la carte choisie
-                        myServerNetwork[j].sendStr("6 " + String.valueOf(i) + " " + instr[1] + " " + String.valueOf(cardsChoosen[i]));
-                        instr[3] = myServerNetwork[j].rcvStr();
-                    }
+            boolean drawingSuccessful;
+            HashMap<Player, Integer> cardsChoosen = new HashMap<>();    // cartes tirées
+            do {
+                int[] cards = shuffleCards();
+                for (Player p : players) {
+                    p.sendMessage("5");  // demande de choisir une carte
+                    instr = decode(p.waitForAnswer());  //réponse
+                    int cartNumber = Integer.parseInt(instr[1]);
+
+                    cardsChoosen.put(p, cards[cartNumber]);
+                    sendMessageToAllPlayers("6 " + p.getId() + " " + cartNumber + " " + cardsChoosen.get(p));
                 }
                 // delay to allow players to watch cards
                 try {
@@ -233,113 +218,89 @@ public class FlatJassServerSystem {
                 }
 
                 // détermine les équipes
-                tirageOk = calculateTeam(cardsChoosen);
-                if (!tirageOk)
-                    for (int i = 0; i < 4; i++) {
-                        myServerNetwork[i].sendStr("7"); // le tirage n'est pas bon : on recommence
-                        instr[9] = myServerNetwork[i].rcvStr();
-                    }
-            } while (!tirageOk);
-        } else {       // choisir son partenaire
-            myServerNetwork[0].sendStr("9");    // demande de choisir le partenaire
-            instr = decode(myServerNetwork[0].rcvStr()); // réponse
-            teams[0].players[0] = players[0];
-            players[0].myTeam = 0;
-            int j = 0;
-            temp = Integer.valueOf(instr[1]);
-            for (int i = 1; i < 4; i++)
-                if (i == temp.intValue()) {
-                    teams[0].players[1] = players[i];
-                    players[i].myTeam = 0;
-                } else {
-                    teams[1].players[j] = players[i];
-                    players[i].myTeam = 1;
-                    j++;
+                drawingSuccessful = calculateTeam(cardsChoosen);
+                if (!drawingSuccessful) {
+                    sendMessageToAllPlayers("7");
                 }
+            } while (!drawingSuccessful);
+        } else {       // choisir son partenaire
+            players.get(0).sendMessage("9");    // demande de choisir le partenaire
+            instr = decode(players.get(0).waitForAnswer()); // réponse
+            int partnerId = Integer.parseInt(instr[1]);
+            for (Player p : players) {
+                if (p.getId() == partnerId || p == players.get(0)) {
+                    p.setTeam(0);
+                    teams[0].addPlayer(p);
+                } else {
+                    p.setTeam(1);
+                    teams[1].addPlayer(p);
+                }
+            }
         }
         organisePlayers();
-        for (int i = 0; i < 4; i++) {  // transmet le nouvel ordre aux clients
-            myServerNetwork[i].sendStr("8 " + String.valueOf(players[0].iD) + " " + String.valueOf(players[1].iD) + " "
-                    + String.valueOf(players[2].iD) + " " + String.valueOf(players[3].iD));
-            instr[2] = myServerNetwork[i].rcvStr();
-        }
 
-
-        // reorganize IDs correctly
-        for (int i = 0; i < 4; i++)
-            players[i].iD = i;
+        String playerOrder = "8 " + tableOrder.stream().map(Player::getId).map(String::valueOf).collect(Collectors.joining(" "));
+        sendMessageToAllPlayers(playerOrder);
     }
 
 
     // organise les joueurs et les systemnetworks
     void organisePlayers() {
-        int[] tablePlayers = new int[4];
-        Player[] p = new Player[4];
-        ServerNetwork[] c = new ServerNetwork[4];
-        tablePlayers[0] = teams[0].players[0].iD;
-        tablePlayers[1] = teams[1].players[0].iD;
-        tablePlayers[2] = teams[0].players[1].iD;
-        tablePlayers[3] = teams[1].players[1].iD;
-        for (int i = 0; i < 4; i++) {
-            p[i] = players[tablePlayers[i]];
-            c[i] = myServerNetwork[tablePlayers[i]];
-        }
-        for (int i = 0; i < 4; i++) {
-            players[i] = p[i];
-            myServerNetwork[i] = c[i];
-            myServerNetwork[i].setClientId(p[i].iD);
-
-        }
+        tableOrder.clear();
+        tableOrder.add(teams[0].getPlayer(0));
+        tableOrder.add(teams[1].getPlayer(0));
+        tableOrder.add(teams[0].getPlayer(1));
+        tableOrder.add(teams[1].getPlayer(1));
     }
 
 
-    boolean calculateTeam(int[] choosenCards) {
-        int lowest = 0;
-        int highest = 0;
-        boolean ok = true;
+    boolean calculateTeam(Map<Player, Integer> choosenCards) {
+        var lowest = players.get(0);
+        var highest = players.get(0);
         for (int i = 1; i < 4; i++) {
-            if ((choosenCards[i] % 9) < (choosenCards[lowest] % 9))
-                lowest = i;
-            if ((choosenCards[i] % 9) > (choosenCards[highest] % 9))
-                highest = i;
+            var player = players.get(i);
+            if ((choosenCards.get(player) % 9) < (choosenCards.get(lowest) % 9))
+                lowest = player;
+            if ((choosenCards.get(player) % 9) > (choosenCards.get(highest) % 9))
+                highest = player;
         }
-        for (int i = 0; i < 4; i++) {
-            if (i != lowest)
-                if ((choosenCards[i] % 9) == (choosenCards[lowest] % 9))
+        boolean ok = true;
+        for (Player player : players) {
+            if (player != lowest) {
+                if ((choosenCards.get(player) % 9) == (choosenCards.get(lowest) % 9)) {
                     ok = false;
-            if (i != highest)
-                if ((choosenCards[i] % 9) == (choosenCards[highest] % 9))
+                }
+            }
+            if (player != highest) {
+                if ((choosenCards.get(player) % 9) == (choosenCards.get(highest) % 9)) {
                     ok = false;
-        }
-        if (ok) {
-            int j = 0;
-            for (int k = 0; k < 4; k++) {
-                if (k == lowest) {
-                    teams[0].players[0] = players[lowest];
-                    players[lowest].myTeam = 0;
-                } else {
-                    if (k == highest) {
-                        teams[0].players[1] = players[highest];
-                        players[highest].myTeam = 0;
-                    } else {
-                        teams[1].players[j] = players[k];
-                        players[k].myTeam = 1;
-                        j++;
-                    }
                 }
             }
         }
-        return ok;
+        if (!ok) return false;
+
+        for (Player p : players) {
+            if (p == lowest || p == highest) {
+                p.setTeam(0);
+                teams[0].addPlayer(p);
+            } else {
+                p.setTeam(1);
+                teams[1].addPlayer(p);
+            }
+        }
+
+        return true;
     }
 
 
     // distribue les cartes
-    int[] chooseCards() {
+    int[] shuffleCards() {
         final int[] cards = new int[36];
         boolean[] usedCards = new boolean[36];
         Random rand = new Random();
-        for (int i = 0; i < 36; i++)
+        for (int i = 0; i < 36; i++) {
             usedCards[i] = false;
+        }
         int j;
         for (int i = 0; i < 35; i++) {
             do {
@@ -349,8 +310,9 @@ public class FlatJassServerSystem {
             usedCards[j] = true;
         }
         j = 0;
-        while (usedCards[j])
+        while (usedCards[j]) {
             j++;
+        }
         cards[35] = j;
         return cards;
     }
@@ -358,11 +320,11 @@ public class FlatJassServerSystem {
 
     void playPart() throws ClientLeftException {
         /* randomly choose the cards and send them */
-        firstToPlay = distribute();
-        String answer;
+        // celui qui commence la partie et fait atout
+        int firstToPlay = distribute();
         int nextPlayer;
         do {
-            chooseAtout();                     // choisit l'atout
+            atout = chooseAtout(firstToPlay);                     // choisit l'atout
             nextPlayer = firstToPlay;
 
             int plieNumber = 0;
@@ -381,7 +343,6 @@ public class FlatJassServerSystem {
                 for (int i = 0; i < 4; i++) {   // envoie le score
                     myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
                             + " " + String.valueOf(teams[(players[i].myTeam + 1) % 2].getScore()));
-                    answer = myServerNetwork[i].rcvStr();  // réponse
                 }
 
                 /* waits a few seconds so that the players can see the last
@@ -397,197 +358,149 @@ public class FlatJassServerSystem {
                 for (int i = 0; i < 4; i++) {   // envoie le score
                     myServerNetwork[i].sendStr("18 " + String.valueOf(teams[players[i].myTeam].getScore())
                             + " " + String.valueOf(teams[(players[i].myTeam + 1) % 2].getScore()));
-                    answer = myServerNetwork[i].rcvStr();  // réponse
                 }
             }
 
             // répète jusqu'à ce qu'on gagne
-        } while ((!teams[0].won) && (!teams[1].won));
+        } while (!teams[0].hasWon() && !teams[1].hasWon());
 
         // Sends the winner to all player
-        int winner = teams[0].won ? 0 : 1;
-        for (int i = 0; i < 4; i++) {
-            myServerNetwork[i].sendStr("21 " + String.valueOf(winner) + " " +
-                    String.valueOf(teams[winner].players[0].iD) + " " +
-                    String.valueOf(teams[winner].players[1].iD));
-            answer = myServerNetwork[i].rcvStr();
-        }
+        int winner = teams[0].hasWon() ? 0 : 1;
+        sendMessageToAllPlayers("21 " + winner + " " +
+                teams[winner].getPlayer(0).getId() + " " +
+                teams[winner].getPlayer(1).getId());
 
         /* waits a few seconds so that the players can see all the cards */
         try {
             Thread.sleep(4000);
         } catch (InterruptedException e) {
         }
-
     }
 
 
-    void chooseAtout() throws ClientLeftException {
-        myServerNetwork[firstToPlay].sendStr("11");   // demande de faire atout en premier
-        String[] instr = new String[10];
-        instr = decode(myServerNetwork[firstToPlay].rcvStr());  // réponse
-        Integer temp = Integer.valueOf(instr[1]);
-        if (temp.intValue() == 4) {     // si on passe
-            int second = (firstToPlay + 2) % 4;
-            myServerNetwork[second].sendStr("12");   // demande de faire atout en second
-            instr = decode(myServerNetwork[second].rcvStr());  // réponse
+    int chooseAtout(int playerNumber) throws ClientLeftException {
+        Player first = tableOrder.get(playerNumber);
+        first.sendMessage("11");   // demande de faire atout en premier
+        String[] instr = decode(first.waitForAnswer());  // réponse
+        var choice = Integer.parseInt(instr[1]);
+        if (choice == 4) {     // si on passe
+            var second = tableOrder.get((playerNumber + 2) % 4);
+            second.sendMessage("12");   // demande de faire atout en second
+            instr = decode(second.waitForAnswer());  // réponse
         }
-        temp = Integer.valueOf(instr[1]);
-        atout = temp.intValue();
-        for (int i = 0; i < 4; i++) {
-            // envoie l'atout choisi
-            myServerNetwork[i].sendStr("13 " + instr[1] + " " + firstToPlay);
-            instr[2] = myServerNetwork[i].rcvStr();  // réponse
-        }
+        choice = Integer.parseInt(instr[1]);
+        sendMessageToAllPlayers("13 " + choice + " " + playerNumber);
+        return choice;
     }
 
 
     int distribute() throws ClientLeftException {
-        int seven = 0;      // 7 de carreau
-        int[] cards = new int[36];
-        cards = chooseCards();     // choisir les cartes au hasard
-        String s;                  // chaîne à envoyer
+        int playerWithDiamondSeven = 0;      // 7 de carreau
+        int[] cards = shuffleCards();     // choisir les cartes au hasard
+        StringBuilder s;                  // chaîne à envoyer
         for (int i = 0; i < 4; i++) {
-            s = "10";
+            s = new StringBuilder("10");
             for (int j = 0; j < 9; j++) {
-                s += " " + String.valueOf(cards[i * 9 + j]);
-                if (cards[i * 9 + j] == 19)    // 7 de carreau
-                    seven = i;
+                s.append(" ").append(cards[i * 9 + j]);
+                if (cards[i * 9 + j] == Card.DIAMOND_SEVEN) {    // 7 de carreau
+                    playerWithDiamondSeven = i;
+                }
             }
-            myServerNetwork[i].sendStr(s);
-            s = myServerNetwork[i].rcvStr();
+            tableOrder.get(i).sendMessage(s.toString());
+            tableOrder.get(i).waitForAnswer();
         }
-        return seven;
+        return playerWithDiamondSeven;
     }
 
 
-    int playPlie(int player) throws ClientLeftException {
-        currentPlie.owner = player;
-        currentPlie.coupe = 0;
-        myServerNetwork[player].sendStr("14");    // demande de jouer en premier
-        String[] instr = new String[10];
-        instr = decode(myServerNetwork[player].rcvStr()); //réponse
-        Integer temp = Integer.valueOf(instr[1]);
-        currentPlie.color = temp.intValue() / 9;
-        currentPlie.highest = temp.intValue() % 9;
-        temp = Integer.valueOf(instr[2]);
-        currentPlie.score = temp.intValue();
+    int playPlie(int startingPlayer) throws ClientLeftException {
+        var player = tableOrder.get(startingPlayer);
+        player.sendMessage("14");    // demande de jouer en premier
+        String[] instr = decode(player.waitForAnswer()); //réponse
+        var card = new Card(Integer.parseInt(instr[1]));
+        currentPlie.color = card.getColor();
+        currentPlie.highest = card.getRank();
+        currentPlie.score = Integer.parseInt(instr[2]);
+        currentPlie.owner = startingPlayer;
+        currentPlie.cut = false;
 
-        temp = Integer.valueOf(instr[3]); // Annonces ?
-        int[] instr2 = new int[10];             // tableau d'instructions en integer
-        switch (temp.intValue()) {
-            case 1:        // Annonces
-                System.out.println("Annonces");
-                myServerNetwork[player].sendStr("19");  // demande des précisions sur l'annonce
-                instr2 = decodint(myServerNetwork[player].rcvStr()); //réponse
-                for (int i = 0; i < instr2[1]; i++)
-                    players[player].addAnounce(instr2[2 + 2 * i], instr2[3 + 2 * i], instr2[0]);
-                break;
-            case 2:        // Stöck
-                System.out.println("Annonces");
-                players[player].addAnounce(0, 0, player);
-                break;
-            case 3:        // Stöck + annonces
-                System.out.println("Annonces");
-                myServerNetwork[player].sendStr("19");  // demande des précisions sur l'annonce
-                instr2 = decodint(myServerNetwork[player].rcvStr()); //réponse
-                for (int i = 0; i < instr2[1]; i++)
-                    players[player].addAnounce(instr2[2 + 2 * i], instr2[3 + 2 * i], instr2[0]);
-                players[player].addAnounce(0, 0, player);
+        int announcement = Integer.parseInt(instr[3]); // Annonces ?
+        handleAnnoucements(player, announcement);
+
+        for (int i = 1; i < 4; i++) {           // envoie la carte jouée aux autres
+            tableOrder.get((startingPlayer + i) % 4).sendMessage("15 " + startingPlayer + " " + instr[1]);
+            tableOrder.get((startingPlayer + i) % 4).waitForAnswer();
         }
 
-        for (int i = 0; i < 3; i++) {           // envoie la carte jouée aux autres
-            myServerNetwork[(player + i + 1) % 4].sendStr("15 " + String.valueOf(player) + " " + instr[1]);
-            instr[9] = myServerNetwork[(player + i + 1) % 4].rcvStr();      // réponse
-        }
+        for (int i = 1; i < 4; i++) {     // demande de jouer
+            player = tableOrder.get((startingPlayer + i) % 4);
+            player.sendMessage("16 " + currentPlie.highest + " " + currentPlie.color + " " + (currentPlie.cut ? 1 : 0));
+            instr = decode(player.waitForAnswer()); //réponse
+            var playedCard = new Card(Integer.parseInt(instr[1]));
 
-        int playedCard;
-        for (int i = 0; i < 3; i++) {     // demande de jouer
-            myServerNetwork[(player + i + 1) % 4].sendStr("16 " + String.valueOf(currentPlie.highest) + " " + String.valueOf(currentPlie.color) + " " + String.valueOf(currentPlie.coupe));
-            instr = decode(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
-            temp = Integer.valueOf(instr[1]);
-            playedCard = temp.intValue();
+            announcement = Integer.parseInt(instr[3]); // Annonces ?
+            handleAnnoucements(player, announcement);
 
-            temp = Integer.valueOf(instr[3]); // Annonces ?
-            switch (temp.intValue()) {
-                case 1:    // Annonces
-                    System.out.println("Annonces");
-                    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des précisions sur l'annonce
-                    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
-                    for (int j = 0; j < instr2[1]; j++)
-                        players[(player + i + 1) % 4].addAnounce(instr2[2 + 2 * j], instr2[3 + 2 * j], instr2[0]);
-                    break;
-                case 2:    // Stöck
-                    System.out.println("Annonces");
-                    players[(player + i + 1) % 4].addAnounce(0, 0, (player + i + 1) % 4);
-                    break;
-                case 3:    // Stöck + annonces
-                    System.out.println("Annonces");
-                    myServerNetwork[(player + i + 1) % 4].sendStr("19");  // demande des précisions sur l'annonce
-                    instr2 = decodint(myServerNetwork[(player + i + 1) % 4].rcvStr()); //réponse
-                    for (int j = 0; j < instr2[1]; j++)
-                        players[(player + i + 1) % 4].addAnounce(instr2[2 + 2 * j], instr2[3 + 2 * j], instr2[0]);
-                    /* stock */
-                    players[(player + i + 1) % 4].addAnounce(0, 0, (player + i + 1) % 4);
+            for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
+                tableOrder.get((startingPlayer + i + j) % 4).sendMessage("15 " + (startingPlayer + i) + " " + instr[1]);
+                tableOrder.get((startingPlayer + i + j) % 4).waitForAnswer();
             }
-
-            for (int j = 0; j < 3; j++) {             // envoie la carte jouée aux autres
-                myServerNetwork[(player + j + i + 2) % 4].sendStr("15 " + String.valueOf((player + i + 1) % 4) + " " + instr[1]);
-                instr[9] = myServerNetwork[(player + j + i + 2) % 4].rcvStr();      // réponse
-            }
-            if ((playedCard / 9) == atout) {
+            if (playedCard.getColor() == atout) {
                 if (currentPlie.color != atout) { // si on coupe
-                    if (currentPlie.coupe == 1) { // already cut
-                        switch (playedCard % 9) { // surcoupe
-                            case 3:  // si on joue le nell
-                                if (currentPlie.highest != 5) {
-                                    currentPlie.highest = playedCard % 9;
-                                    currentPlie.owner = (player + i + 1) % 4;
+                    if (currentPlie.cut) { // already cut
+                        switch (playedCard.getRank()) { // surcoupe
+                            case Card.RANK_NELL:  // si on joue le nell
+                                if (currentPlie.highest != Card.RANK_BOURG) {
+                                    currentPlie.highest = playedCard.getRank();
+                                    currentPlie.owner = (startingPlayer + i) % 4;
                                 }
                                 break;
-                            case 5:  // si on joue le bourg
-                                currentPlie.highest = playedCard % 9;
-                                currentPlie.owner = (player + i + 1) % 4;
+                            case Card.RANK_BOURG:  // si on joue le bourg
+                                currentPlie.highest = playedCard.getRank();
+                                currentPlie.owner = (startingPlayer + i) % 4;
                                 break;
                             default: // sinon
-                                if (((currentPlie.highest != 5) &&
-                                        (currentPlie.highest != 3)) &&
-                                        ((playedCard % 9) > currentPlie.highest)) {
-                                    currentPlie.highest = playedCard % 9;
-                                    currentPlie.owner = (player + i + 1) % 4;
+                                if (((currentPlie.highest != Card.RANK_BOURG) &&
+                                        (currentPlie.highest != Card.RANK_NELL)) &&
+                                        (playedCard.getRank() > currentPlie.highest)) {
+                                    currentPlie.highest = playedCard.getRank();
+                                    currentPlie.owner = (startingPlayer + i) % 4;
                                 }
+                                break;
                         }
                         // else souscoupe => nothing to do
                     } else {  // first to cut
-                        currentPlie.coupe = 1;
-                        currentPlie.highest = playedCard % 9;
-                        currentPlie.owner = (player + i + 1) % 4;
+                        currentPlie.cut = true;
+                        currentPlie.highest = playedCard.getRank();
+                        currentPlie.owner = (startingPlayer + i) % 4;
                     }
-                } else         // si c'est joué atout
-                    switch (playedCard % 9) {
-                        case 3:
-                            if (currentPlie.highest != 5) {   // si on joue le nell
-                                currentPlie.highest = playedCard % 9;
-                                currentPlie.owner = (player + i + 1) % 4;
+                } else {        // si c'est joué atout
+                    switch (playedCard.getRank()) {
+                        case Card.RANK_NELL: // si on joue le nell
+                            if (currentPlie.highest != Card.RANK_BOURG) {
+                                currentPlie.highest = playedCard.getRank();
+                                currentPlie.owner = (startingPlayer + i) % 4;
                             }
                             break;
-                        case 5:  // si on joue le bourg
-                            currentPlie.highest = playedCard % 9;
-                            currentPlie.owner = (player + i + 1) % 4;
+                        case Card.RANK_BOURG:  // si on joue le bourg
+                            currentPlie.highest = playedCard.getRank();
+                            currentPlie.owner = (startingPlayer + i) % 4;
                             break;
                         default: // sinon
-                            if (((currentPlie.highest != 5) && (currentPlie.highest != 3)) && ((playedCard % 9) > currentPlie.highest)) {
-                                currentPlie.highest = playedCard % 9;
-                                currentPlie.owner = (player + i + 1) % 4;
+                            if ((currentPlie.highest != Card.RANK_BOURG) && (currentPlie.highest != Card.RANK_NELL) && (playedCard.getRank() > currentPlie.highest)) {
+                                currentPlie.highest = playedCard.getRank();
+                                currentPlie.owner = (startingPlayer + i) % 4;
                             }
+                            break;
                     }
-            } else if ((playedCard / 9) == currentPlie.color)
-                if (((playedCard % 9) > currentPlie.highest) && (currentPlie.coupe == 0)) {
-                    currentPlie.owner = (player + i + 1) % 4;
-                    currentPlie.highest = playedCard % 9;
                 }
-            temp = Integer.valueOf(instr[2]);
-            currentPlie.score = currentPlie.score + temp.intValue(); // augmente le score de la plie
+            } else if (playedCard.getColor() == currentPlie.color) {
+                if ((playedCard.getRank() > currentPlie.highest) && !currentPlie.cut) {
+                    currentPlie.owner = (startingPlayer + i) % 4;
+                    currentPlie.highest = playedCard.getRank();
+                }
+            }
+            currentPlie.score += Integer.parseInt(instr[2]); // augmente le score de la plie
         }
 
         /* now everybody has played ... */
@@ -599,40 +512,41 @@ public class FlatJassServerSystem {
         }
 
         // communique qui a pris la plie
-        for (int i = 0; i < 4; i++) {
-            myServerNetwork[i].sendStr("17 " + String.valueOf(currentPlie.owner));
-            instr[9] = myServerNetwork[i].rcvStr();      // réponse
-        }
+        sendMessageToAllPlayers("17 " + currentPlie.owner);
 
         // choix et comptabilisation des annonces
-        int stock = -1;
+        int stoeck = -1;
         int maxAnounce = 1;
         int maxHeight = 0;
         int anouncingTeam = -1;  // joueur qui a la plus grosse annonce
-        for (int j = 0; j < 4; j++)
-            for (int i = 0; i < players[j].nbrAnounces; i++) {
-                System.out.println("player " + j + ", announce : " +
-                        players[j].anounces[i].type + ", height : "
-                        + Card.getHeight(players[j].anounces[i].card));
-                if (players[j].anounces[i].type > maxAnounce) {
-                    // plus grosse annonce
-                    anouncingTeam = j;
-                    maxAnounce = players[j].anounces[i].type;
-                    maxHeight = Card.getHeight(players[j].anounces[i].card);
-                } else if ((players[j].anounces[i].type == maxAnounce) &&
-                        (Card.getHeight(players[j].anounces[i].card) >
-                                maxHeight)) {
-                    // même annonce plus haute
-                    anouncingTeam = j;
-                    maxHeight = Card.getHeight(players[j].anounces[i].card);
-                } else if ((players[j].anounces[i].type == maxAnounce) &&
-                        (Card.getHeight(players[j].anounces[i].card)
-                                == maxHeight)) {
-                    // meme annonce, meme hauteur
+        for (var p : players) {
+            for (int i = 0; i < p.getNbrAnounces(); i++) {
+                var anounce = p.getAnouncement(i);
+                System.out.println(p.getFirstName() + ", announce : " +
+                        anounce.getType() + ", height : "
+                        + anounce.getCard().getRank());
+                if (anounce.getType() == Anouncement.STOECK) {
+                    stoeck = p.getTeam();
+                    continue;
                 }
-                if (players[j].anounces[i].type == 0)
-                    stock = j;
+                if (anounce.getType() > maxAnounce) {
+                    // plus grosse annonce
+                    anouncingTeam = p.getTeam();
+                    maxAnounce = anounce.getType();
+                    maxHeight = anounce.getCard().getRank();
+                } else if ((anounce.getType() == maxAnounce) &&
+                        (anounce.getCard().getRank() > maxHeight)) {
+                    // même annonce plus haute
+                    anouncingTeam = p.getTeam();
+                    maxHeight = anounce.getCard().getRank();
+                } else if ((anounce.getType() == maxAnounce) &&
+                        (anounce.getCard().getRank() == maxHeight) &&
+                        (anounce.getCard().getColor() == atout)) {
+                    // meme annonce, meme hauteur, mais atout
+                    anouncingTeam = p.getTeam();
+                }
             }
+        }
         String info;
         System.out.println("Bigger 'annonce' : " + anouncingTeam);
 
@@ -660,7 +574,7 @@ public class FlatJassServerSystem {
                         myServerNetwork[j].sendStr(info);
                         instr = decode(myServerNetwork[j].rcvStr()); // réponse
                     }
-                } else if (i == stock) { /* THIS CASE SHOULDN'T HAPPEN because
+                } else if (i == stoeck) { /* THIS CASE SHOULDN'T HAPPEN because
                  * if we don't have any announce at
                  * first plie, there is no need to
                  * declare stock */
@@ -680,8 +594,8 @@ public class FlatJassServerSystem {
                 }
                 players[i].clearAnounces();
             }
-        } else if (stock != -1) { // no announce but stock
-            info = "20 " + stock + " 1 0 0";
+        } else if (stoeck != -1) { // no announce but stock
+            info = "20 " + stoeck + " 1 0 0";
             for (int j = 0; j < 4; j++) {
                 // communique les annonces
                 myServerNetwork[j].sendStr(info);
@@ -689,12 +603,12 @@ public class FlatJassServerSystem {
             }
             // add stock points
             if (atout == 0)
-                teams[players[stock].myTeam].addScore(
+                teams[players[stoeck].myTeam].addScore(
                         2 * Card.anounceValue[0]);
             else
-                teams[players[stock].myTeam].addScore(
+                teams[players[stoeck].myTeam].addScore(
                         Card.anounceValue[0]);
-            players[stock].clearAnounces();
+            players[stoeck].clearAnounces();
         }
 
         // comptabilisation des points
@@ -710,7 +624,46 @@ public class FlatJassServerSystem {
         return returnValue;
     }
 
+    void handleAnnoucements(Player player, int announcement) throws ClientLeftException {
+        int[] instr;             // tableau d'instructions en integer
+        switch (announcement) {
+            case 1:        // Annonces
+                System.out.println("Annonces");
+                player.sendMessage("19");  // demande des précisions sur l'annonce
+                instr = decodint(player.waitForAnswer()); //réponse
+                for (int i = 0; i < instr[1]; i++)
+                    player.addAnounce(instr[2 + 2 * i], new Card(instr[3 + 2 * i]));
+                break;
+            case 2:        // Stöck
+                System.out.println("Annonces");
+                player.addAnounce(0, null);
+                break;
+            case 3:        // Stöck + annonces
+                System.out.println("Annonces");
+                player.sendMessage("19");  // demande des précisions sur l'annonce
+                instr = decodint(player.waitForAnswer()); //réponse
+                for (int i = 0; i < instr[1]; i++)
+                    player.addAnounce(instr[2 + 2 * i], new Card(instr[3 + 2 * i]));
+                player.addAnounce(0, null);
+                break;
+        }
+    }
 
+    Player getPlayerById(int id) {
+        for (Player p : players) {
+            if (p.getId() == id) {
+                return p;
+            }
+        }
+        return null;
+    }
+
+    void sendMessageToAllPlayers(String message) throws ClientLeftException {
+        for (Player player : players) {
+            player.sendMessage(message);
+            player.waitForAnswer();
+        }
+    }
 }
 
 
@@ -719,62 +672,123 @@ public class FlatJassServerSystem {
 
 class Player {
     // Variables
-    public String firstName;
-    public String lastName;
-    public int iD;                   // numéro de 0 à 3
-    public int myTeam;
-    public int nbrAnounces;
-    public Anounce[] anounces = new Anounce[4]; // annonces
+    private String firstName;
+    private String lastName;
+    private int id;
+    private int team;
+    private ArrayList<Anouncement> anounces = new ArrayList<>(); // annonces
+    private ServerNetwork connection;
+    private int tableOrder;
 
     // Constructeur
     public Player() {
-        nbrAnounces = 0;
-        for (int i = 0; i < 4; i++)
-            anounces[i] = new Anounce();
+    }
+
+    public Player(String firstName, String lastName, int id, ServerNetwork connection) {
+        this.firstName = firstName;
+        this.lastName = lastName;
+        this.id = id;
+        this.connection = connection;
+    }
+
+    protected void finalize() {
+        if (connection != null) {
+            connection.close();
+        }
     }
 
     // Méthodes
     public void clearAnounces() {
-        nbrAnounces = 0;
+        anounces.clear();
     }
 
-    public void addAnounce(int type, int card, int player) {
-        anounces[nbrAnounces].type = type;
-        anounces[nbrAnounces].card = card;
-        anounces[nbrAnounces].player = player;
-        nbrAnounces++;
+    public void addAnounce(int type, Card card) {
+        anounces.add(new Anouncement(type, card));
+    }
+
+    public void sendMessage(String message) {
+        connection.sendStr(message);
+    }
+
+    public String waitForAnswer() throws ClientLeftException {
+        return connection.rcvStr();
+    }
+
+    public int getId() {
+        return id;
+    }
+
+    public String getFirstName() {
+        return firstName;
+    }
+
+    public String getLastName() {
+        return lastName;
+    }
+
+    public int getTeam() {
+        return team;
+    }
+
+    public void setTeam(int team) {
+        this.team = team;
+    }
+
+    public int getTableOrder() {
+        return tableOrder;
+    }
+
+    public void setTableOrder(int tableOrder) {
+        this.tableOrder = tableOrder;
+    }
+
+    public int getNbrAnounces() {
+        return anounces.size();
+    }
+
+    public Anouncement getAnouncement(int i) {
+        return anounces.get(i);
     }
 }
 
 class Team {
     // Variables
     private int currentScore;
-    public Player[] players;
-    public boolean won;
+    private ArrayList<Player> players = new ArrayList<>();
 
     // Constructeur
     public Team() {
-        won = false;
-        players = new Player[2];
-        for (int i = 0; i < 2; i++)
-            players[i] = new Player();
         currentScore = 0;
     }
 
     // Méthodes
     public void resetScore() {
         currentScore = 0;
-        won = false;
+    }
+
+    public void reset() {
+        players.clear();
+        resetScore();
     }
 
     public void addScore(int score) {
         currentScore += score;
-        if (currentScore > 1499)
-            won = true;
+    }
+
+    public boolean hasWon() {
+        return currentScore > 1499;
     }
 
     public int getScore() {
         return currentScore;
+    }
+
+    public Player getPlayer(int i) {
+        return players.get(i);
+    }
+
+    public void addPlayer(Player p) {
+        players.add(p);
     }
 }
 
@@ -782,31 +796,6 @@ class Plie {
     public int highest;   // la plus haute carte de la plie (celle qui tient la plie)
     public int color;     // la couleur demandée
     public int score;     // la valeur de la plie
-    public int coupe;     // 0 : pas coupé, 1 : coupé
+    public boolean cut;     // 0 : pas coupé, 1 : coupé
     public int owner;     // iD de celui qui tient la plie
-}
-
-/* ************************** REMARQUE ******************************
-   Les cartes sont en fait représentées par des int de 0 à 35
-   où "carte div 9" donne sa couleur et "carte mod 9" sa
-   hauteur. La classe Card est donc utilisée ici que pour
-   les méthodes statiques getColor et getHeight.
-   *************************************************************** */
-
-abstract class Card {
-    static final int[] anounceValue = {20, 20, 50, 100, 100, 150, 200};
-
-    public static int getColor(int card) {
-        return card / 9;
-    }
-
-    public static int getHeight(int card) {
-        return card % 9;
-    }
-}
-
-class Anounce {
-    int type;     // 0: stöck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carré
-    int card;   // plus haute carte de l'annonce
-    int player;
 }

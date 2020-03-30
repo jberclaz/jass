@@ -12,10 +12,6 @@ import java.net.*;
 import java.io.*;
 
 public class ServerNetwork {
-
-    public static final int PORT_NUM = 1500;
-
-    //ServerSocket myServerSocket;
     Socket myClientSocket = null;
     InputStreamReader isr;
     BufferedReader is;
@@ -50,12 +46,10 @@ public class ServerNetwork {
         this.clientId = clientId;
     }
 
-    public boolean sendStr(String strToSend) {
-
+    public void sendStr(String strToSend) {
         os.println(strToSend);
         os.flush();
         System.out.println("SERVER sent : " + strToSend);
-        return true;
     }
 
     public String rcvStr() throws ClientLeftException {
