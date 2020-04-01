@@ -32,14 +32,6 @@ public class Player extends ServerRpc {
         anounces.add(new Anouncement(type, card));
     }
 
-//    public void sendMessage(String message) {
-//        connection.sendStr(message);
-//    }
-
-//    public String waitForAnswer() throws ClientLeftException {
-//        return connection.rcvStr();
-//    }
-
     public int getId() {
         return id;
     }
