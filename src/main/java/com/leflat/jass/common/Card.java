@@ -26,6 +26,8 @@ public class Card {
     public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
     public static final String[] COLOR_NAMES = {"pique", "coeur", "carreau", "trefle"};
 
+    public static final int[] VALUES = {0, 0, 0, 0, 10, 2, 3, 4, 11};
+    public static final int[] VALUES_ATOUT = {0, 0, 0, 14, 10, 20, 3, 4, 11};
     private int number;
 
     public Card(int cardNumber) {
@@ -50,5 +52,13 @@ public class Card {
 
     public String toString() {
         return RANK_NAMES[getRank()] + " de " + COLOR_NAMES[getColor()];
+    }
+
+    public int getValue() {
+        return getValue(-1);
+    }
+
+    public int getValue(int atout) {
+        return atout == getColor() ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
     }
 }

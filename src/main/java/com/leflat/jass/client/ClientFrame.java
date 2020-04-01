@@ -201,10 +201,10 @@ public class ClientFrame extends javax.swing.JFrame {
         topCanvas.setMode(1);
         topCanvas.setName("");
         topCanvas.setAtout(false);
-        centerCanvas.mode = 0;
+        centerCanvas.setMode( 0);
         centerCanvas.repaint();
         removeLastPlie();
-        lastPlieCanvas.atout = 4;
+        lastPlieCanvas.setAtout(4);
         setScore(0, 0);
         repaint(31);
 
@@ -293,17 +293,15 @@ public class ClientFrame extends javax.swing.JFrame {
             case 0:  // jouer la carte
                 jButtonAnounce.setEnabled(false);
                 setStatusBar(""); // remove "a vous de..."
-                centerCanvas.cardsChoosen[0] = playedCard;
+                centerCanvas.showCard(card, 0); //cardsChoosen[0] = playedCard;
                 playerCanvas.setMode(0);
                 playerCanvas.removeCard(card);
-                app.hand[i] = 37;
+                // TODO: fix
+                //app.hand[i] = 37;
                 repaint(17);
 
                 // sends the card to the server
-                if (app.getAtout() == card.getColor())
-                    app.sendCard(playedCard, Card.valueAtout[Card.getRank(playedCard)]);        // modifier !!!!
-                else
-                    app.sendCard(playedCard, Card.value[Card.getRank(playedCard)]);
+                app.sendCard(card.getNumber(), card.getValue(app.getAtout()));
                 break;
             case -1: // suivre
                 System.out.println("Il faut suivre !!");
@@ -350,21 +348,24 @@ public class ClientFrame extends javax.swing.JFrame {
             case 1:
                 centerCanvas.drawCard(position);
                 centerCanvas.repaint();
-                rightCanvas.setCardImage(playerCanvas.cards[cardNumber]);
+                // TODO: fix
+                //rightCanvas.setCardImage(playerCanvas.cards[cardNumber]);
                 rightCanvas.setMode(0);      // tirage des équipes
                 rightCanvas.repaint();
                 break;
             case 2:
                 centerCanvas.drawCard(position);
                 centerCanvas.repaint();
-                topCanvas.setCardImage(playerCanvas.cards[cardNumber]);
+                // TODO: fix
+                //topCanvas.setCardImage(playerCanvas.cards[cardNumber]);
                 topCanvas.setMode(0);      // tirage des équipes
                 topCanvas.repaint();
                 break;
             case 3:
                 centerCanvas.drawCard(position);
                 centerCanvas.repaint();
-                leftCanvas.setCardImage(playerCanvas.cards[cardNumber]);
+                // TODO: fix
+                // leftCanvas.setCardImage(playerCanvas.cards[cardNumber]);
                 leftCanvas.setMode(0);      // tirage des équipes
                 leftCanvas.repaint();
         }
@@ -382,7 +383,7 @@ public class ClientFrame extends javax.swing.JFrame {
         centerCanvas.setMode(1);
         centerCanvas.repaint();
         removeLastPlie();
-        lastPlieCanvas.atout = 4;
+        lastPlieCanvas.setAtout(  4);
         setScore(0, 0);
         repaint(31);
     }
@@ -404,7 +405,7 @@ public class ClientFrame extends javax.swing.JFrame {
     void prepareMatch() {
         centerCanvas.resetCards();
         centerCanvas.setMode(3);      // mode de jeu
-        lastPlieCanvas.atout = 4;
+        lastPlieCanvas.setAtout( 4);
         lastPlieCanvas.repaint();
         repaint(31);          // repaint les 5 canvas
         setStatusBar("");
@@ -431,7 +432,8 @@ public class ClientFrame extends javax.swing.JFrame {
                 leftCanvas.repaint();
         }
         centerCanvas.repaint();
-        statusBar.setText(app.players[player].getFirstName() + " a joué...");
+        // TODO: fix
+        //statusBar.setText(app.players[player].getFirstName() + " a joué...");
     }
 
     // ramasse la plie
@@ -440,7 +442,8 @@ public class ClientFrame extends javax.swing.JFrame {
         lastPlieCanvas.setLastPlie(centerCanvas.getShownCards());
         for (int i = 0; i < 4; i++) {
             System.out.println(i);
-            lastPlieCanvas.cards[i] = playerCanvas.cards[centerCanvas.cardsChoosen[i]];
+            // TODO: fix
+            //lastPlieCanvas.cards[i] = playerCanvas.cards[centerCanvas.cardsChoosen[i]];
         }
         centerCanvas.resetCards();
         lastPlieCanvas.repaint();

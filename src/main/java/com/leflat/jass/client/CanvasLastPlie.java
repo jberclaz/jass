@@ -17,11 +17,12 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.Card;
 
 import java.awt.*;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
 public class CanvasLastPlie extends Canvas {
-  private List<Card> lastPlie;
+  private List<Card> lastPlie = new ArrayList<>();
   private int atout;
   private int ourScore, theirScore;
 
@@ -40,6 +41,8 @@ public class CanvasLastPlie extends Canvas {
     this.ourScore = ourScore;
     this.theirScore = theirScore;
   }
+
+  public void setAtout(int atout) { this.atout = atout; }
 
   public void paint (Graphics g) {
     if (!lastPlie.isEmpty()) {

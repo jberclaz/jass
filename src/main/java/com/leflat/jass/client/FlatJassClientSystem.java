@@ -152,7 +152,7 @@ public class FlatJassClientSystem {
                 break;
             case 5:  // demande de choisir une carte
                 // Syntaxe : 5
-                frame.centerCanvas.mode = 2;
+                frame.centerCanvas.setMode(2);
                 frame.setStatusBar("Veuillez choisir une carte");
                 break;
             case 6:  // donne la carte choisie par un joueur
@@ -237,7 +237,7 @@ public class FlatJassClientSystem {
                 temp = Integer.valueOf(tableInstr[1]);
                 atout = temp.intValue();
                 stoeck = findStoeck();
-                frame.lastPlieCanvas.atout = atout;
+                frame.lastPlieCanvas.setAtout(atout);
                 frame.lastPlieCanvas.repaint();
                 temp = Integer.valueOf(tableInstr[2]);
                 frame.setAtout(temp.intValue());
@@ -438,7 +438,8 @@ public class FlatJassClientSystem {
                 annoucementCode = 3;
                 stoeck = 0;
                 System.out.println("Annonce : annonce + stock");
-                nbrAnounces--;    // le stöck peut être décomptabilisé
+                // TODO: fix
+                //nbrAnounces--;    // le stöck peut être décomptabilisé
             } else if (!myAnouncement.isEmpty() && (stoeck == 0)) {
                 annoucementCode = 1;
                 System.out.println("Annonce : annonce");
@@ -446,7 +447,8 @@ public class FlatJassClientSystem {
         }
 
         network.sendTo(playerId + " " + cardNumber + " " + score + " " + annoucementCode);
-        nbrAnounces = 0;  // reset anounces number
+        // TODO: fix
+        // nbrAnounces = 0;  // reset anounces number
     }
 
 
@@ -563,9 +565,12 @@ public class FlatJassClientSystem {
             }
         }
 
+        // TODO: fix
         // Stöck
+        /*
         if (stoeck > 0)
             nbrAnounces++;
+         */
     }
 
 

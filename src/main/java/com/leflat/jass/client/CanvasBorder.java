@@ -12,11 +12,13 @@
 
 package com.leflat.jass.client;
 
+import com.leflat.jass.common.Card;
+
 import java.awt.*;
 
 public class CanvasBorder extends JassCanvas {
-    Image card;
-    int nbrCards;
+    private Card card;
+    private int nbrCards;
     // mode:: 0 : tirage des équipes, 1 : jouer normalement
 
     /**
@@ -26,15 +28,14 @@ public class CanvasBorder extends JassCanvas {
         mode = 1;
         nbrCards = 0;
         name = "";
+        card = null;
     }
 
     public void setNbrCards(int nbrCards) {
         this.nbrCards = nbrCards;
     }
 
-    public void setCardImage(Image card) {
-        this.card = card;
-    }
+    public void setCard(Card card) { this.card = card; }
 
     public void removeCard() {
         nbrCards--;
@@ -46,11 +47,11 @@ public class CanvasBorder extends JassCanvas {
             int w = (d.width - 71) / 2;
             int h = (d.height - nbrCards * 30 - 66) / 2 + 20;
             for (int i = 0; i < nbrCards; i++)
-                g.drawImage(CardImages.getInstance().getBackImage(), w, h + i * 30, 71, 96, this);
-        } else {
+                g.drawImage(CardImages.getInstance().getBackImage(), w, h + i * 30, this);
+        } else if (card != null) {
             int w = (d.width - 71) / 2;
             int h = (d.height - 96) / 2 + 20;
-            g.drawImage(card, w, h, 71, 96, this);
+            g.drawImage(CardImages.getInstance().getImage(card), w, h, this);
         }
         g.drawString(name, 20, 30);
         if (atout)
