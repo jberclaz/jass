@@ -7,10 +7,10 @@
 //Description :  Client du jeu de Jass
 
 
-package FlatJassClientProject;
+package com.leflat.jass.client;
 
 import java.awt.*;
-
+/*
 public class CanvasBorder extends Canvas{
   private Image cardBack;
   Image card;
@@ -43,3 +43,4 @@ public class CanvasBorder extends Canvas{
     g.drawString(name, 20, 30);
   }
 }
+*/

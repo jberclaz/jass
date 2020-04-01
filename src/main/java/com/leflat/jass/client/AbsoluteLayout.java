@@ -13,6 +13,9 @@
 
 //package org.netbeans.lib.awtextra;
 
+package com.leflat.jass.client;
+
+
 import java.awt.*;
 
 /** AbsoluteLayout is a LayoutManager that works as a replacement for "null" layout to

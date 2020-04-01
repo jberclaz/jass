@@ -4,13 +4,14 @@
  * Created on 11. avril 2002, 22:17
  */
 
-
-
 /**
  *
  * @author  Berclaz Jérôme
  * @version
  */
+
+package com.leflat.jass.client;
+
 public class DialogNewPart extends javax.swing.JDialog {
   boolean newPart = false;
 

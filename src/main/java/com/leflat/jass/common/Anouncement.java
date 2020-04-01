@@ -6,8 +6,11 @@ public class Anouncement {
     public static final int FIFTY = 2;
     public static final int HUNDRED = 3;
     public static final int SQUARE = 4;
+    public static final int NELL_SQUARE = 5;
+    public static final int BOURG_SQUARE = 6;
 
     public static final int[] VALUES = {20, 20, 50, 100, 100, 150, 200};
+    public static final String[] NAMES = {"stoeck", "3 cartes", "cinquante", "cent", "cent", "cent cinquante", "deux cents"};
 
     public Anouncement(int type, Card card) {
         this.type = type;

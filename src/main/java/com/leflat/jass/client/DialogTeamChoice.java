@@ -4,13 +4,15 @@
  * Created on 19. avril 2000, 11:37
  */
 
-
-
 /**
  *
  * @author  Berclaz Jérôme
  * @version
  */
+
+
+package com.leflat.jass.client;
+
 public class DialogTeamChoice extends javax.swing.JDialog {
   boolean hasard = true;
 

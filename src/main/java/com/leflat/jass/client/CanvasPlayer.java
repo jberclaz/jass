@@ -4,41 +4,78 @@
  * Created on 18. avril 2000, 17:31
  */
 
-
-
 /**
- *
- * @author  Berclaz Jérôme
+ * @author Berclaz Jérôme
  * @version
  */
-import java.awt.*;
 
-public class CanvasPlayer extends JassCanvas{
-    Image[] cards;
-    int[] hand;
+package com.leflat.jass.client;
+
+import com.leflat.jass.common.Card;
+
+import java.awt.*;
+import java.util.ArrayList;
+import java.util.List;
+
+public class CanvasPlayer extends JassCanvas {
+    private static final int X_STEP = 35;
+    private static final int CARD_WIDTH = 71;
+    private static final int CARD_HEIGHT = 96;
+    private int card_width;
+    private ArrayList<Card> hand;
     //  mode::  0 : rien, 1 : jouer en premier, 2 : jouer
 
-    public CanvasPlayer(String imgPath) {
-	name   = "";
-	mode   = 0;
-	hand   = new int[9];
-	cards  = new Image[36];
-	for (int i=0; i<9; i++)
-	    hand[i] = 37;          // aucune carte
-	Toolkit tk = Toolkit.getDefaultToolkit();
-	for (int i = 0; i<36; i++)
-	    cards[i] = tk.getImage(imgPath + String.valueOf(i) + ".gif");
+    public CanvasPlayer() {
+        name = "";
+        mode = 0;
+        hand = new ArrayList<>();
     }
 
-    public void paint (Graphics g) {
-	Dimension d = getSize();
-	int w = (d.width - 9 * 35 - 36) / 2;
-	int h = (d.height - 96) / 2 + 10;
-	for (int i = 0; i<9; i++)
-	    if (hand[i] < 36)
-		g.drawImage(cards[hand[i]], 20+i*35, 20, 71, 96, this);
-	g.drawString(name, 30, 15);
-	if (atout)
-	    g.drawString("atout", name.length() * 7 + 60, 15);
+    public void setHand(List<Card> cards) {
+        hand.clear();
+        hand.addAll(cards);
+    }
+
+    public void clearHand() {
+        hand.clear();
+    }
+
+    public void removeCard(Card card) {
+        hand.remove(card);
+    }
+
+    public void paint(Graphics g) {
+        if (!hand.isEmpty()) {
+            Dimension d = getSize();
+            int cardsWidth = getCardsWidth();
+            int xOffset = (d.width - cardsWidth) / 2;
+            for (int i = 0; i < hand.size(); i++) {
+                g.drawImage(CardImages.getInstance().getImage(hand.get(i)),
+                        xOffset + i * X_STEP, 20, this);
+            }
+        }
+        g.drawString(name, 30, 15);
+        if (atout) {
+            g.drawString("atout", name.length() * 7 + 60, 15);
+        }
+    }
+
+    public Card getCard(int x, int y) {
+        if (y < 20) {
+            return null;
+        }
+        Dimension d = getSize();
+        int cardsWidth = getCardsWidth();
+        int xOffset = (d.width - cardsWidth) / 2;
+        for (int i = hand.size() - 1; i >= 0; i--) {
+            if (x >= xOffset + i * X_STEP && x < xOffset + i * X_STEP + CARD_WIDTH) {
+                return hand.get(i);
+            }
+        }
+        return null;
+    }
+
+    private int getCardsWidth() {
+        return CARD_WIDTH + (hand.size() - 1) * X_STEP;
     }
 }

@@ -11,32 +11,45 @@
  * @author  Berclaz Jérôme
  * @version
  */
+
+package com.leflat.jass.client;
+
+import com.leflat.jass.common.Card;
+
 import java.awt.*;
+import java.util.Collection;
+import java.util.List;
 
 public class CanvasLastPlie extends Canvas {
-  public Image[] cards = new Image[4];
-  private Image[] colors = new Image[4];
-  public int atout;
-  public boolean display;
-  public int ourScore, theirScore;
+  private List<Card> lastPlie;
+  private int atout;
+  private int ourScore, theirScore;
 
-  public CanvasLastPlie(String imgPath) {
+  public CanvasLastPlie() {
     ourScore = 0;
     theirScore = 0;
-    display = false;
     atout = 4;      // ne rien afficher
-    Toolkit tk = Toolkit.getDefaultToolkit();
-    //cardBack = tk.getImage("z:/jberclaz/jass/flatjassclientproject/pictures/dos.gif");
-    for (int i=0; i<4; i++)
-      colors[i] = tk.getImage(imgPath+"c" + String.valueOf(i) + ".gif");
+  }
+
+  public void setLastPlie(Collection<Card> plie) {
+    lastPlie.clear();
+    lastPlie.addAll(plie);
+  }
+
+  public void setScore(int ourScore, int theirScore) {
+    this.ourScore = ourScore;
+    this.theirScore = theirScore;
   }
 
   public void paint (Graphics g) {
-    if (display)
-      for (int i=0; i<4; i++)
-        g.drawImage(cards[i], 120 + 30 * i, 5, 71, 96, this);
+    if (!lastPlie.isEmpty()) {
+      for (int i = 0; i < 4; i++) {
+        g.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)),
+                120 + 30 * i, 5, this);
+      }
+    }
     if (atout < 4)
-      g.drawImage(colors[atout], 380, 8, 15, 15, this);
+      g.drawImage(CardImages.getInstance().getColorImage(atout), 380, 8, 15, 15, this);
     g.drawString("Dernière plie:", 20, 20);
     g.drawString("Atout:", 340, 20);
     g.drawString("Nous: " + String.valueOf(ourScore), 420, 13);

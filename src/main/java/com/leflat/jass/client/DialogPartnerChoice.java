@@ -4,13 +4,15 @@
  * Created on 19. avril 2000, 11:44
  */
 
-
-
 /**
  *
  * @author  Berclaz Jérôme
  * @version
  */
+
+package com.leflat.jass.client;
+
+
 public class DialogPartnerChoice extends javax.swing.JDialog {
   int number = 0;
 

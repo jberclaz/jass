@@ -6,7 +6,8 @@ package com.leflat.jass.common;
  * où "carte div 9" donne sa couleur et "carte mod 9" sa
  * hauteur. La classe Card est donc utilisée ici que pour
  * les méthodes statiques getColor et getHeight.
- * *************************************************************** */
+ * ***************************************************************
+ */
 
 public class Card {
     public static final int DIAMOND_SEVEN = 19;
@@ -22,10 +23,17 @@ public class Card {
 
     public static final int COLOR_SPADE = 0;
 
+    public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
+    public static final String[] COLOR_NAMES = {"pique", "coeur", "carreau", "trefle"};
+
     private int number;
 
     public Card(int cardNumber) {
         number = cardNumber;
+    }
+
+    public Card(int color, int rank) {
+        number = color * 9 + rank;
     }
 
     public int getColor() {
@@ -34,5 +42,13 @@ public class Card {
 
     public int getRank() {
         return number % 9;
+    }
+
+    public int getNumber() {
+        return number;
+    }
+
+    public String toString() {
+        return RANK_NAMES[getRank()] + " de " + COLOR_NAMES[getColor()];
     }
 }

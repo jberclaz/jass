@@ -11,7 +11,10 @@
  * @author  Berclaz Jérôme
  * @version
  */
- import javax.swing.JLabel;
+
+package com.leflat.jass.client;
+
+import javax.swing.JLabel;
 
 public class DialogInfo extends javax.swing.JDialog {
   JLabel[] labelLine = new javax.swing.JLabel[5];

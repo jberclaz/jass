@@ -4,13 +4,15 @@
  * Created on 18. avril 2000, 21:34
  */
 
-
-
 /**
  *
  * @author  Berclaz Jérôme
  * @version
  */
+
+package com.leflat.jass.client;
+
+
 public class DialogConnect extends javax.swing.JDialog {
   boolean ok = false;
   String lastName, firstName, iP;

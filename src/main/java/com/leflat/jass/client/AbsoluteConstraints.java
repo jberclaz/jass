@@ -13,6 +13,9 @@
 
 //package org.netbeans.lib.awtextra;
 
+package com.leflat.jass.client;
+
+
 import java.awt.Dimension;
 import java.awt.Point;
 

@@ -12,6 +12,8 @@
  * @version 1.2
  */
 
+package com.leflat.jass.client;
+
 import java.io.*;
 import java.net.*;
 
