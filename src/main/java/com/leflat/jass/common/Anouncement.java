@@ -1,5 +1,8 @@
 package com.leflat.jass.common;
 
+import java.util.Collection;
+import java.util.Collections;
+
 public class Anouncement {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;
@@ -40,5 +43,20 @@ public class Anouncement {
             }
         }
         return VALUES[type];
+    }
+
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+        sb.append(NAMES[type]);
+        if (type == STOECK) {
+            return sb.toString();
+        }
+        sb.append(" au ");
+        sb.append(card.toString());
+        return sb.toString();
+    }
+
+    public static Collection<Anouncement> findAnouncements(Collection<Card> hand, int atout) {
+        return Collections.emptyList();
     }
 }
