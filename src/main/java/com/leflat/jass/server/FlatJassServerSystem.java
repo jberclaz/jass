@@ -22,9 +22,9 @@ public class FlatJassServerSystem {
     private int atout;
     private int lastPlayerId;    // nombre de joueurs connectés
     private Plie currentPlie;        // plie en cours
-    private ArrayList<Player> players = new ArrayList<>(); // les 4 joueurs
+    private List<Player> players = new ArrayList<>(); // les 4 joueurs
     private Team[] teams = new Team[2];       // les 2 équipes
-    private ArrayList<Player> tableOrder = new ArrayList<>();
+    private List<Player> tableOrder = new ArrayList<>();
 
     private ServerSocket myServerSocket = null;
 
@@ -633,118 +633,3 @@ public class FlatJassServerSystem {
         }
     }
 }
-
-
-//**************** Autres Classes **********************************************
-
-
-class Player {
-    // Variables
-    private String firstName;
-    private String lastName;
-    private int id;
-    private int team;
-    private ArrayList<Anouncement> anounces = new ArrayList<>(); // annonces
-    private ServerNetwork connection;
-
-    // Constructeur
-    public Player(String firstName, String lastName, int id, ServerNetwork connection) {
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.id = id;
-        this.connection = connection;
-    }
-
-    protected void finalize() {
-        if (connection != null) {
-            connection.close();
-        }
-    }
-
-    // Méthodes
-    public void clearAnounces() {
-        anounces.clear();
-    }
-
-    public void addAnounce(int type, Card card) {
-        anounces.add(new Anouncement(type, card));
-    }
-
-    public void sendMessage(String message) {
-        connection.sendStr(message);
-    }
-
-    public String waitForAnswer() throws ClientLeftException {
-        return connection.rcvStr();
-    }
-
-    public int getId() {
-        return id;
-    }
-
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public int getTeam() {
-        return team;
-    }
-
-    public void setTeam(int team) {
-        this.team = team;
-    }
-
-    public int getNbrAnounces() {
-        return anounces.size();
-    }
-
-    public Anouncement getAnouncement(int i) {
-        return anounces.get(i);
-    }
-}
-
-class Team {
-    // Variables
-    private int currentScore;
-    private ArrayList<Player> players = new ArrayList<>();
-
-    // Constructeur
-    public Team() {
-        currentScore = 0;
-    }
-
-    // Méthodes
-    public void resetScore() {
-        currentScore = 0;
-    }
-
-    public void reset() {
-        players.clear();
-        resetScore();
-    }
-
-    public void addScore(int score) {
-        currentScore += score;
-    }
-
-    public boolean hasWon() {
-        return currentScore > 1499;
-    }
-
-    public int getScore() {
-        return currentScore;
-    }
-
-    public Player getPlayer(int i) {
-        return players.get(i);
-    }
-
-    public void addPlayer(Player p) {
-        players.add(p);
-    }
-}
-
