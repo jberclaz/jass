@@ -4,3 +4,4 @@ release/
 */TAGS
 *.zip
 .idea/
+target/
