@@ -11,7 +11,7 @@ package com.leflat.jass.server;
 import java.net.*;
 import java.io.*;
 
-public class ServerNetwork {
+public class ServerNetwork implements IServerNetwork {
     Socket myClientSocket = null;
     InputStreamReader isr;
     BufferedReader is;

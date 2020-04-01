@@ -6,27 +6,21 @@ import com.leflat.jass.common.Card;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Player {
+public class Player extends ServerRpc {
     // Variables
     private String firstName;
     private String lastName;
     private int id;
     private int team;
     private List<Anouncement> anounces = new ArrayList<>(); // annonces
-    private ServerNetwork connection;
 
     // Constructeur
-    public Player(String firstName, String lastName, int id, ServerNetwork connection) {
-        this.firstName = firstName;
-        this.lastName = lastName;
+    public Player(int id, IServerNetwork connection) throws ClientLeftException {
+        super(connection);
         this.id = id;
-        this.connection = connection;
-    }
-
-    protected void finalize() {
-        if (connection != null) {
-            connection.close();
-        }
+        var answer = connectionAccepted(id);
+        firstName = answer[1];
+        lastName = answer[2];
     }
 
     // Méthodes
@@ -38,13 +32,13 @@ public class Player {
         anounces.add(new Anouncement(type, card));
     }
 
-    public void sendMessage(String message) {
-        connection.sendStr(message);
-    }
+//    public void sendMessage(String message) {
+//        connection.sendStr(message);
+//    }
 
-    public String waitForAnswer() throws ClientLeftException {
-        return connection.rcvStr();
-    }
+//    public String waitForAnswer() throws ClientLeftException {
+//        return connection.rcvStr();
+//    }
 
     public int getId() {
         return id;
@@ -73,4 +67,6 @@ public class Player {
     public Anouncement getAnouncement(int i) {
         return anounces.get(i);
     }
+
+    public List<Anouncement> getAllAnouncements() { return anounces; }
 }
