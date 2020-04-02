@@ -320,7 +320,7 @@ public class FlatJassServerSystem {
                  * cards and the score */
                 try {
                     Thread.sleep(2000);
-                } catch (InterruptedException e) {
+                } catch (InterruptedException ignored) {
                 }
 
                 firstToPlay = (firstToPlay + 1) % 4;
@@ -344,7 +344,7 @@ public class FlatJassServerSystem {
         /* waits a few seconds so that the players can see all the cards */
         try {
             Thread.sleep(4000);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
     }
 
@@ -378,6 +378,125 @@ public class FlatJassServerSystem {
         return playerWithDiamondSeven;
     }
 
+    void processCard(Card playedCard, int playerIdx, int score) {
+        if (playedCard.getColor() == atout) {
+            if (currentPlie.color != atout) { // si on coupe
+                if (currentPlie.cut) { // already cut
+                    switch (playedCard.getRank()) { // surcoupe
+                        case Card.RANK_NELL:  // si on joue le nell
+                            if (currentPlie.highest != Card.RANK_BOURG) {
+                                currentPlie.highest = playedCard.getRank();
+                                currentPlie.owner = playerIdx;
+                            }
+                            break;
+                        case Card.RANK_BOURG:  // si on joue le bourg
+                            currentPlie.highest = playedCard.getRank();
+                            currentPlie.owner = playerIdx;
+                            break;
+                        default: // sinon
+                            if (((currentPlie.highest != Card.RANK_BOURG) &&
+                                    (currentPlie.highest != Card.RANK_NELL)) &&
+                                    (playedCard.getRank() > currentPlie.highest)) {
+                                currentPlie.highest = playedCard.getRank();
+                                currentPlie.owner = playerIdx;
+                            }
+                            break;
+                    }
+                    // else souscoupe => nothing to do
+                } else {  // first to cut
+                    currentPlie.cut = true;
+                    currentPlie.highest = playedCard.getRank();
+                    currentPlie.owner = playerIdx;
+                }
+            } else {        // si c'est joué atout
+                switch (playedCard.getRank()) {
+                    case Card.RANK_NELL: // si on joue le nell
+                        if (currentPlie.highest != Card.RANK_BOURG) {
+                            currentPlie.highest = playedCard.getRank();
+                            currentPlie.owner = playerIdx;
+                        }
+                        break;
+                    case Card.RANK_BOURG:  // si on joue le bourg
+                        currentPlie.highest = playedCard.getRank();
+                        currentPlie.owner = playerIdx;
+                        break;
+                    default: // sinon
+                        if ((currentPlie.highest != Card.RANK_BOURG) && (currentPlie.highest != Card.RANK_NELL) && (playedCard.getRank() > currentPlie.highest)) {
+                            currentPlie.highest = playedCard.getRank();
+                            currentPlie.owner = playerIdx;
+                        }
+                        break;
+                }
+            }
+        } else if (playedCard.getColor() == currentPlie.color) {
+            if ((playedCard.getRank() > currentPlie.highest) && !currentPlie.cut) {
+                currentPlie.owner = playerIdx;
+                currentPlie.highest = playedCard.getRank();
+            }
+        }
+        currentPlie.score += score; // augmente le score de la plie
+    }
+
+    void handlAllAnnoucements() throws ClientLeftException {
+        int playerWithStoeck = -1;
+        int highestAnnouncement = 1;
+        int maxRank = Card.RANK_6;
+        int anouncingTeam = -1;  // joueur qui a la plus grosse annonce
+        for (var p : players) {
+            for (var anouncement : p.getAllAnouncements()) {
+                System.out.println(p.getFirstName() + ", announce : " +
+                        anouncement.toString());
+                if (anouncement.getType() == Anouncement.STOECK) {
+                    playerWithStoeck = p.getId();
+                    continue;
+                }
+                if (anouncement.getType() > highestAnnouncement) {
+                    // plus grosse annonce
+                    anouncingTeam = p.getTeam();
+                    highestAnnouncement = anouncement.getType();
+                    maxRank = anouncement.getCard().getRank();
+                } else if ((anouncement.getType() == highestAnnouncement) &&
+                        (anouncement.getCard().getRank() > maxRank)) {
+                    // même annonce plus haute
+                    anouncingTeam = p.getTeam();
+                    maxRank = anouncement.getCard().getRank();
+                } else if ((anouncement.getType() == highestAnnouncement) &&
+                        (anouncement.getCard().getRank() == maxRank) &&
+                        (anouncement.getCard().getColor() == atout)) {
+                    // meme annonce, meme hauteur, mais atout
+                    anouncingTeam = p.getTeam();
+                }
+            }
+        }
+
+        if (anouncingTeam >= 0) { // there are announces
+            for (var p : players) {
+                if ((p.getTeam() == anouncingTeam) && (p.getNbrAnounces() > 0)) {
+                    // annonceur
+                    teams[anouncingTeam].addAnnoucementScore(p.getAllAnouncements(), atout);
+                    for (var p2 : players) {
+                        p2.sendAnouncementDetails(p.getId(), p.getAllAnouncements());
+                    }
+                } else if (p.getId() == playerWithStoeck) {
+                    if (p.getTeam() == anouncingTeam) {
+                        System.out.println("Error: " + p.getFirstName() + " declared only stock on first plie");
+                    } else if (p.getNbrAnounces() > 1) {
+                        System.out.println("Info: not counting stoeck for now for player " + p.getFirstName());
+                    }
+                }
+                p.clearAnounces();
+            }
+        } else if (playerWithStoeck != -1) { // no announce but stock
+            for (var p : players) {
+                p.sendAnouncementDetails(playerWithStoeck, Collections.singletonList(new Anouncement(Anouncement.STOECK, null)));
+            }
+            int score = atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
+            // add stock points
+            var p = getPlayerById(playerWithStoeck);
+            teams[p.getTeam()].addScore(score);
+            p.clearAnounces();
+        }
+    }
 
     int playPlie(int startingPlayer) throws ClientLeftException {
         var player = tableOrder.get(startingPlayer);
@@ -407,62 +526,7 @@ public class FlatJassServerSystem {
             for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
                 tableOrder.get((startingPlayer + i + j) % 4).sendPlayedCard(startingPlayer + i, playedCard);
             }
-            if (playedCard.getColor() == atout) {
-                if (currentPlie.color != atout) { // si on coupe
-                    if (currentPlie.cut) { // already cut
-                        switch (playedCard.getRank()) { // surcoupe
-                            case Card.RANK_NELL:  // si on joue le nell
-                                if (currentPlie.highest != Card.RANK_BOURG) {
-                                    currentPlie.highest = playedCard.getRank();
-                                    currentPlie.owner = (startingPlayer + i) % 4;
-                                }
-                                break;
-                            case Card.RANK_BOURG:  // si on joue le bourg
-                                currentPlie.highest = playedCard.getRank();
-                                currentPlie.owner = (startingPlayer + i) % 4;
-                                break;
-                            default: // sinon
-                                if (((currentPlie.highest != Card.RANK_BOURG) &&
-                                        (currentPlie.highest != Card.RANK_NELL)) &&
-                                        (playedCard.getRank() > currentPlie.highest)) {
-                                    currentPlie.highest = playedCard.getRank();
-                                    currentPlie.owner = (startingPlayer + i) % 4;
-                                }
-                                break;
-                        }
-                        // else souscoupe => nothing to do
-                    } else {  // first to cut
-                        currentPlie.cut = true;
-                        currentPlie.highest = playedCard.getRank();
-                        currentPlie.owner = (startingPlayer + i) % 4;
-                    }
-                } else {        // si c'est joué atout
-                    switch (playedCard.getRank()) {
-                        case Card.RANK_NELL: // si on joue le nell
-                            if (currentPlie.highest != Card.RANK_BOURG) {
-                                currentPlie.highest = playedCard.getRank();
-                                currentPlie.owner = (startingPlayer + i) % 4;
-                            }
-                            break;
-                        case Card.RANK_BOURG:  // si on joue le bourg
-                            currentPlie.highest = playedCard.getRank();
-                            currentPlie.owner = (startingPlayer + i) % 4;
-                            break;
-                        default: // sinon
-                            if ((currentPlie.highest != Card.RANK_BOURG) && (currentPlie.highest != Card.RANK_NELL) && (playedCard.getRank() > currentPlie.highest)) {
-                                currentPlie.highest = playedCard.getRank();
-                                currentPlie.owner = (startingPlayer + i) % 4;
-                            }
-                            break;
-                    }
-                }
-            } else if (playedCard.getColor() == currentPlie.color) {
-                if ((playedCard.getRank() > currentPlie.highest) && !currentPlie.cut) {
-                    currentPlie.owner = (startingPlayer + i) % 4;
-                    currentPlie.highest = playedCard.getRank();
-                }
-            }
-            currentPlie.score += nextAnswer[1]; // augmente le score de la plie
+            processCard(playedCard, (startingPlayer + i) % 4, nextAnswer[1]);
         }
 
         /* now everybody has played ... */
@@ -470,7 +534,7 @@ public class FlatJassServerSystem {
         /* waits a few seconds so that the players can see all the cards */
         try {
             Thread.sleep(1500);
-        } catch (InterruptedException e) {
+        } catch (InterruptedException ignored) {
         }
 
         // communique qui a pris la plie
@@ -479,73 +543,7 @@ public class FlatJassServerSystem {
         }
 
         // choix et comptabilisation des annonces
-        int playerWithStoeck = -1;
-        int maxAnounce = 1;
-        int maxHeight = 0;
-        int anouncingTeam = -1;  // joueur qui a la plus grosse annonce
-        for (var p : players) {
-            for (int i = 0; i < p.getNbrAnounces(); i++) {
-                var anounce = p.getAnouncement(i);
-                System.out.println(p.getFirstName() + ", announce : " +
-                        anounce.getType() + ", height : "
-                        + anounce.getCard().getRank());
-                if (anounce.getType() == Anouncement.STOECK) {
-                    playerWithStoeck = p.getId();
-                    continue;
-                }
-                if (anounce.getType() > maxAnounce) {
-                    // plus grosse annonce
-                    anouncingTeam = p.getTeam();
-                    maxAnounce = anounce.getType();
-                    maxHeight = anounce.getCard().getRank();
-                } else if ((anounce.getType() == maxAnounce) &&
-                        (anounce.getCard().getRank() > maxHeight)) {
-                    // même annonce plus haute
-                    anouncingTeam = p.getTeam();
-                    maxHeight = anounce.getCard().getRank();
-                } else if ((anounce.getType() == maxAnounce) &&
-                        (anounce.getCard().getRank() == maxHeight) &&
-                        (anounce.getCard().getColor() == atout)) {
-                    // meme annonce, meme hauteur, mais atout
-                    anouncingTeam = p.getTeam();
-                }
-            }
-        }
-        StringBuilder info;
-        System.out.println("Bigger 'annonce' : " + anouncingTeam);
-
-        if (anouncingTeam != -1) { // there are announces
-            for (var p : players) {
-                if ((p.getTeam() == anouncingTeam) && (p.getNbrAnounces() > 0)) {
-                    // annonceur
-                    info = new StringBuilder("20 " + p.getId() + " " + p.getNbrAnounces());
-                    for (int j = 0; j < p.getNbrAnounces(); j++) {
-                        var annoucement = p.getAnouncement(j);
-                        int score = atout == Card.COLOR_SPADE ? 2 * annoucement.getValue() : annoucement.getValue();
-                        teams[anouncingTeam].addScore(score);
-                    }
-                    for (var p2 : players) {
-                        p2.sendAnouncementDetails(p.getId(), p.getAllAnouncements());
-                    }
-                } else if (p.getId() == playerWithStoeck) {
-                    if (p.getTeam() == anouncingTeam) {
-                        System.out.println("Error: " + p.getFirstName() + " declared only stock on first plie");
-                    } else if (p.getNbrAnounces() > 1) {
-                        System.out.println("Info: not counting stoeck for now for player " + p.getFirstName());
-                    }
-                }
-                p.clearAnounces();
-            }
-        } else if (playerWithStoeck != -1) { // no announce but stock
-            for (var p : players) {
-                p.sendAnouncementDetails(playerWithStoeck, Collections.singletonList(new Anouncement(Anouncement.STOECK, null)));
-            }
-            int score = atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
-            // add stock points
-            var p = getPlayerById(playerWithStoeck);
-            teams[p.getTeam()].addScore(score);
-            p.clearAnounces();
-        }
+        handlAllAnnoucements();
 
         // comptabilisation des points
         player = tableOrder.get(currentPlie.owner);

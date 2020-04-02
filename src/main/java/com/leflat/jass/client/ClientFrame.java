@@ -201,7 +201,7 @@ public class ClientFrame extends javax.swing.JFrame {
         topCanvas.setMode(1);
         topCanvas.setName("");
         topCanvas.setAtout(false);
-        centerCanvas.setMode( 0);
+        centerCanvas.setMode(0);
         centerCanvas.repaint();
         removeLastPlie();
         lastPlieCanvas.setAtout(4);
@@ -383,7 +383,7 @@ public class ClientFrame extends javax.swing.JFrame {
         centerCanvas.setMode(1);
         centerCanvas.repaint();
         removeLastPlie();
-        lastPlieCanvas.setAtout(  4);
+        lastPlieCanvas.setAtout(4);
         setScore(0, 0);
         repaint(31);
     }
@@ -405,7 +405,7 @@ public class ClientFrame extends javax.swing.JFrame {
     void prepareMatch() {
         centerCanvas.resetCards();
         centerCanvas.setMode(3);      // mode de jeu
-        lastPlieCanvas.setAtout( 4);
+        lastPlieCanvas.setAtout(4);
         lastPlieCanvas.repaint();
         repaint(31);          // repaint les 5 canvas
         setStatusBar("");
