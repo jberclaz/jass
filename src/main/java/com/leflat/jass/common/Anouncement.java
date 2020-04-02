@@ -58,10 +58,10 @@ public class Anouncement {
         return sb.toString();
     }
 
-    public static Collection<Anouncement> findAnouncements(List<Card> hand) {
+    public static List<Anouncement> findAnouncements(List<Card> hand) {
         var announcements = findSquares(hand);
         announcements.addAll(findSuits(hand));
-        return announcements;
+        return new ArrayList<>(announcements);
     }
 
     public static boolean findStoeck(List<Card> hand, int atout) {
@@ -74,11 +74,11 @@ public class Anouncement {
     private static Collection<Anouncement> findSquares(List<Card> hand) {
         var announcements = new ArrayList<Anouncement>();
         int i = 0;
-        while ((i < 9) && ((hand.get(i).getColor()) == Card.COLOR_SPADE)) {   // tant que c'est du pique (couleur la + à gauche)
+        while ((i < hand.size()) && ((hand.get(i).getColor()) == Card.COLOR_SPADE)) {   // tant que c'est du pique (couleur la + à gauche)
             int nbrCards = 1;
             var firstCard = hand.get(i);
-            for (int j = i + 1; j < 9; j++) {
-                if ((hand.get(i).getRank()) == (firstCard.getRank())) {
+            for (int j = i + 1; j < hand.size(); j++) {
+                if ((hand.get(j).getRank()) == (firstCard.getRank())) {
                     nbrCards++;
                 }
             }
@@ -87,9 +87,9 @@ public class Anouncement {
                     announcements.add(new Anouncement(Anouncement.NELL_SQUARE, firstCard));
                 else if ((firstCard.getRank()) == Card.RANK_BOURG)                // deux cents
                     announcements.add(new Anouncement(Anouncement.BOURG_SQUARE, firstCard));
-                else                // cent
+                else                                                              // cent
                     announcements.add(new Anouncement(Anouncement.SQUARE, firstCard));
-                System.out.println("Carré trouvé : " + firstCard.getRank());
+                System.out.println("Found suit: " + announcements.get(announcements.size()-1));
             }
             i++;
         }
@@ -98,12 +98,12 @@ public class Anouncement {
 
     private static Collection<Anouncement> findSuits(List<Card> hand) {
         var announcements = new ArrayList<Anouncement>();
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < hand.size() - 2; i++) {
             var firstCard = hand.get(i);
             int color = firstCard.getColor();
             int j = i + 1;
             int nbrCards = 1;
-            while ((j < 9) && (hand.get(j).getColor() == color)) {
+            while ((j < hand.size()) && (hand.get(j).getColor() == color)) {
                 if (hand.get(j).getNumber() == (firstCard.getNumber() + j - i)) // si les cartes se suivent
                     nbrCards++;
                 j++;
@@ -113,7 +113,7 @@ public class Anouncement {
                     nbrCards = 5;
                 }
                 announcements.add(new Anouncement(nbrCards - 2, hand.get(i + nbrCards - 1)));
-                System.out.println("Suite trouvée : " + hand.get(i + nbrCards - 1) + " type : " + (nbrCards - 2));
+                System.out.println("Found suit: " + announcements.get(announcements.size()-1));
                 i = j - 1;
             }
         }
