@@ -236,7 +236,7 @@ public class FlatJassClientSystem {
                 //           atout
                 temp = Integer.valueOf(tableInstr[1]);
                 atout = temp.intValue();
-                stoeck = findStoeck();
+                stoeck = Anouncement.findStoeck(hand, atout) ? 1 : 0;
                 frame.lastPlieCanvas.setAtout(atout);
                 frame.lastPlieCanvas.repaint();
                 temp = Integer.valueOf(tableInstr[2]);
@@ -520,57 +520,12 @@ public class FlatJassClientSystem {
         return 0;
     }
 
-    void findAnounce() {
-        // type :  0: stock, 1: 3cartes, 2: cinquante, 3: cent, 4: cent(carré), 5: centcinquante, 6: deux cent
+    void findAnouncement() {
         myAnouncement.clear();
-        // cherche les carrés
-        int i = 0;
-        int nbrCards;
-        while ((i < 9) && ((hand.get(i).getColor()) == Card.COLOR_SPADE)) {   // tant que c'est du pique (couleur la + à gauche)
-            nbrCards = 1;
-            var firstCard = hand.get(i);
-            for (int j = i + 1; j < 9; j++) {
-                if ((hand.get(i).getRank()) == (firstCard.getRank()))
-                    nbrCards++;
-            }
-            if ((nbrCards == 4) && ((firstCard.getRank()) > Card.RANK_8)) {       // carré trouvé
-                if ((firstCard.getRank()) == Card.RANK_NELL)        // cent-cinquante
-                    myAnouncement.add(new Anouncement(Anouncement.NELL_SQUARE, firstCard));
-                else if ((firstCard.getRank()) == Card.RANK_BOURG)    // deux cents
-                    myAnouncement.add(new Anouncement(Anouncement.BOURG_SQUARE, firstCard));
-                else                // cent
-                    myAnouncement.add(new Anouncement(Anouncement.SQUARE, firstCard));
-                System.out.println("Carré trouvé : " + firstCard.getRank());
-            }
-            i++;
+        myAnouncement.addAll(Anouncement.findAnouncements(hand));
+        if (stoeck > 0) {
+            myAnouncement.add(new Anouncement(Anouncement.STOECK, null));
         }
-
-        // cherche les suites
-        for (i = 0; i < 7; i++) {
-            var firstCard = hand.get(i);
-            int color = firstCard.getColor();
-            int j = i + 1;
-            nbrCards = 1;
-            while ((j < 9) && (hand.get(j).getColor() == color)) {
-                if (hand.get(j).getNumber() == (firstCard.getNumber() + j - i)) // si les cartes se suivent
-                    nbrCards++;
-                j++;
-            }
-            if (nbrCards > 2) {   // on a trouvé une suite
-                if (nbrCards > 5)
-                    nbrCards = 5;
-                myAnouncement.add(new Anouncement(nbrCards - 2, hand.get(i + nbrCards - 1)));
-                System.out.println("Suite trouvée : " + hand.get(i + nbrCards - 1) + " type : " + (nbrCards - 2));
-                i = j - 1;
-            }
-        }
-
-        // TODO: fix
-        // Stöck
-        /*
-        if (stoeck > 0)
-            nbrAnounces++;
-         */
     }
 
 

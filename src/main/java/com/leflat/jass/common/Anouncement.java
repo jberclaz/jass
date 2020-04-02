@@ -1,7 +1,9 @@
 package com.leflat.jass.common;
 
+import java.util.ArrayList;
 import java.util.Collection;
-import java.util.Collections;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public class Anouncement {
     public static final int STOECK = 0;
@@ -56,7 +58,65 @@ public class Anouncement {
         return sb.toString();
     }
 
-    public static Collection<Anouncement> findAnouncements(Collection<Card> hand, int atout) {
-        return Collections.emptyList();
+    public static Collection<Anouncement> findAnouncements(List<Card> hand) {
+        var announcements = findSquares(hand);
+        announcements.addAll(findSuits(hand));
+        return announcements;
+    }
+
+    public static boolean findStoeck(List<Card> hand, int atout) {
+        int queen = atout * 9 + Card.RANK_DAME;
+        int king = atout * 9 + Card.RANK_ROI;
+        var numbers = hand.stream().map(Card::getNumber).collect(Collectors.toList());
+        return numbers.contains(queen) && numbers.contains(king);
+    }
+
+    private static Collection<Anouncement> findSquares(List<Card> hand) {
+        var announcements = new ArrayList<Anouncement>();
+        int i = 0;
+        while ((i < 9) && ((hand.get(i).getColor()) == Card.COLOR_SPADE)) {   // tant que c'est du pique (couleur la + à gauche)
+            int nbrCards = 1;
+            var firstCard = hand.get(i);
+            for (int j = i + 1; j < 9; j++) {
+                if ((hand.get(i).getRank()) == (firstCard.getRank())) {
+                    nbrCards++;
+                }
+            }
+            if ((nbrCards == 4) && ((firstCard.getRank()) > Card.RANK_8)) {       // carré trouvé
+                if ((firstCard.getRank()) == Card.RANK_NELL)                      // cent-cinquante
+                    announcements.add(new Anouncement(Anouncement.NELL_SQUARE, firstCard));
+                else if ((firstCard.getRank()) == Card.RANK_BOURG)                // deux cents
+                    announcements.add(new Anouncement(Anouncement.BOURG_SQUARE, firstCard));
+                else                // cent
+                    announcements.add(new Anouncement(Anouncement.SQUARE, firstCard));
+                System.out.println("Carré trouvé : " + firstCard.getRank());
+            }
+            i++;
+        }
+        return announcements;
+    }
+
+    private static Collection<Anouncement> findSuits(List<Card> hand) {
+        var announcements = new ArrayList<Anouncement>();
+        for (int i = 0; i < 7; i++) {
+            var firstCard = hand.get(i);
+            int color = firstCard.getColor();
+            int j = i + 1;
+            int nbrCards = 1;
+            while ((j < 9) && (hand.get(j).getColor() == color)) {
+                if (hand.get(j).getNumber() == (firstCard.getNumber() + j - i)) // si les cartes se suivent
+                    nbrCards++;
+                j++;
+            }
+            if (nbrCards > 2) {   // on a trouvé une suite
+                if (nbrCards > 5) {
+                    nbrCards = 5;
+                }
+                announcements.add(new Anouncement(nbrCards - 2, hand.get(i + nbrCards - 1)));
+                System.out.println("Suite trouvée : " + hand.get(i + nbrCards - 1) + " type : " + (nbrCards - 2));
+                i = j - 1;
+            }
+        }
+        return announcements;
     }
 }

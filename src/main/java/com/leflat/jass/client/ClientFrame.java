@@ -215,7 +215,7 @@ public class ClientFrame extends javax.swing.JFrame {
     private void jButtonAnounceActionPerformed(java.awt.event.ActionEvent evt) {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
 // Add your handling code here:
-        app.findAnounce();
+        app.findAnouncement();
     }//GEN-LAST:event_jButtonAnounceActionPerformed
 
     /**

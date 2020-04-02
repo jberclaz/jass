@@ -34,7 +34,7 @@ public abstract class ServerRpc {
         oneWayCommand(4);
     }
 
-    public int chooseCard() throws ClientLeftException {
+    public int drawCard() throws ClientLeftException {
         network.sendStr("5");
         return Integer.parseInt(network.rcvStr().split(" ")[1]);
     }
