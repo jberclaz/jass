@@ -19,8 +19,8 @@ public class Player extends ServerRpc {
         super(connection);
         this.id = id;
         var answer = connectionAccepted(id);
-        firstName = answer[1];
-        lastName = answer[2];
+        firstName = answer[0];
+        lastName = answer[1];
     }
 
     // Méthodes
