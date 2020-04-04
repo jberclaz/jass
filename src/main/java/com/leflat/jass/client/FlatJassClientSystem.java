@@ -48,7 +48,7 @@ public class FlatJassClientSystem {
     /**
      * @param args the command line arguments
      */
-    public static void main(String args[]) {
+    public static void main(String[] args) {
         new FlatJassClientSystem();
     }
 
@@ -61,10 +61,8 @@ public class FlatJassClientSystem {
             players[0].setLastName(lastName);
             if (listener == null) {
                 listener = new ClientListener(this, cs);
-                System.out.println("Création d'un nouveau listener"); // débuggage
+                System.out.println("Création d'un nouveau listener");
             } else {
-                // listener.setSocket(cs);
-                // listener.stop = false;
                 listener = new ClientListener(this, cs);
             }
             listener.start();
@@ -72,10 +70,6 @@ public class FlatJassClientSystem {
             return -1;
         }
 
-        //players[0].setFirstName(firstName);
-        //players[0].setLastName(lastName);
-        // listener = new ClientListener(this);
-        // listener.start();
         return 0;
     }
 
@@ -107,13 +101,13 @@ public class FlatJassClientSystem {
         System.out.println("Execute : " + instr);
         String[] tableInstr = decode(instr);    // Tableau contenant les instructions
         StringBuilder answer = new StringBuilder();                     // réponse à la requête
-        Integer temp = Integer.valueOf(tableInstr[0]);
-        int opCode = temp.intValue();
+        int temp = Integer.parseInt(tableInstr[0]);
+        int opCode = temp;
         switch (opCode) {
             case 1:  // connexion acceptée => demande d'envoi d'informations sur le joueur
                 // Syntaxe : 1 + id du joueur
-                temp = Integer.valueOf(tableInstr[1]);
-                playerId = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                playerId = (int) temp;
                 if (playerId != 0) {
                     players[playerId].setFirstName(players[0].getFirstName());
                     players[playerId].setLastName(players[0].getLastName());
@@ -125,8 +119,8 @@ public class FlatJassClientSystem {
                 break;
             case 2:  // envoie les infos des autres joueurs
                 // Syntaxe : 2 + id du joueur + prenom du joueur + nom du joueur
-                temp = Integer.valueOf(tableInstr[1]);
-                int i = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                int i = (int) temp;
                 players[i].setFirstName(tableInstr[2]);
                 players[i].setLastName(tableInstr[3]);
                 players[i].setID(i);
@@ -157,12 +151,12 @@ public class FlatJassClientSystem {
                 break;
             case 6:  // donne la carte choisie par un joueur
                 // Syntaxe : 6 + id joueur + position de la carte + numéro de la carte
-                temp = Integer.valueOf(tableInstr[1]);
-                int id = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                int pos = temp.intValue();
-                temp = Integer.valueOf(tableInstr[3]);
-                int nbr = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                int id = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                int pos = (int) temp;
+                temp = Integer.parseInt(tableInstr[3]);
+                int nbr = (int) temp;
                 frame.teamChoiceShowCard(id, pos, nbr);
                 frame.setStatusBar(players[id].getFirstName() + " a tiré une carte");
                 answer = new StringBuilder(String.valueOf(playerId) + " 1");  // signifie que l'opération s'est bien déroulée
@@ -175,14 +169,14 @@ public class FlatJassClientSystem {
                 break;
             case 8:  // transmet le nouvel ordre des joueurs
                 // Syntaxe : 9 + id1 + id2 + id3 + id4
-                temp = Integer.valueOf(tableInstr[1]);
-                int id1 = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                int id2 = temp.intValue();
-                temp = Integer.valueOf(tableInstr[3]);
-                int id3 = temp.intValue();
-                temp = Integer.valueOf(tableInstr[4]);
-                int id4 = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                int id1 = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                int id2 = (int) temp;
+                temp = Integer.parseInt(tableInstr[3]);
+                int id3 = (int) temp;
+                temp = Integer.parseInt(tableInstr[4]);
+                int id4 = (int) temp;
                 organisePlayers(id1, id2, id3, id4);
                 frame.setScore(0, 0);  // initialize scores
                 frame.setStatusBar("Equipes réorganisées");
@@ -234,13 +228,13 @@ public class FlatJassClientSystem {
             case 13: // communique l'atout
                 // Syntaxe : 13 + numéro de l'atout + numero du joueur a faire
                 //           atout
-                temp = Integer.valueOf(tableInstr[1]);
-                atout = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                atout = (int) temp;
                 stoeck = Anouncement.findStoeck(hand, atout) ? 1 : 0;
                 frame.lastPlieCanvas.setAtout(atout);
                 frame.lastPlieCanvas.repaint();
-                temp = Integer.valueOf(tableInstr[2]);
-                frame.setAtout(temp.intValue());
+                temp = Integer.parseInt(tableInstr[2]);
+                frame.setAtout((int) temp);
                 answer = new StringBuilder(String.valueOf(playerId) + " 1");  // signifie que l'opération s'est bien déroulée
                 break;
             case 14: // demande de jouer en premier
@@ -252,20 +246,20 @@ public class FlatJassClientSystem {
                 break;
             case 15: // communique la carte jouée
                 // Syntaxe : 15 + id du joueur + numéro de la carte
-                temp = Integer.valueOf(tableInstr[1]);
-                id = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                frame.showPlayedCard(id, temp.intValue());   // affiche la carte jouée
+                temp = Integer.parseInt(tableInstr[1]);
+                id = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                frame.showPlayedCard(id, (int) temp);   // affiche la carte jouée
                 answer = new StringBuilder(String.valueOf(playerId) + " 1");  // signifie que l'opération s'est bien déroulée
                 break;
             case 16: // demande de jouer ensuite
                 // Syntaxe : 16 + highest + color + coupe      (coupe : 1 = true, 0 = false)
-                temp = Integer.valueOf(tableInstr[1]);
-                currentPlie.highest = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                currentPlie.color = temp.intValue();
-                temp = Integer.valueOf(tableInstr[3]);
-                if (temp.intValue() == 0)
+                temp = Integer.parseInt(tableInstr[1]);
+                currentPlie.highest = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                currentPlie.color = (int) temp;
+                temp = Integer.parseInt(tableInstr[3]);
+                if ((int) temp == 0)
                     currentPlie.cut = false;
                 else
                     currentPlie.cut = true;
@@ -276,8 +270,8 @@ public class FlatJassClientSystem {
                 break;
             case 17: // communique par qui la plie a été prise
                 // Syntaxe : 17 + id du joueur
-                temp = Integer.valueOf(tableInstr[1]);
-                id = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                id = (int) temp;
                 frame.pickUpPlie(players[id].getFirstName());
                 answer = new StringBuilder(String.valueOf(playerId) + " 1");  // signifie que l'opération s'est bien déroulée
                 break;
@@ -303,10 +297,10 @@ public class FlatJassClientSystem {
                 // Syntaxe : 20 + id joueur + nbr + annonces : (type , carte)
                 // type :  0: stock, 1: 3cartes, 2: cinquante, 3: cent, 4: cent(carré), 5: centcinquante, 6: deux cent
                 System.out.println("Traitement de l'instruction");
-                temp = Integer.valueOf(tableInstr[1]);
-                int player = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                nbr = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                int player = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                nbr = (int) temp;
                 System.out.println("Création de la boîte de dialogue");
                 DialogInfo di = new DialogInfo(frame, false);
 
@@ -328,19 +322,19 @@ public class FlatJassClientSystem {
 		   if (temp.intValue() == 1)
 		   di.setText(i+1, "stöck");*/
                 // envoie la réponse avant d'afficher la boîte
-                network.sendTo(String.valueOf(playerId) + " 1");
+                network.sendTo(playerId + " 1");
                 di.show();
                 // answer = String.valueOf(myPlayer) + " 1";
                 // signifie que l'opération s'est bien déroulée
                 break;
             case 21: // send the winner team
                 // syntax: 21 + teamNbr + player1 + player2
-                temp = Integer.valueOf(tableInstr[1]);
-                int teamNbr = temp.intValue();
-                temp = Integer.valueOf(tableInstr[2]);
-                int p1 = temp.intValue();
-                temp = Integer.valueOf(tableInstr[3]);
-                int p2 = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                int teamNbr = (int) temp;
+                temp = Integer.parseInt(tableInstr[2]);
+                int p1 = (int) temp;
+                temp = Integer.parseInt(tableInstr[3]);
+                int p2 = (int) temp;
                 DialogInfo diw = new DialogInfo(frame, false);
                 diw.setText(0, "L'equipe numero " + String.valueOf(teamNbr + 1));
                 diw.setText(1, players[p1].getFirstName() + " & " +
@@ -362,8 +356,8 @@ public class FlatJassClientSystem {
             case 23: // a player has left unexpectedly
                 // syntax: 23 + player number
                 di = new DialogInfo(frame, false);
-                temp = Integer.valueOf(tableInstr[1]);
-                id = temp.intValue();
+                temp = Integer.parseInt(tableInstr[1]);
+                id = (int) temp;
                 di.setText(0, players[id].getFirstName() + " a quitte le jeu.");
                 di.setText(1, "La partie est donc terminee");
                 frame.setStatusBar("Partie interrompue");
@@ -631,43 +625,3 @@ class ClientPlayer extends Member {
         this.id = iD;
     }
 }
-
-
-// **************************** CLASS Card *************************************
-/*
-abstract class Card {
-    static final int[] value = {0,0,0,0,10,2,3,4,11};     // valeurs des cartes
-    static final int[] valueAtout = {0,0,0,14,10,20,3,4,11};
-    static final String[] color = {"pique", "coeur", "carreau", "trèfle"};
-    static final String[] name = {"six", "sept", "huit", "neuf", "dix", "bourg", "dame", "roi", "as"};
-    static final String[] anounce = {"stöck", "3 cartes", "cinquante", "cent", "cent", "cent cinquante", "deux cents"};
-
-    public static int getColor(int card) {
-	return card / 9;
-    }
-
-    public static int getHeight(int card) {
-	return card % 9;
-    }
-}
-
- */
-
-
-// **************************** CLASS leflat.jass.server.Plie *************************************
-/*
-class Plie {
-    public int highest;       // plus haute carte (si coupé, plus haut atout)
-    public int color;         // couleur demandée
-    public boolean coupe;     // coupé ou pas
-}
-*/
-
-// **************************** CLASS Anounce **********************************
-/*
-class Anounce {
-    int type;     // 0: stöck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carré
-    int height;   // hauteur de l'annonce
-}
-
- */

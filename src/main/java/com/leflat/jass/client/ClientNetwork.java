@@ -20,7 +20,7 @@ import java.io.*;
 
 public class ClientNetwork {
 
-    public static final int PORT_NUM = 32107;
+    public static final int PORT_NUM = 23107;
     Socket myClientSocket=null;
 
     PrintWriter os;
@@ -28,7 +28,6 @@ public class ClientNetwork {
     public ClientNetwork() { }
 
     public Socket connect(String ipAddress) {
-
         //streams
         try {
             myClientSocket = new Socket(ipAddress, PORT_NUM);
@@ -39,7 +38,6 @@ public class ClientNetwork {
         catch (IOException e) {
             System.out.println("Unable to create socket");
             System.out.println(e);
-            //System.exit(1);
             return null;
         }
 

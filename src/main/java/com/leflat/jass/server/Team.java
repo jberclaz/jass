@@ -9,11 +9,13 @@ import java.util.List;
 public class Team {
     // Variables
     private int currentScore;
-    private List<Player> players = new ArrayList<>();
+    private List<BasePlayer> players = new ArrayList<>();
+    private int id;
 
     // Constructeur
-    public Team() {
+    public Team(int id) {
         currentScore = 0;
+        this.id = id;
     }
 
     // Méthodes
@@ -38,11 +40,11 @@ public class Team {
         return currentScore;
     }
 
-    public Player getPlayer(int i) {
+    public BasePlayer getPlayer(int i) {
         return players.get(i);
     }
 
-    public void addPlayer(Player p) {
+    public void addPlayer(BasePlayer p) {
         players.add(p);
     }
 
@@ -51,4 +53,6 @@ public class Team {
             currentScore += atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
         }
     }
+
+    public int getId() { return id; }
 }

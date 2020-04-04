@@ -17,14 +17,14 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 import com.leflat.jass.common.*;
-
+/*
 public class FlatJassServerSystem {
     private int atout;
     private int lastPlayerId;    // nombre de joueurs connectés
     private Plie currentPlie;        // plie en cours
-    private List<Player> players = new ArrayList<>(); // les 4 joueurs
+    private List<BasePlayer> players = new ArrayList<>(); // les 4 joueurs
     private Team[] teams = new Team[2];       // les 2 équipes
-    private List<Player> tableOrder = new ArrayList<>();
+    private List<BasePlayer> tableOrder = new ArrayList<>();
 
     private ServerSocket myServerSocket = null;
 
@@ -63,17 +63,17 @@ public class FlatJassServerSystem {
         do {
             try {
                 while (players.size() < 4) {  // attend 4 connexions
-                    Player newPlayer = waitForConnection();
+                    BasePlayer newPlayer = waitForConnection();
                     players.add(newPlayer);
                 }
-            } catch (ClientLeftException e) {
-                Player disconnectedPlayer = getPlayerById(e.getClientId());
+            } catch (PlayerLeftExpection e) {
+                BasePlayer disconnectedPlayer = getPlayerById(e.getPlayerId());
                 players.remove(disconnectedPlayer);
-                for (Player player : players) {
+                for (BasePlayer player : players) {
                     try {
                         player.sendPlayerLeft(disconnectedPlayer.getId());
-                    } catch (ClientLeftException ee) {
-                        System.err.println("Player " + ee.getClientId() + " also left.");
+                    } catch (PlayerLeftExpection ee) {
+                        System.err.println("Player " + ee.getPlayerId() + " also left.");
                     }
                 }
                 continue;
@@ -94,14 +94,14 @@ public class FlatJassServerSystem {
                     }
                 } while (playMore);
 
-            } catch (ClientLeftException e) {
-                Player disconnectedPlayer = getPlayerById(e.getClientId());
+            } catch (PlayerLeftExpection e) {
+                BasePlayer disconnectedPlayer = getPlayerById(e.getPlayerId());
                 players.remove(disconnectedPlayer);
                 for (var player : players) {
                     try {
                         player.sendPlayerLeft(disconnectedPlayer.getId());
-                    } catch (ClientLeftException ee) {
-                        System.err.println("Player " + ee.getClientId() + " also left.");
+                    } catch (PlayerLeftExpection ee) {
+                        System.err.println("Player " + ee.getPlayerId() + " also left.");
                     }
                 }
             }
@@ -109,14 +109,14 @@ public class FlatJassServerSystem {
     }
 
     // attend la connexion d'un joueur
-    public Player waitForConnection() throws ClientLeftException {
+    public BasePlayer waitForConnection() throws PlayerLeftExpection {
         var clientConnection = new ServerNetwork();
         if (clientConnection.connect(myServerSocket)) {
             // la connexion a réussi
             clientConnection.setClientId(lastPlayerId);
 
-            var newPlayer = new Player(lastPlayerId, clientConnection);
-            System.out.println(newPlayer.getFirstName() + " " + newPlayer.getLastName() + " is connected");
+            var newPlayer = new BasePlayer(lastPlayerId, clientConnection);
+            System.out.println(newPlayer.getName() + " " + newPlayer.getLastName() + " is connected");
 
             for (var player : players) {
                 // infos SUR LES joueurs déjà connectés
@@ -131,6 +131,7 @@ public class FlatJassServerSystem {
         return null;
     }
 
+    /*
     public static void main(String[] args) {
         Integer port = null;
         if (args.length > 1) {
@@ -151,8 +152,10 @@ public class FlatJassServerSystem {
         flatJassServerSystem.run();
     }
 
+     */
+/*
 
-    private void chooseTeam() throws ClientLeftException {
+    private void chooseTeam() throws PlayerLeftExpection {
         Arrays.stream(teams).forEach(Team::reset);
 
         int teamChoiceMethod = players.get(0).chooseTeamSelectionMethod();
@@ -164,23 +167,23 @@ public class FlatJassServerSystem {
 
         reorderPlayers();
 
-        var idOrder = tableOrder.stream().map(Player::getId).collect(Collectors.toList());
+        var idOrder = tableOrder.stream().map(BasePlayer::getId).collect(Collectors.toList());
         for (var p : players) {
             p.sendPlayerOrder(idOrder);
         }
     }
 
-    void chooseTeamsRandomly() throws ClientLeftException {
+    void chooseTeamsRandomly() throws PlayerLeftExpection {
         // préparation du tirage des équipes
-        for (Player player : players) {
+        for (BasePlayer player : players) {
             player.prepareTeamChoice();
         }
 
         boolean drawingSuccessful;
-        HashMap<Player, Integer> cardsDrawn = new HashMap<>();    // cartes tirées
         do {
+            HashMap<BasePlayer, Integer> cardsDrawn = new HashMap<>();    // cartes tirées
             int[] cards = shuffleCards();
-            for (Player p : players) {
+            for (BasePlayer p : players) {
                 int cardNumber = p.drawCard();
 
                 cardsDrawn.put(p, cards[cardNumber]);
@@ -205,7 +208,7 @@ public class FlatJassServerSystem {
         } while (!drawingSuccessful);
     }
 
-    void pickTeamMates() throws ClientLeftException {
+    void pickTeamMates() throws PlayerLeftExpection {
         int partnerId = players.get(0).choosePartner();    // demande de choisir le partenaire
         for (var p : players) {
             if (p.getId() == partnerId || p == players.get(0)) {
@@ -228,7 +231,7 @@ public class FlatJassServerSystem {
     }
 
 
-    boolean calculateTeam(Map<Player, Integer> choosenCards) {
+    boolean calculateTeam(Map<BasePlayer, Integer> choosenCards) {
         var lowest = players.get(0);
         var highest = players.get(0);
         for (int i = 1; i < 4; i++) {
@@ -239,7 +242,7 @@ public class FlatJassServerSystem {
                 highest = player;
         }
         boolean ok = true;
-        for (Player player : players) {
+        for (BasePlayer player : players) {
             if (player != lowest) {
                 if ((choosenCards.get(player) % 9) == (choosenCards.get(lowest) % 9)) {
                     ok = false;
@@ -253,7 +256,7 @@ public class FlatJassServerSystem {
         }
         if (!ok) return false;
 
-        for (Player p : players) {
+        for (BasePlayer p : players) {
             if (p == lowest || p == highest) {
                 p.setTeam(0);
                 teams[0].addPlayer(p);
@@ -292,9 +295,11 @@ public class FlatJassServerSystem {
     }
 
 
-    void playOneGame() throws ClientLeftException {
+    void playOneGame() throws PlayerLeftExpection {
         /* randomly choose the cards and send them */
         // celui qui commence la partie et fait atout
+
+/*
         int firstToPlay = drawCards();
         int nextPlayer;
         do {
@@ -318,6 +323,8 @@ public class FlatJassServerSystem {
 
                 /* waits a few seconds so that the players can see the last
                  * cards and the score */
+
+/*
                 try {
                     Thread.sleep(2000);
                 } catch (InterruptedException ignored) {
@@ -342,6 +349,8 @@ public class FlatJassServerSystem {
         }
 
         /* waits a few seconds so that the players can see all the cards */
+
+/*
         try {
             Thread.sleep(4000);
         } catch (InterruptedException ignored) {
@@ -349,8 +358,8 @@ public class FlatJassServerSystem {
     }
 
 
-    int chooseAtout(int playerNumber) throws ClientLeftException {
-        Player first = tableOrder.get(playerNumber);
+    int chooseAtout(int playerNumber) throws PlayerLeftExpection {
+        BasePlayer first = tableOrder.get(playerNumber);
         var choice = first.chooseAtout();   // demande de faire atout en premier
         if (choice == 4) {     // si on passe
             var second = tableOrder.get((playerNumber + 2) % 4);
@@ -363,7 +372,7 @@ public class FlatJassServerSystem {
     }
 
 
-    int drawCards() throws ClientLeftException {
+    int drawCards() throws PlayerLeftExpection {
         int playerWithDiamondSeven = 0;      // 7 de carreau
         int[] cards = shuffleCards();     // choisir les cartes au hasard
         for (int i = 0; i < 4; i++) {
@@ -437,14 +446,14 @@ public class FlatJassServerSystem {
         currentPlie.score += score; // augmente le score de la plie
     }
 
-    void handlAllAnnoucements() throws ClientLeftException {
+    void handlAllAnnoucements() throws PlayerLeftExpection {
         int playerWithStoeck = -1;
         int highestAnnouncement = 1;
         int maxRank = Card.RANK_6;
         int anouncingTeam = -1;  // joueur qui a la plus grosse annonce
         for (var p : players) {
-            for (var anouncement : p.getAllAnouncements()) {
-                System.out.println(p.getFirstName() + ", announce : " +
+            for (var anouncement : p.getAnouncements()) {
+                System.out.println(p.getName() + ", announce : " +
                         anouncement.toString());
                 if (anouncement.getType() == Anouncement.STOECK) {
                     playerWithStoeck = p.getId();
@@ -473,18 +482,18 @@ public class FlatJassServerSystem {
             for (var p : players) {
                 if ((p.getTeam() == anouncingTeam) && (p.getNbrAnounces() > 0)) {
                     // annonceur
-                    teams[anouncingTeam].addAnnoucementScore(p.getAllAnouncements(), atout);
+                    teams[anouncingTeam].addAnnoucementScore(p.getAnouncements(), atout);
                     for (var p2 : players) {
-                        p2.sendAnouncementDetails(p.getId(), p.getAllAnouncements());
+                        p2.sendAnouncementDetails(p.getId(), p.getAnouncements());
                     }
                 } else if (p.getId() == playerWithStoeck) {
                     if (p.getTeam() == anouncingTeam) {
-                        System.out.println("Error: " + p.getFirstName() + " declared only stock on first plie");
+                        System.out.println("Error: " + p.getName() + " declared only stock on first plie");
                     } else if (p.getNbrAnounces() > 1) {
-                        System.out.println("Info: not counting stoeck for now for player " + p.getFirstName());
+                        System.out.println("Info: not counting stoeck for now for player " + p.getName());
                     }
                 }
-                p.clearAnounces();
+                p.clearAnouncement();
             }
         } else if (playerWithStoeck != -1) { // no announce but stock
             for (var p : players) {
@@ -494,11 +503,11 @@ public class FlatJassServerSystem {
             // add stock points
             var p = getPlayerById(playerWithStoeck);
             teams[p.getTeam()].addScore(score);
-            p.clearAnounces();
+            p.clearAnouncement();
         }
     }
 
-    int playPlie(int startingPlayer) throws ClientLeftException {
+    int playPlie(int startingPlayer) throws PlayerLeftExpection {
         var player = tableOrder.get(startingPlayer);
         var answer = player.playFirst();
         var card = new Card(answer[0]);
@@ -532,6 +541,7 @@ public class FlatJassServerSystem {
         /* now everybody has played ... */
 
         /* waits a few seconds so that the players can see all the cards */
+/*
         try {
             Thread.sleep(1500);
         } catch (InterruptedException ignored) {
@@ -556,31 +566,31 @@ public class FlatJassServerSystem {
         return currentPlie.owner;
     }
 
-    void processAnnouncements(Player player, int announcement) throws ClientLeftException {
+    void processAnnouncements(BasePlayer player, int announcement) throws PlayerLeftExpection {
         int[] instr;             // tableau d'instructions en integer
         switch (announcement) {
             case 1:        // Annonces
                 System.out.println("Annonces");
-                instr = player.requestAnoucementdetails(); // demande des précisions sur l'annonce
+                instr = player.requestAnoucementDetails(); // demande des précisions sur l'annonce
                 for (int i = 0; i < instr[0]; i++)
-                    player.addAnounce(instr[1 + 2 * i], new Card(instr[2 + 2 * i]));
+                    player.addAnouncement(instr[1 + 2 * i], new Card(instr[2 + 2 * i]));
                 break;
             case 2:        // Stöck
                 System.out.println("Annonces");
-                player.addAnounce(0, null);
+                player.addAnouncement(0, null);
                 break;
             case 3:        // Stöck + annonces
                 System.out.println("Annonces");
-                instr = player.requestAnoucementdetails();  // demande des précisions sur l'annonce
+                instr = player.requestAnoucementDetails();  // demande des précisions sur l'annonce
                 for (int i = 0; i < instr[0]; i++)
-                    player.addAnounce(instr[1 + 2 * i], new Card(instr[2 + 2 * i]));
-                player.addAnounce(0, null);
+                    player.addAnouncement(instr[1 + 2 * i], new Card(instr[2 + 2 * i]));
+                player.addAnouncement(0, null);
                 break;
         }
     }
 
-    Player getPlayerById(int id) {
-        for (Player p : players) {
+    BasePlayer getPlayerById(int id) {
+        for (BasePlayer p : players) {
             if (p.getId() == id) {
                 return p;
             }
@@ -588,3 +598,4 @@ public class FlatJassServerSystem {
         return null;
     }
 }
+*/
