@@ -7,14 +7,14 @@ import java.util.List;
 
 public class GameController extends Thread {
     private int gameId;
-    private List<BasePlayer> players = new ArrayList<>();
+    private List<RemotePlayer> players = new ArrayList<>();
     private boolean running;
 
     public GameController(int id) {
         this.gameId = id;
     }
 
-    public void addPlayer(BasePlayer newPlayer) throws PlayerLeftExpection {
+    public void addPlayer(RemotePlayer newPlayer) throws PlayerLeftExpection {
         assert players.size() < 4;
         for (var p : players) {
             p.setPlayerInfo(newPlayer);

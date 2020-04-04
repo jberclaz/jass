@@ -4,38 +4,47 @@
  * Created on 18. avril 2000, 16:10
  */
 
-
-/**
- * @author Berclaz Jérôme
- * @version
+/*
+ * @author Jérôme Berclaz
+ * @version 2.0
  */
 
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.Card;
+import com.leflat.jass.common.TeamSelectionMethod;
+import com.leflat.jass.server.BasePlayer;
 
 import java.awt.event.*;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
 
-public class ClientFrame extends javax.swing.JFrame {
+public class JassFrame extends javax.swing.JFrame implements IJassUi {
+    private static final String APP_TITLE = "Jass by FLAT®";
+
     // Variables visuelles
-    CanvasBorder leftCanvas;
-    CanvasBorder rightCanvas;
-    CanvasPlayer playerCanvas;
-    CanvasTop topCanvas;
-    CanvasCenter centerCanvas;
-    CanvasLastPlie lastPlieCanvas;
+    private CanvasBorder leftCanvas;
+    private CanvasBorder rightCanvas;
+    private CanvasPlayer playerCanvas;
+    private CanvasTop topCanvas;
+    private CanvasCenter centerCanvas;
+    private CanvasLastPlie lastPlieCanvas;
 
     // Autres variables
-    FlatJassClientSystem app;
+    private IRemotePlayer myself;
+    private Condition condition = null;
+    private int drawnCardPosition = -1;
+
 
     /**
      * Creates new form ClientFrame
      */
-    public ClientFrame(FlatJassClientSystem app) {
+    public JassFrame(IRemotePlayer player) {
+        this.myself = player;
+
         initComponents();
-        this.app = app;
+
         leftCanvas = new CanvasBorder();
         rightCanvas = new CanvasBorder();
         playerCanvas = new CanvasPlayer();
@@ -83,7 +92,7 @@ public class ClientFrame extends javax.swing.JFrame {
         getContentPane().setLayout(new AbsoluteLayout());
         setSize(660, 565);
         setResizable(false);
-        setTitle("Flat Jass System");
+        setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", 0, 10));
         addWindowListener(new java.awt.event.WindowAdapter() {
                               public void windowClosing(java.awt.event.WindowEvent evt) {
@@ -157,7 +166,7 @@ public class ClientFrame extends javax.swing.JFrame {
         jButtonConnect.setText("Connexion");
         jButtonConnect.addActionListener(new java.awt.event.ActionListener() {
                                              public void actionPerformed(java.awt.event.ActionEvent evt) {
-                                                 jButtonConnectActionPerformed(evt);
+                                                 jButtonConnectActionPerformed();
                                              }
                                          }
         );
@@ -168,54 +177,36 @@ public class ClientFrame extends javax.swing.JFrame {
 
     }//GEN-END:initComponents
 
-    private void jButtonConnectActionPerformed(java.awt.event.ActionEvent evt) {
+    private void jButtonConnectActionPerformed() {
         //GEN-FIRST:event_jButtonConnectActionPerformed
-        // Add your handling code here:
-        if (jButtonConnect.getText() == "Connexion") {
-            DialogConnect dc = new DialogConnect(this, true);
-            dc.show();
-            if (dc.ok) {      // Connexion
-                if (app.connect(dc.firstName, dc.lastName, dc.iP) != -1)
-                    jButtonConnect.setText("Déconnexion");
+        if (!myself.isConnected()) {
+            var dc = new DialogConnect(this, true);
+            dc.setLocationRelativeTo(this);
+            dc.setVisible(true);
+            if (!dc.ok) {
+                return;
+            }
+            int gameId = myself.connect(dc.name, dc.host, dc.gameId);
+            if (gameId >= 0) {
+                jButtonConnect.setText("Déconnexion");
+                setGameId(gameId);
+            }
+            else {
+                // TODO: error message
             }
         } else {
             // TODO: DISPLAY A CONFIRMATION MSG
-            disconnect();
-            app.disconnect();
+            if (myself.disconnect()) {
+                disconnect();
+            }
         }
     }//GEN-LAST:event_jButtonConnectActionPerformed
 
-    public void disconnect() {
-        playerCanvas.clearHand();
-        playerCanvas.setName("");
-        playerCanvas.setAtout(false);
-        leftCanvas.setNbrCards(0);
-        leftCanvas.setMode(1);
-        leftCanvas.setName("");
-        leftCanvas.setAtout(false);
-        rightCanvas.setNbrCards(0);
-        rightCanvas.setMode(1);
-        rightCanvas.setName("");
-        rightCanvas.setAtout(false);
-        topCanvas.setNbrCards(0);
-        topCanvas.setMode(1);
-        topCanvas.setName("");
-        topCanvas.setAtout(false);
-        centerCanvas.setMode(0);
-        centerCanvas.repaint();
-        removeLastPlie();
-        lastPlieCanvas.setAtout(4);
-        setScore(0, 0);
-        repaint(31);
-
-        statusBar.setText("Deconnexion");
-        jButtonConnect.setText("Connexion");
-    }
 
     private void jButtonAnounceActionPerformed(java.awt.event.ActionEvent evt) {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
 // Add your handling code here:
-        app.findAnouncement();
+        //app.findAnouncement();
     }//GEN-LAST:event_jButtonAnounceActionPerformed
 
     /**
@@ -241,46 +232,9 @@ public class ClientFrame extends javax.swing.JFrame {
     // End of variables declaration//GEN-END:variables
 
 
-    //Fait un repaint des différents canvas
-    public void repaint(int nbr) {
-        if ((nbr & 1) == 1)
-            playerCanvas.repaint();
-        if ((nbr & 2) == 2)
-            leftCanvas.repaint();
-        if ((nbr & 4) == 4)
-            topCanvas.repaint();
-        if ((nbr & 8) == 8)
-            rightCanvas.repaint();
-        if ((nbr & 16) == 16)
-            centerCanvas.repaint();
-    }
-
-    // attribue ses cartes aux joueur
-    public void setPlayerCards(List<Card> hand) {
-        playerCanvas.setHand(hand);
-    }
-
-    // indique le nombre de cartes des adversaires / partenaire
-    public void setOpponentCards(int player, int number) {
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-        switch (diff) {
-            case 1:
-                rightCanvas.setMode(1);
-                rightCanvas.setNbrCards(number);
-                break;
-            case 2:
-                topCanvas.setMode(1);
-                topCanvas.setNbrCards(number);
-                break;
-            case 3:
-                leftCanvas.setMode(1);
-                leftCanvas.setNbrCards(number);
-        }
-    }
 
     void playerCanvas_mouseClicked(MouseEvent e) {
+        /*
         if (playerCanvas.getMode() == 0) {
             return;
         }
@@ -310,9 +264,88 @@ public class ClientFrame extends javax.swing.JFrame {
                 System.out.println("Vous ne pouvez pas sous-couper!!");
                 break;
         }
+
+         */
+    }
+
+    void centerCanvas_mouseClicked(MouseEvent e) {
+        drawnCardPosition = centerCanvas.getCard(e.getX(), e.getY());
+        if (drawnCardPosition < 0) {
+            return;
+        }
+        centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);    // on ne peut plus choisir une carte
+        setStatusBar("");         // remove "veuillez tirer..."
+        assert condition != null;
+        condition.signal();
+    }
+
+    //Fait un repaint des différents canvas
+    public void repaint(int nbr) {
+        if ((nbr & 1) == 1)
+            playerCanvas.repaint();
+        if ((nbr & 2) == 2)
+            leftCanvas.repaint();
+        if ((nbr & 4) == 4)
+            topCanvas.repaint();
+        if ((nbr & 8) == 8)
+            rightCanvas.repaint();
+        if ((nbr & 16) == 16)
+            centerCanvas.repaint();
+    }
+
+
+    // indique le nombre de cartes des adversaires / partenaire
+    public void setOpponentCards(int player, int number) {
+        /*
+        int diff = player - app.getPlayerId();
+        if (diff < 0)
+            diff += 4;
+        switch (diff) {
+            case 1:
+                rightCanvas.setMode(1);
+                rightCanvas.setNbrCards(number);
+                break;
+            case 2:
+                topCanvas.setMode(1);
+                topCanvas.setNbrCards(number);
+                break;
+            case 3:
+                leftCanvas.setMode(1);
+                leftCanvas.setNbrCards(number);
+        }
+         */
+    }
+
+
+    public void disconnect() {
+        playerCanvas.clearHand();
+        playerCanvas.setName("");
+        playerCanvas.setAtout(false);
+        leftCanvas.clearHand();
+        leftCanvas.setMode(1);
+        leftCanvas.setName("");
+        leftCanvas.setAtout(false);
+        rightCanvas.clearHand();
+        rightCanvas.setMode(1);
+        rightCanvas.setName("");
+        rightCanvas.setAtout(false);
+        topCanvas.clearHand();
+        topCanvas.setMode(1);
+        topCanvas.setName("");
+        topCanvas.setAtout(false);
+        centerCanvas.setMode(0);
+        centerCanvas.repaint();
+        removeLastPlie();
+        lastPlieCanvas.setAtout(4);
+        setScore(0, 0);
+        repaint(31);
+
+        statusBar.setText("Déconnexion");
+        jButtonConnect.setText("Connexion");
     }
 
     public void setName(int player, String name) {
+        /*
         int diff = player - app.getPlayerId();
         if (diff < 0)
             diff += 4;
@@ -333,73 +366,14 @@ public class ClientFrame extends javax.swing.JFrame {
                 leftCanvas.setName(name);
                 leftCanvas.repaint();
         }
+         */
     }
 
-    public void teamChoiceShowCard(int player, int position, int cardNumber) {
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-        switch (diff) {
-            case 0:
-                playerCanvas.clearHand();
-                playerCanvas.setHand(Collections.singletonList(new Card(cardNumber)));
-                playerCanvas.repaint();
-                break;
-            case 1:
-                centerCanvas.drawCard(position);
-                centerCanvas.repaint();
-                // TODO: fix
-                //rightCanvas.setCardImage(playerCanvas.cards[cardNumber]);
-                rightCanvas.setMode(0);      // tirage des équipes
-                rightCanvas.repaint();
-                break;
-            case 2:
-                centerCanvas.drawCard(position);
-                centerCanvas.repaint();
-                // TODO: fix
-                //topCanvas.setCardImage(playerCanvas.cards[cardNumber]);
-                topCanvas.setMode(0);      // tirage des équipes
-                topCanvas.repaint();
-                break;
-            case 3:
-                centerCanvas.drawCard(position);
-                centerCanvas.repaint();
-                // TODO: fix
-                // leftCanvas.setCardImage(playerCanvas.cards[cardNumber]);
-                leftCanvas.setMode(0);      // tirage des équipes
-                leftCanvas.repaint();
-        }
+    // attribue ses cartes aux joueur
+    public void setPlayerCards(List<Card> hand) {
+        playerCanvas.setHand(hand);
     }
 
-    public void prepareTeamChoice() {
-        centerCanvas.resetCards();
-        playerCanvas.clearHand();
-        leftCanvas.setNbrCards(0);
-        leftCanvas.setMode(1);
-        rightCanvas.setNbrCards(0);
-        rightCanvas.setMode(1);
-        topCanvas.setNbrCards(0);
-        topCanvas.setMode(1);
-        centerCanvas.setMode(1);
-        centerCanvas.repaint();
-        removeLastPlie();
-        lastPlieCanvas.setAtout(4);
-        setScore(0, 0);
-        repaint(31);
-    }
-
-    void centerCanvas_mouseClicked(MouseEvent e) {
-        System.out.println("Click 1");
-        int drawnCard = centerCanvas.getCard(e.getX(), e.getY());
-        if (drawnCard < 0) {
-            return;
-        }
-        centerCanvas.drawCard(drawnCard);
-        centerCanvas.repaint();
-        centerCanvas.setMode(1);    // on ne peut plus choisir une carte
-        setStatusBar("");         // remove "veuillez tirer..."
-        app.sendCard(drawnCard, 0);
-    }
 
     // prépare l'écran pour une nouvelle partie
     void prepareMatch() {
@@ -414,6 +388,7 @@ public class ClientFrame extends javax.swing.JFrame {
 
     // affiche une carte jouée
     void showPlayedCard(int player, int number) {
+        /*
         int diff = player - app.getPlayerId();
         if (diff < 0)
             diff += 4;
@@ -434,6 +409,8 @@ public class ClientFrame extends javax.swing.JFrame {
         centerCanvas.repaint();
         // TODO: fix
         //statusBar.setText(app.players[player].getFirstName() + " a joué...");
+
+         */
     }
 
     // ramasse la plie
@@ -470,6 +447,7 @@ public class ClientFrame extends javax.swing.JFrame {
     }
 
     void setAtout(int player) {
+        /*
         int diff = player - app.getPlayerId();
         if (diff < 0)
             diff += 4;
@@ -493,5 +471,82 @@ public class ClientFrame extends javax.swing.JFrame {
                 leftCanvas.setAtout(true);
         }
         repaint(31);
+
+         */
+    }
+
+    void setGameId(int gameId) {
+        String title = APP_TITLE + " - Jeu " + gameId;
+        setTitle(title);
+    }
+
+    @Override
+    public void setPlayer(BasePlayer player, int relativePosition) throws Exception {
+        JassCanvas canvas = getPlayerCanvas(relativePosition);
+        canvas.setName(player.getName());
+        canvas.repaint();
+    }
+
+    @Override
+    public void showUi(boolean enable) {
+        setVisible(enable);
+    }
+
+    @Override
+    public TeamSelectionMethod chooseTeamSelectionMethod() {
+        DialogTeamChoice dtc = new DialogTeamChoice(this, true);
+        dtc.setVisible(true);
+        return dtc.hasard ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
+    }
+
+    @Override
+    public void prepareTeamDrawing(boolean firstAttempt) {
+        centerCanvas.resetCards();
+        playerCanvas.clearHand();
+        leftCanvas.clearHand();
+        rightCanvas.clearHand();
+        topCanvas.clearHand();
+        centerCanvas.setMode(1);
+        centerCanvas.repaint();
+        removeLastPlie();
+        lastPlieCanvas.setAtout(4);
+        setScore(0, 0);
+        repaint(31);
+    }
+
+    @Override
+    public void drawCard(Condition condition) {
+        centerCanvas.setMode(2);
+        setStatusBar("Veuillez choisir une carte");
+
+    }
+
+    @Override
+    public int getDrawnCardPosition() {
+        return drawnCardPosition;
+    }
+
+    @Override
+    public void setDrawnCard(BasePlayer player, int cardPosition, Card card)  {
+        centerCanvas.drawCard(cardPosition);
+        var canvas = getPlayerCanvas(player.getId());
+
+        // canvas.setCards
+
+    }
+
+    private JassCanvas getPlayerCanvas(int relativePosition)  {
+        switch (relativePosition) {
+            case 0:
+                return playerCanvas;
+            case 1:
+                return rightCanvas;
+            case 2:
+                return topCanvas;
+            case 3:
+                return leftCanvas;
+            default:
+                throw new IndexOutOfBoundsException("Unknown canvas " + relativePosition);
+        }
     }
 }

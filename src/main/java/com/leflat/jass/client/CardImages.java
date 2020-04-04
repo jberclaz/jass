@@ -29,7 +29,10 @@ public class CardImages {
     }
 
     public Image getImage(Card card) {
-        return images[card.getNumber()];
+        if (!card.isBack()) {
+            return images[card.getNumber()];
+        }
+        return backImage;
     }
 
     public Image getBackImage() { return backImage; }

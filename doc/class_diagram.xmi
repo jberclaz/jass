@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<XMI timestamp="2020-04-03T17:19:43" verified="false" xmi.version="1.2" xmlns:UML="http://schema.omg.org/spec/UML/1.4">
+<XMI timestamp="2020-04-03T20:34:43" verified="false" xmi.version="1.2" xmlns:UML="http://schema.omg.org/spec/UML/1.4">
  <XMI.header>
   <XMI.documentation>
    <XMI.exporter>umbrello uml modeller http://umbrello.kde.org</XMI.exporter>
@@ -149,7 +149,7 @@
         <UML:Attribute isSpecification="false" type="uAsUxUrk9KlWT" xmi.id="uu0oCoBCjV1W4" name="ui" visibility="private"/>
        </UML:Classifier.feature>
       </UML:Class>
-      <UML:Class namespace="Logical_View" isAbstract="false" isRoot="false" isSpecification="false" isLeaf="false" xmi.id="uAsUxUrk9KlWT" name="UI" visibility="public">
+      <UML:Class namespace="Logical_View" isAbstract="false" isRoot="false" isSpecification="false" isLeaf="false" xmi.id="uAsUxUrk9KlWT" name="JassUi" visibility="public">
        <UML:Classifier.feature>
         <UML:Attribute isSpecification="false" type="uBUfXQTgnujT9" xmi.id="uDXOa5TMXeInX" name="controller" visibility="private"/>
        </UML:Classifier.feature>
@@ -407,6 +407,9 @@
      <listitem open="1" id="uNK3NfN55Pzxm" type="813">
       <listitem open="0" id="uKpCXbvV9plDz" type="814"/>
      </listitem>
+     <listitem open="1" id="uAsUxUrk9KlWT" type="813">
+      <listitem open="0" id="uDXOa5TMXeInX" type="814"/>
+     </listitem>
      <listitem open="1" id="ufpF7FFOmbknU" type="813">
       <listitem open="0" id="u1nR0xTusSbvG" type="814"/>
       <listitem open="0" id="uRZ8qCaeApqFz" type="815"/>
@@ -421,9 +424,6 @@
      <listitem open="1" id="uVZzyIOIptn3T" type="813">
       <listitem open="0" id="uZwOlhPVhfenA" type="815"/>
       <listitem open="0" id="uFcbu4ukSgjCA" type="815"/>
-     </listitem>
-     <listitem open="1" id="uAsUxUrk9KlWT" type="813">
-      <listitem open="0" id="uDXOa5TMXeInX" type="814"/>
      </listitem>
     </listitem>
     <listitem open="1" id="Use_Case_View" type="802"/>

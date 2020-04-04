@@ -12,49 +12,26 @@
 
 package com.leflat.jass.client;
 
-import com.leflat.jass.common.Card;
-
 import java.awt.*;
 
 public class CanvasBorder extends JassCanvas {
-    private Card card;
-    private int nbrCards;
-    // mode:: 0 : tirage des équipes, 1 : jouer normalement
+    public static final int Y_STEP = 30;
 
-    /**
-     * Creates new CanvasBorder
-     */
     public CanvasBorder() {
-        mode = 1;
-        nbrCards = 0;
-        name = "";
-        card = null;
-    }
-
-    public void setNbrCards(int nbrCards) {
-        this.nbrCards = nbrCards;
-    }
-
-    public void setCard(Card card) { this.card = card; }
-
-    public void removeCard() {
-        nbrCards--;
     }
 
     public void paint(Graphics g) {
         Dimension d = getSize();
-        if (mode == 1) {
-            int w = (d.width - 71) / 2;
-            int h = (d.height - nbrCards * 30 - 66) / 2 + 20;
-            for (int i = 0; i < nbrCards; i++)
-                g.drawImage(CardImages.getInstance().getBackImage(), w, h + i * 30, this);
-        } else if (card != null) {
-            int w = (d.width - 71) / 2;
-            int h = (d.height - 96) / 2 + 20;
-            g.drawImage(CardImages.getInstance().getImage(card), w, h, this);
+
+        int w = (d.width - CardImages.IMG_WIDTH) / 2;
+        int h = (d.height - hand.size() * Y_STEP - 66) / 2 + 20;
+        for (int i = 0; i < hand.size(); i++) {
+            g.drawImage(CardImages.getInstance().getBackImage(), w, h + i * 30, this);
         }
+
         g.drawString(name, 20, 30);
-        if (atout)
+        if (atout) {
             g.drawString("atout", 20, 60);
+        }
     }
 }

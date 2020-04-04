@@ -16,7 +16,7 @@ public interface IPlayer {
 
     void setCard(BasePlayer player, int cardPosition, Card card) throws PlayerLeftExpection;
 
-    void setPlayerOrder(List<BasePlayer> players) throws PlayerLeftExpection;
+    void setPlayersOrder(List<BasePlayer> players) throws PlayerLeftExpection;
 
     int choosePartner() throws PlayerLeftExpection;
 

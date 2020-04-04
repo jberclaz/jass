@@ -5,6 +5,7 @@ import com.leflat.jass.common.PlayerLeftExpection;
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.List;
 
 public class Rpc {
     private BufferedReader is;
@@ -24,14 +25,17 @@ public class Rpc {
         return 0;
     }
 
+    public int sendMessage(List<String> message) {
+        return sendMessage(String.join(" ", message));
+    }
+
     public String receiveRawMessage() throws PlayerLeftExpection {
         String message = null;
 
         // TODO: implementer timeout + exc
         try {
             message = is.readLine();
-        } catch (
-                IOException e) {
+        } catch (IOException e) {
             System.out.println("Error during reception");
         }
         if (message != null)

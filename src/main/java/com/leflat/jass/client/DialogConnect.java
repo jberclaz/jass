@@ -4,7 +4,7 @@
  * Created on 18. avril 2000, 21:34
  */
 
-/**
+/*
  *
  * @author  Berclaz Jérôme
  * @version
@@ -15,7 +15,8 @@ package com.leflat.jass.client;
 
 public class DialogConnect extends javax.swing.JDialog {
   boolean ok = false;
-  String lastName, firstName, iP;
+  String name, host;
+  int gameId;
 
   /** Creates new form DialogConnect */
   public DialogConnect(java.awt.Frame parent,boolean modal) {
@@ -32,12 +33,12 @@ public class DialogConnect extends javax.swing.JDialog {
    */
   private void initComponents () {//GEN-BEGIN:initComponents
     jPanel1 = new javax.swing.JPanel ();
-    jLabelFirstName = new javax.swing.JLabel ();
-    jLabelLastName = new javax.swing.JLabel ();
+    jLabelName = new javax.swing.JLabel ();
+    jLabelGame = new javax.swing.JLabel ();
     jLabel3 = new javax.swing.JLabel ();
-    jTextFieldFirstName = new javax.swing.JTextField ();
-    jTextFieldLastName = new javax.swing.JTextField ();
-    jTextFieldIP = new javax.swing.JTextField ();
+    jTextFieldName = new javax.swing.JTextField ();
+    jTextFieldGame = new javax.swing.JTextField ();
+    jTextFieldHost = new javax.swing.JTextField ();
     jButtonOk = new javax.swing.JButton ();
     jButtonCancel = new javax.swing.JButton ();
     getContentPane ().setLayout (new java.awt.GridBagLayout ());
@@ -56,16 +57,16 @@ public class DialogConnect extends javax.swing.JDialog {
     jPanel1.setBorder (new javax.swing.border.TitledBorder("Paramètres de connexion"));
     jPanel1.setName ("");
 
-      jLabelFirstName.setText ("Nom");
+      jLabelName.setText ("Nom");
 
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 0;
       gridBagConstraints2.gridy = 0;
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.insets = new java.awt.Insets (14, 20, 0, 0);
-      jPanel1.add (jLabelFirstName, gridBagConstraints2);
+      jPanel1.add (jLabelName, gridBagConstraints2);
 
-      jLabelLastName.setText ("Prénom");
+      jLabelGame.setText ("Jeu");
 
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 0;
@@ -73,7 +74,7 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.gridwidth = 2;
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.insets = new java.awt.Insets (10, 20, 0, 0);
-      jPanel1.add (jLabelLastName, gridBagConstraints2);
+      jPanel1.add (jLabelGame, gridBagConstraints2);
 
       jLabel3.setText ("Serveur");
 
@@ -85,6 +86,7 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.insets = new java.awt.Insets (10, 21, 0, 0);
       jPanel1.add (jLabel3, gridBagConstraints2);
 
+      jTextFieldName.setText("Joueur");
 
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
@@ -93,8 +95,7 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.ipadx = 146;
       gridBagConstraints2.insets = new java.awt.Insets (11, 61, 8, 0);
-      jPanel1.add (jTextFieldFirstName, gridBagConstraints2);
-
+      jPanel1.add (jTextFieldName, gridBagConstraints2);
 
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
@@ -103,9 +104,9 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.ipadx = 146;
       gridBagConstraints2.insets = new java.awt.Insets (9, 61, 8, 0);
-      jPanel1.add (jTextFieldLastName, gridBagConstraints2);
+      jPanel1.add (jTextFieldGame, gridBagConstraints2);
 
-      jTextFieldIP.setText ("localhost");
+      jTextFieldHost.setText ("localhost");
 
       gridBagConstraints2 = new java.awt.GridBagConstraints ();
       gridBagConstraints2.gridx = 3;
@@ -114,7 +115,7 @@ public class DialogConnect extends javax.swing.JDialog {
       gridBagConstraints2.fill = java.awt.GridBagConstraints.BOTH;
       gridBagConstraints2.ipadx = 77;
       gridBagConstraints2.insets = new java.awt.Insets (9, 61, 8, 0);
-      jPanel1.add (jTextFieldIP, gridBagConstraints2);
+      jPanel1.add (jTextFieldHost, gridBagConstraints2);
 
 
     gridBagConstraints1 = new java.awt.GridBagConstraints ();
@@ -169,9 +170,9 @@ public class DialogConnect extends javax.swing.JDialog {
   private void jButtonOkActionPerformed (java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOkActionPerformed
 // Add your handling code here:
     ok = true;
-    lastName = jTextFieldLastName.getText();
-    firstName = jTextFieldFirstName.getText();
-    iP = jTextFieldIP.getText();
+    gameId = jTextFieldGame.getText().isEmpty() ? -1 : Integer.parseInt(jTextFieldGame.getText());
+    name = jTextFieldName.getText();
+    host = jTextFieldHost.getText();
     this.dispose();
   }//GEN-LAST:event_jButtonOkActionPerformed
 
@@ -185,12 +186,12 @@ public class DialogConnect extends javax.swing.JDialog {
 
   // Variables declaration - do not modify//GEN-BEGIN:variables
   private javax.swing.JPanel jPanel1;
-  private javax.swing.JLabel jLabelFirstName;
-  private javax.swing.JLabel jLabelLastName;
+  private javax.swing.JLabel jLabelName;
+  private javax.swing.JLabel jLabelGame;
   private javax.swing.JLabel jLabel3;
-  private javax.swing.JTextField jTextFieldFirstName;
-  private javax.swing.JTextField jTextFieldLastName;
-  private javax.swing.JTextField jTextFieldIP;
+  private javax.swing.JTextField jTextFieldName;
+  private javax.swing.JTextField jTextFieldGame;
+  private javax.swing.JTextField jTextFieldHost;
   private javax.swing.JButton jButtonOk;
   private javax.swing.JButton jButtonCancel;
   // End of variables declaration//GEN-END:variables

@@ -21,8 +21,12 @@ import java.util.Collections;
 import java.util.List;
 
 public class FlatJassClientSystem {
+
+}
+/*
+public class FlatJassClientSystem {
     // Variables
-    private ClientFrame frame = new ClientFrame(this);
+    //private JassFrame frame = new JassFrame(this);
 
     // Variables du moteur de jeu
     private ClientListener listener;                       // classe qui écoute
@@ -36,21 +40,14 @@ public class FlatJassClientSystem {
     private int stoeck;                                    // 0:no stoeck, 1:got stöck, 2: joué un, 3:joué les deux
     private int plieNbr;                                   // numéro de la plie
 
-    /**
-     * Creates new FlatJassClientSystem
-     */
+
     public FlatJassClientSystem() {
         for (int i = 0; i < 4; i++)             // construire les objets player
             players[i] = new ClientPlayer();
-        frame.show();
+        //frame.show();
     }
 
-    /**
-     * @param args the command line arguments
-     */
-    public static void main(String[] args) {
-        new FlatJassClientSystem();
-    }
+
 
     public int connect(String firstName, String lastName, String IP) {
         // renvoie -1 en cas d'échec et 0 si réussi
@@ -318,9 +315,9 @@ public class FlatJassClientSystem {
                         }
                     }
                 }
-		/* temp = Integer.valueOf(tableInstr[3 + i * 2]);
-		   if (temp.intValue() == 1)
-		   di.setText(i+1, "stöck");*/
+		// temp = Integer.valueOf(tableInstr[3 + i * 2]);
+		//   if (temp.intValue() == 1)
+		//   di.setText(i+1, "stöck");
                 // envoie la réponse avant d'afficher la boîte
                 network.sendTo(playerId + " 1");
                 di.show();
@@ -523,9 +520,7 @@ public class FlatJassClientSystem {
     }
 
 
-    /**
-     * Checks if we have "bourg sec"
-     */
+
     boolean bourgSec() {
         boolean bourg = false;
         int atoutNbr = 0;
@@ -542,9 +537,7 @@ public class FlatJassClientSystem {
         return bourg && (atoutNbr == 1);
     }
 
-    /**
-     * Disconect from the server
-     */
+
     public void disconnect() {
         listener.stop = true;
         network.disconnect();
@@ -555,73 +548,4 @@ public class FlatJassClientSystem {
     public int getAtout() { return atout; }
 }
 
-// ********************** CLASS TMember ****************************************
-class Member {
-    // Variables
-    private String firstName;
-    private String lastName;
-    private String function;
-
-    // Constructeur
-    public Member() {
-    }
-
-    public Member(String firstName, String lastName, String function) {
-        this();
-        this.firstName = firstName;
-        this.lastName = lastName;
-        this.function = function;
-    }
-
-    // Getters
-    public String getFirstName() {
-        return firstName;
-    }
-
-    public String getLastName() {
-        return lastName;
-    }
-
-    public String getFunction() {
-        return function;
-    }
-
-    // Setters
-    public void setFirstName(String firstName) {
-        this.firstName = firstName;
-    }
-
-    public void setLastName(String lastName) {
-        this.lastName = lastName;
-    }
-
-    public void setFunction(String function) {
-        this.function = function;
-    }
-}
-
-// **************************** CLASS leflat.jass.server.Player ***********************************
-class ClientPlayer extends Member {
-    // Variables
-    private int id;        // numéro d'identification du joueur
-
-    public ClientPlayer() {
-        super();
-    }
-
-    public ClientPlayer(ClientPlayer copyPlayer) {
-        super(copyPlayer.getFirstName(), copyPlayer.getLastName(),
-                copyPlayer.getFunction());
-        this.id = copyPlayer.getID();
-    }
-
-    // Getter
-    public int getID() {
-        return id;
-    }
-
-    // Setter
-    public void setID(int iD) {
-        this.id = iD;
-    }
-}
+*/

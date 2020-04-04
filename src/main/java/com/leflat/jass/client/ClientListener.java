@@ -56,7 +56,7 @@ public class ClientListener extends Thread {
             try {
                 rcvTemp = is.readLine();
                 System.out.println("LISTENER:Reception:" + rcvTemp);
-                app.execute(rcvTemp);
+                //app.execute(rcvTemp);
             } catch (IOException e) {
                 System.out.println("LISTENER:Erreur reception");
                 //System.exit(1);

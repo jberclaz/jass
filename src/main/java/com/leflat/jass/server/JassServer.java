@@ -3,6 +3,8 @@ package com.leflat.jass.server;
 import java.io.IOException;
 
 public class JassServer {
+    public static final int DEFAULT_PORT = 23107;
+
     public static void main(String[] args) {
         System.out.println("FLAT Jass System Server");
         System.out.println("Version 1.2");
@@ -10,11 +12,10 @@ public class JassServer {
         System.out.println();
 
         // TODO: add command line argument parsing (Apache commons)
-        int port = 23107;
         NetworkListener listener = null;
 
         try {
-            listener = new NetworkListener(port);
+            listener = new NetworkListener(DEFAULT_PORT);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);

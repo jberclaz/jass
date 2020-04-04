@@ -24,6 +24,14 @@ public class CanvasCenter extends Canvas {
     private static final int X_OFFSET = 10;
     private static final int Y_OFFSET = 40;
     private static final int X_STEP = 8;
+    private static final int[] CARD_POS_X = {-35, 25, -35, -95};
+    private static final int[] CARD_POS_Y = {2, -48, -98, -48};
+    public static final int MODE_PASSIVE = 0;
+    public static final int MODE_DRAW_TEAMS = 1;
+    public static final int MODE_PICK_CARD = 2;
+    public static final int MODE_GAME = 3;
+
+
     private int mode;        // 0 : rien, 1 : tirer les équipes
     // 2 : tirer les équipes et choisir une carte
     // 3 : jouer
@@ -31,7 +39,7 @@ public class CanvasCenter extends Canvas {
     private Map<Integer, Card> shownCards = new HashMap<>();
 
     public CanvasCenter() {
-        mode = 0;
+        mode = MODE_PASSIVE;
     }
 
     public void setMode(int mode) {
@@ -40,6 +48,7 @@ public class CanvasCenter extends Canvas {
 
     public void drawCard(int i) {
         drawnCards.add(i);
+        repaint();
     }
 
     public void resetCards() {
@@ -59,30 +68,27 @@ public class CanvasCenter extends Canvas {
         // System.out.println("Repaint");
         Dimension d = getSize();
         switch (mode) {
-            case 1:
-            case 2:
+            case MODE_DRAW_TEAMS:
+            case MODE_PICK_CARD:
                 for (int i = 0; i < 36; i++) {
                     if (!drawnCards.contains(i)) {
                         g.drawImage(CardImages.getInstance().getBackImage(), X_OFFSET + i * X_STEP, Y_OFFSET, this);
                     }
                 }
                 break;
-            case 3:
+            case MODE_GAME:
                 int w = d.width / 2;
                 int h = d.height / 2;
-                if (shownCards.containsKey(0))       // joueur
-                    g.drawImage(CardImages.getInstance().getImage(shownCards.get(0)), w - 35, h + 2, 71, 96, this);
-                if (shownCards.containsKey(1))
-                    g.drawImage(CardImages.getInstance().getImage(shownCards.get(1)), w + 25, h - 48, 71, 96, this);
-                if (shownCards.containsKey(2))       // haut
-                    g.drawImage(CardImages.getInstance().getImage(shownCards.get(2)), w - 35, h - 98, 71, 96, this);
-                if (shownCards.containsKey(3))       // droite
-                    g.drawImage(CardImages.getInstance().getImage(shownCards.get(3)), w - 95, h - 48, 71, 96, this);
+                for (int i = 0; i < 4; i++) {
+                    if (shownCards.containsKey(i)) {
+                        g.drawImage(CardImages.getInstance().getImage(shownCards.get(i)), w + CARD_POS_X[i], h + CARD_POS_Y[i], this);
+                    }
+                }
         }
     }
 
     public int getCard(int x, int y) {
-        if (mode != 2) {
+        if (mode != MODE_PICK_CARD) {
             return -1;
         }
         if (y < Y_OFFSET || y > Y_OFFSET + CardImages.IMG_HEIGHT) {

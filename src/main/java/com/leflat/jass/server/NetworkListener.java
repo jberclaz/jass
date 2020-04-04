@@ -1,5 +1,6 @@
 package com.leflat.jass.server;
 
+import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.PlayerLeftExpection;
 
 import java.io.IOException;
@@ -61,13 +62,13 @@ public class NetworkListener extends Thread {
             games.put(newGameId, game);
         } else {
             if (!games.containsKey(gameId)) {
-                rpc.sendMessage("-1");
+                rpc.sendMessage(String.valueOf(ConnectionError.UNKNOWN_GAME));
                 System.err.println("Error: unknown game id " + gameId);
                 return null;
             }
             game = games.get(gameId);
             if (game.fullGame()) {
-                rpc.sendMessage("-2");
+                rpc.sendMessage(String.valueOf(ConnectionError.GAME_FULL));
                 System.err.println("Error: attempting to enter full game " + gameId);
                 return null;
             }

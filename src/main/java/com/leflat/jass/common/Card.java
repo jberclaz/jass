@@ -31,6 +31,10 @@ public class Card {
 
     public static final int[] VALUES = {0, 0, 0, 0, 10, 2, 3, 4, 11};
     public static final int[] VALUES_ATOUT = {0, 0, 0, 14, 10, 20, 3, 4, 11};
+
+    public static final int BACK_NUMBER = 200;
+    private static final Card backCard = new Card(BACK_NUMBER);
+
     private int number;
 
     public Card(int cardNumber) {
@@ -64,4 +68,8 @@ public class Card {
     public int getValue(int atout) {
         return atout == getColor() ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
     }
+
+    public boolean isBack() { return number == BACK_NUMBER; }
+
+    public static Card getBack() { return backCard; }
 }
