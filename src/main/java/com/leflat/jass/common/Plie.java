@@ -6,7 +6,15 @@ public class Plie {
     public int color;     // la couleur demandée
     public int score;     // la valeur de la plie
     public boolean cut;     // 0 : pas coupé, 1 : coupé
-    public int owner;     // iD de celui qui tient la plie
+    public BasePlayer owner = null;     // iD de celui qui tient la plie
+
+    public Plie(Card card, int atout, BasePlayer owner) {
+        color = card.getColor();
+        highest = card.getRank();
+        score = card.getValue(atout);
+        this.owner = owner;
+        cut = false;
+    }
 
     public Plie(int color, int highestRank, boolean cut) {
         this.color = color;

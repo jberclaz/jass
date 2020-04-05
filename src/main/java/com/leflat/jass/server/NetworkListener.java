@@ -45,7 +45,7 @@ public class NetworkListener extends Thread {
             var newPlayer = new RemotePlayer(game.getNbrPlayers(), rpc);
             game.addPlayer(newPlayer);
 
-            if (game.fullGame()) {
+            if (game.isGameFull()) {
                 game.start();
             }
         } catch (PlayerLeftExpection ignored) {
@@ -69,7 +69,7 @@ public class NetworkListener extends Thread {
                 return null;
             }
             game = games.get(gameId);
-            if (game.fullGame()) {
+            if (game.isGameFull()) {
                 rpc.sendMessage(String.valueOf(ConnectionError.GAME_FULL));
                 System.err.println("Error: attempting to enter full game " + gameId);
                 return null;
