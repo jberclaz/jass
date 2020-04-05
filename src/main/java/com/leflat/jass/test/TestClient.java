@@ -74,6 +74,15 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18");
         receiveMessage();
+
+        sendMessage(String.valueOf(RemoteCommand.CHOOSE_ATOUT));
+        int color = Integer.parseInt(receiveMessage()[0]);
+        System.out.println("Chosen : " + color);
+
+        sendMessage(String.valueOf(RemoteCommand.CHOOSE_ATOUT_SECOND));
+        color = Integer.parseInt(receiveMessage()[0]);
+        System.out.println("Chosen : " + color);
+
     }
 
     public static void main(String[] args) {

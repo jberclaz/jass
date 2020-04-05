@@ -1,9 +1,5 @@
 package com.leflat.jass.common;
 
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.TeamSelectionMethod;
-import com.leflat.jass.common.BasePlayer;
-
 import java.util.List;
 
 public interface IJassUi {
@@ -24,4 +20,6 @@ public interface IJassUi {
     BasePlayer choosePartner(List<BasePlayer> players);
 
     void setPlayerCards(List<Card> hand);
+
+    int chooseAtout(boolean allowedToPass);
 }

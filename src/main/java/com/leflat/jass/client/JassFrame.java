@@ -348,6 +348,14 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         playerCanvas.setHand(hand);
     }
 
+    @Override
+    public int chooseAtout(boolean allowedToPass) {
+        DialogAtout da = new DialogAtout(this, true, allowedToPass);
+        da.setLocationRelativeTo(this);
+        da.setVisible(true);
+        return da.getSelectedColor();
+    }
+
 
     // prépare l'écran pour une nouvelle partie
     void prepareMatch() {

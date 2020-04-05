@@ -212,9 +212,15 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.CHOOSE_ATOUT:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.CHOOSE_ATOUT_SECOND:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    int atout = player.chooseAtout(command == RemoteCommand.CHOOSE_ATOUT);
+                    answer = Collections.singletonList(String.valueOf(atout));
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_ATOUT:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAY:

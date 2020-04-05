@@ -104,8 +104,8 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public int chooseAtout(boolean first) throws PlayerLeftExpection {
-        return 0;
+    public int chooseAtout(boolean first) {
+        return frame.chooseAtout(first);
     }
 
     @Override
