@@ -1,7 +1,4 @@
-package com.leflat.jass.server;
-
-import com.leflat.jass.common.Anouncement;
-import com.leflat.jass.common.Card;
+package com.leflat.jass.common;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -48,4 +45,6 @@ public abstract class BasePlayer {
     public void clearAnouncement() {
         anounces.clear();
     }
+
+    public String toString() { return name; }
 }

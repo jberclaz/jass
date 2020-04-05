@@ -1,6 +1,6 @@
 package com.leflat.jass.common;
 
-public class RemoteCommand {
+public abstract class RemoteCommand {
     public static final int SET_PLAYER_INFO = 2;
     public static final int CHOOSE_TEAM_SELECTION_METHOD = 3;
     public static final int PREPARE_TEAM_DRAWING = 4;

@@ -4,13 +4,12 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
-import com.leflat.jass.server.BasePlayer;
+import com.leflat.jass.common.BasePlayer;
+import com.leflat.jass.server.PlayerLeftExpection;
 import com.leflat.jass.server.Team;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Random;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class JassPlayer implements IPlayer, IRemotePlayer {
     private RemoteController controller;
@@ -94,13 +93,14 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public int choosePartner() throws PlayerLeftExpection {
-        return 0;
+    public int choosePartner() {
+        var partners = players.values().stream().filter(p -> p.getId() != id).collect(Collectors.toList());
+        return frame.choosePartner(partners).getId();
     }
 
     @Override
-    public void setHand(List<Card> cards) throws PlayerLeftExpection {
-
+    public void setHand(List<Card> cards) {
+        frame.setPlayerCards(cards);
     }
 
     @Override

@@ -1,6 +1,6 @@
 package com.leflat.jass.common;
 
-import com.leflat.jass.server.BasePlayer;
+import com.leflat.jass.server.PlayerLeftExpection;
 import com.leflat.jass.server.Team;
 
 import java.util.List;

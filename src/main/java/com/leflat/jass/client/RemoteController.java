@@ -1,6 +1,7 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
+import com.leflat.jass.server.PlayerLeftExpection;
 import jdk.jshell.spi.ExecutionControl;
 
 import java.io.BufferedReader;
@@ -13,10 +14,6 @@ import java.net.SocketTimeoutException;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.Condition;
-import java.util.concurrent.locks.Lock;
-import java.util.concurrent.locks.ReentrantLock;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 public class RemoteController extends Thread {
@@ -188,7 +185,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.CHOOSE_PARTNER:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    int partnerId = player.choosePartner();
+                    answer = Collections.singletonList(String.valueOf(partnerId));
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_PLAYERS_ORDER:
                 var order = Arrays.stream(message).skip(1).map(Integer::parseInt).collect(Collectors.toList());
                 try {
@@ -197,9 +201,16 @@ public class RemoteController extends Thread {
                     playerLeftExpection.printStackTrace();
                     return;
                 }
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                break;
             case RemoteCommand.SET_HAND:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                var hand = Arrays.stream(message).skip(1).map(Integer::parseInt).map(Card::new).collect(Collectors.toList());
+                try {
+                    player.setHand(hand);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.CHOOSE_ATOUT:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.CHOOSE_ATOUT_SECOND:

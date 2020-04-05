@@ -1,4 +1,4 @@
-package com.leflat.jass.common;
+package com.leflat.jass.server;
 
 public class PlayerLeftExpection extends Exception {
     int playerId;

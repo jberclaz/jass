@@ -1,7 +1,5 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.common.PlayerLeftExpection;
-
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;

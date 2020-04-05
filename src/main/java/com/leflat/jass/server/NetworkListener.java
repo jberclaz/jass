@@ -1,7 +1,6 @@
 package com.leflat.jass.server;
 
 import com.leflat.jass.common.ConnectionError;
-import com.leflat.jass.common.PlayerLeftExpection;
 
 import java.io.IOException;
 import java.net.ServerSocket;

@@ -1,4 +1,4 @@
-package com.leflat.jass.client;
+package com.leflat.jass.common;
 
 public interface IRemotePlayer {
     int connect(String name, String host, int gameId);

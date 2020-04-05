@@ -1,11 +1,10 @@
-package com.leflat.jass.client;
+package com.leflat.jass.common;
 
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.TeamSelectionMethod;
-import com.leflat.jass.server.BasePlayer;
+import com.leflat.jass.common.BasePlayer;
 
 import java.util.List;
-import java.util.concurrent.locks.Condition;
 
 public interface IJassUi {
     void setPlayer(BasePlayer player, int relativePosition) throws Exception;
@@ -21,6 +20,8 @@ public interface IJassUi {
     int getDrawnCardPosition();
 
     void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException;
+
+    BasePlayer choosePartner(List<BasePlayer> players);
 
     void setPlayerCards(List<Card> hand);
 }

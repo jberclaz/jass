@@ -68,6 +68,12 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_PLAYERS_ORDER + " 3 0 2 1");
         receiveMessage();
+
+        sendMessage(String.valueOf(RemoteCommand.CHOOSE_PARTNER));
+        int partnerId = Integer.parseInt(receiveMessage()[0]);
+
+        sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

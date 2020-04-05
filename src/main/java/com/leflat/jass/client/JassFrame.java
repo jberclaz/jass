@@ -11,14 +11,11 @@
 
 package com.leflat.jass.client;
 
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.TeamSelectionMethod;
-import com.leflat.jass.server.BasePlayer;
+import com.leflat.jass.common.*;
 
-import java.awt.event.*;
+import java.awt.event.MouseEvent;
 import java.util.Collections;
 import java.util.List;
-import java.util.concurrent.locks.Condition;
 
 public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
@@ -509,6 +506,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         centerCanvas.drawCard(cardPosition);
         var canvas = getPlayerCanvas(playerPosition);
         canvas.setHand(Collections.singletonList(card));
+    }
+
+    @Override
+    public BasePlayer choosePartner(List<BasePlayer> partners) {
+        DialogPartnerChoice dpc = new DialogPartnerChoice(this, true);
+        dpc.setLocationRelativeTo(this);
+        partners.forEach(dpc::addPlayer);
+        dpc.setVisible(true);
+        return dpc.getSelectedPlayer();
     }
 
     private JassCanvas getPlayerCanvas(int relativePosition) {
