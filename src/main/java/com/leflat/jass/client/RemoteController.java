@@ -251,7 +251,17 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.PLAY_NEXT:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    int highestRank = Integer.parseInt(message[1]);
+                    int currentColor = Integer.parseInt(message[2]);
+                    boolean cut = message[3].equals("1");
+                    var playedCard = player.play(currentColor, highestRank, cut);
+                    answer = Collections.singletonList(String.valueOf(playedCard.getNumber()));
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_PLIE_OWNER:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_SCORES:

@@ -92,6 +92,9 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_PLAYED_CARD + " 0 35");
         receiveMessage();
+
+        sendMessage(RemoteCommand.PLAY_NEXT + " 3 1 0");
+        receiveMessage();
     }
 
     public static void main(String[] args) {
