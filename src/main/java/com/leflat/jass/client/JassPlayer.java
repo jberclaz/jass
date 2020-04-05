@@ -17,6 +17,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     private int id;
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
+    private List<Card> playerHand = new ArrayList<>();
 
 
     public JassPlayer() {
@@ -100,6 +101,8 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setHand(List<Card> cards) {
+        playerHand.clear();
+        playerHand.addAll(cards);
         frame.prepareGame();
         frame.setPlayerHand(cards);
         frame.setOtherPlayersHands(9);
@@ -145,8 +148,11 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public List<Anouncement> getAnoucement() throws PlayerLeftExpection {
-        return null;
+    public List<Anouncement> getAnoucement() {
+        if (!frame.hasPlayerAnounced()) {
+            return Collections.emptyList();
+        }
+        return Anouncement.findAnouncements(playerHand);
     }
 
     @Override

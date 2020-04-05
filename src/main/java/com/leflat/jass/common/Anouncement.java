@@ -53,8 +53,22 @@ public class Anouncement {
         if (type == STOECK) {
             return sb.toString();
         }
-        sb.append(" au ");
-        sb.append(card.toString());
+        if (type >= SQUARE) {
+            sb.append(" des ").append(Card.RANK_NAMES[card.getRank()]).append("s");
+        } else {
+            switch (card.getRank()) {
+                case Card.RANK_DAME:
+                    sb.append(" à la ");
+                    break;
+                case Card.RANK_AS:
+                    sb.append(" à l'");
+                    break;
+                default:
+                    sb.append(" au ");
+                    break;
+            }
+            sb.append(card.toString());
+        }
         return sb.toString();
     }
 
@@ -72,26 +86,19 @@ public class Anouncement {
     }
 
     private static Collection<Anouncement> findSquares(List<Card> hand) {
+        int[] rankCount = {0, 0, 0, 0, 0, 0, 0, 0, 0};
+        hand.forEach(c -> rankCount[c.getRank()]++);
         var announcements = new ArrayList<Anouncement>();
-        int i = 0;
-        while ((i < hand.size()) && ((hand.get(i).getColor()) == Card.COLOR_SPADE)) {   // tant que c'est du pique (couleur la + à gauche)
-            int nbrCards = 1;
-            var firstCard = hand.get(i);
-            for (int j = i + 1; j < hand.size(); j++) {
-                if ((hand.get(j).getRank()) == (firstCard.getRank())) {
-                    nbrCards++;
+        for (int rank = Card.RANK_NELL; rank <= Card.RANK_AS; rank++) {
+            if (rankCount[rank] == 4) {
+                int type = SQUARE;
+                if (rank == Card.RANK_NELL) {
+                    type = NELL_SQUARE;
+                } else if (rank == Card.RANK_BOURG) {
+                    type = BOURG_SQUARE;
                 }
+                announcements.add(new Anouncement(type, new Card(rank, Card.COLOR_SPADE)));
             }
-            if ((nbrCards == 4) && ((firstCard.getRank()) > Card.RANK_8)) {       // carré trouvé
-                if ((firstCard.getRank()) == Card.RANK_NELL)                      // cent-cinquante
-                    announcements.add(new Anouncement(Anouncement.NELL_SQUARE, firstCard));
-                else if ((firstCard.getRank()) == Card.RANK_BOURG)                // deux cents
-                    announcements.add(new Anouncement(Anouncement.BOURG_SQUARE, firstCard));
-                else                                                              // cent
-                    announcements.add(new Anouncement(Anouncement.SQUARE, firstCard));
-                System.out.println("Found suit: " + announcements.get(announcements.size()-1));
-            }
-            i++;
         }
         return announcements;
     }
@@ -113,7 +120,7 @@ public class Anouncement {
                     nbrCards = 5;
                 }
                 announcements.add(new Anouncement(nbrCards - 2, hand.get(i + nbrCards - 1)));
-                System.out.println("Found suit: " + announcements.get(announcements.size()-1));
+                System.out.println("Found suit: " + announcements.get(announcements.size() - 1));
                 i = j - 1;
             }
         }

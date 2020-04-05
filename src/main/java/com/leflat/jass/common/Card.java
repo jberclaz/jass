@@ -27,7 +27,7 @@ public class Card {
     public static final int COLOR_CLUB = 3;
 
     public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
-    public static final String[] COLOR_NAMES = {"pique", "coeur", "carreau", "trefle"};
+    public static final String[] COLOR_NAMES = {"pique", "coeur", "carreau", "trèfle"};
 
     public static final int[] VALUES = {0, 0, 0, 0, 10, 2, 3, 4, 11};
     public static final int[] VALUES_ATOUT = {0, 0, 0, 14, 10, 20, 3, 4, 11};

@@ -26,7 +26,7 @@ public class ServerTests {
     public void anouncement_test() {
         var card = new Card(Card.RANK_DAME, Card.COLOR_CLUB);
         var anouncement = new Anouncement(Anouncement.FIFTY, card);
-        assertEquals("cinquante au dame de trefle", anouncement.toString());
+        assertEquals("cinquante à la dame de trèfle", anouncement.toString());
         assertEquals(50, anouncement.getValue());
     }
 

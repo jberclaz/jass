@@ -1,11 +1,13 @@
 package com.leflat.jass.test;
 
+import com.leflat.jass.common.Anouncement;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.RemoteCommand;
 
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
@@ -53,6 +55,7 @@ public class TestClient {
         sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 3 + " Pischus" );
         receiveMessage();
 
+        /*
         sendMessage(String.valueOf(RemoteCommand.DRAW_CARD));
 
         int cardPosition = Integer.parseInt(receiveMessage()[0]);
@@ -72,6 +75,8 @@ public class TestClient {
         sendMessage(String.valueOf(RemoteCommand.CHOOSE_PARTNER));
         int partnerId = Integer.parseInt(receiveMessage()[0]);
 
+         */
+/*
         sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18");
         receiveMessage();
 
@@ -82,9 +87,6 @@ public class TestClient {
         sendMessage(String.valueOf(RemoteCommand.CHOOSE_ATOUT_SECOND));
         color = Integer.parseInt(receiveMessage()[0]);
         System.out.println("Chosen : " + color);
-
-        sendMessage(RemoteCommand.SET_ATOUT + " " + color + " 2");
-        receiveMessage();
 
         sendMessage(String.valueOf(RemoteCommand.PLAY));
         card = new Card(Integer.parseInt(receiveMessage()[0]));
@@ -101,6 +103,26 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_SCORES + " 69 156");
         receiveMessage();
+*/
+        sendMessage(RemoteCommand.SET_HAND + " 3 4 5 6 12 21 30");
+        receiveMessage();
+
+
+        sendMessage(RemoteCommand.SET_ATOUT + " " + Card.COLOR_DIAMOND + " 2");
+        receiveMessage();
+
+        sendMessage(String.valueOf(RemoteCommand.PLAY));
+        var card = new Card(Integer.parseInt(receiveMessage()[0]));
+        System.out.println(card);
+
+        sendMessage(String.valueOf(RemoteCommand.GET_ANOUNCEMENTS));
+        var answer = receiveMessage();
+        int nbr = Integer.parseInt(answer[0]);
+        for (int i=0; i<nbr; i++) {
+            var c = new Card(Integer.parseInt(answer[2+i*2]));
+            var a = new Anouncement(Integer.parseInt(answer[1+i*2]), c);
+            System.out.println(a);
+        }
     }
 
     public static void main(String[] args) {

@@ -36,6 +36,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private Plie currentPlie;
     private Card playedCard = null;
     private int atoutColor;
+    private boolean anoucementPressed = false;
 
 
     /**
@@ -206,7 +207,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private void jButtonAnounceActionPerformed(java.awt.event.ActionEvent evt) {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
 // Add your handling code here:
-        //app.findAnouncement();
+        anoucementPressed = true;
+        jButtonAnounce.setEnabled(false);
     }//GEN-LAST:event_jButtonAnounceActionPerformed
 
     /**
@@ -344,7 +346,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         this.currentPlie = currentPlie;
         this.threadToSignal = threadToSignal;
         setStatusBar("A vous de jouer ...");
-        setAnounceEnabled(true);
+        anoucementPressed = false;
+        setAnouncementEnabled(true);
         playerCanvas.setMode(JassCanvas.MODE_PLAY);
         centerCanvas.resetCards();
         centerCanvas.setMode(CanvasCenter.MODE_GAME);
@@ -432,12 +435,16 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         lastPlieCanvas.setScores(ourScore, opponentScore);
     }
 
+    @Override
+    public boolean hasPlayerAnounced() {
+        return anoucementPressed;
+    }
 
     void setStatusBar(String text) {
         statusBar.setText(text);
     }
 
-    void setAnounceEnabled(boolean b) {
+    void setAnouncementEnabled(boolean b) {
         jButtonAnounce.setEnabled(b);
     }
 

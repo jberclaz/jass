@@ -11,6 +11,7 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -127,7 +128,7 @@ public class RemoteController extends Thread {
 
     private void handleControllerMessage(String[] message) throws ExecutionControl.NotImplementedException {
         int command = Integer.parseInt(message[0]);
-        List<String> answer = Collections.emptyList();
+        List<String> answer = new ArrayList<>();
         switch (command) {
             case RemoteCommand.SET_PLAYER_INFO:
                 int playerId = Integer.parseInt(message[1]);
@@ -281,7 +282,18 @@ public class RemoteController extends Thread {
                     return;
                 }
             case RemoteCommand.GET_ANOUNCEMENTS:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var anouncements = player.getAnoucement();
+                    answer.add(String.valueOf(anouncements.size()));
+                    for (var an : anouncements) {
+                        answer.add(String.valueOf(an.getType()));
+                        answer.add(String.valueOf(an.getCard().getNumber()));
+                    }
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_ANOUNCEMENTS:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_GAME_RESULT:

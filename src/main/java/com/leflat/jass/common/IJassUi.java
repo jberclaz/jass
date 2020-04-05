@@ -38,4 +38,6 @@ public interface IJassUi {
     void setPlieOwner(int playerPosition);
 
     void setScore(int ourScore, int opponentScore);
+
+    boolean hasPlayerAnounced();
 }
