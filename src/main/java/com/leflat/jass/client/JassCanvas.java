@@ -47,6 +47,7 @@ public abstract class JassCanvas extends Canvas {
         for (int i=0; i<number; i++) {
             hand.add(Card.getBack());
         }
+        repaint();
     }
 
     public void removeCard(Card card) {
@@ -56,9 +57,11 @@ public abstract class JassCanvas extends Canvas {
 
     public void removeCard(int position) {
         hand.remove(position);
+        repaint();
     }
 
     public void removeCard() {
         removeCard(0);
+        repaint();
     }
 }

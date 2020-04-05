@@ -89,6 +89,9 @@ public class TestClient {
         sendMessage(String.valueOf(RemoteCommand.PLAY));
         card = new Card(Integer.parseInt(receiveMessage()[0]));
         System.out.println(card);
+
+        sendMessage(RemoteCommand.SET_PLAYED_CARD + " 0 35");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

@@ -100,7 +100,9 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setHand(List<Card> cards) {
-        frame.setPlayerCards(cards);
+        frame.prepareGame();
+        frame.setPlayerHand(cards);
+        frame.setOtherPlayersHands(9);
     }
 
     @Override
@@ -114,7 +116,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public Card play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection {
+    public Card play(int currentColor, int highestRank, boolean cut) {
         synchronized (controller) {
             frame.play(new Plie(currentColor, highestRank, cut), controller);
             try {
@@ -128,8 +130,8 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public void setPlayedCard(BasePlayer player, Card card) throws PlayerLeftExpection {
-
+    public void setPlayedCard(BasePlayer player, Card card) {
+        frame.setPlayedCard(card, playersPositions.get(player.getId()));
     }
 
     @Override

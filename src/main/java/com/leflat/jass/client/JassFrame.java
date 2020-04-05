@@ -14,6 +14,7 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.*;
 
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
@@ -288,30 +289,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             centerCanvas.repaint();
     }
 
-
-    // indique le nombre de cartes des adversaires / partenaire
-    public void setOpponentCards(int player, int number) {
-        /*
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-        switch (diff) {
-            case 1:
-                rightCanvas.setMode(1);
-                rightCanvas.setNbrCards(number);
-                break;
-            case 2:
-                topCanvas.setMode(1);
-                topCanvas.setNbrCards(number);
-                break;
-            case 3:
-                leftCanvas.setMode(1);
-                leftCanvas.setNbrCards(number);
-        }
-         */
-    }
-
-
     public void disconnect() {
         playerCanvas.clearHand();
         playerCanvas.setName("");
@@ -339,9 +316,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         jButtonConnect.setText("Connexion");
     }
 
-
     // attribue ses cartes aux joueur
-    public void setPlayerCards(List<Card> hand) {
+    public void setPlayerHand(List<Card> hand) {
         playerCanvas.setHand(hand);
     }
 
@@ -379,14 +355,31 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         return playedCard;
     }
 
+    @Override
+    public void setPlayedCard(Card card, int playerPosition) {
+        var canvas = getPlayerCanvas(playerPosition);
+        canvas.removeCard();
+        centerCanvas.showCard(card, playerPosition);
+    }
+
+    @Override
+    public void setOtherPlayersHands(int numberOfCards) {
+        var hand = new ArrayList<Card>();
+        for (int i=0; i<numberOfCards; i++) {
+            hand.add(new Card(Card.BACK_NUMBER));
+        }
+        leftCanvas.setHand(hand);
+        topCanvas.setHand(hand);
+        rightCanvas.setHand(hand);
+    }
+
 
     // prépare l'écran pour une nouvelle partie
-    void prepareMatch() {
+    @Override
+    public void prepareGame() {
         centerCanvas.resetCards();
-        centerCanvas.setMode(3);      // mode de jeu
-        lastPlieCanvas.setAtout(4);
-        lastPlieCanvas.repaint();
-        repaint(31);          // repaint les 5 canvas
+        centerCanvas.setMode(CanvasCenter.MODE_GAME);      // mode de jeu
+        lastPlieCanvas.hideAtout();
         setStatusBar("");
         removeLastPlie();
     }

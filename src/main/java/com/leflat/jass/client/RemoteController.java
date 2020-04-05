@@ -241,7 +241,15 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_PLAYED_CARD:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                var p = new ClientPlayer(Integer.parseInt(message[1]));
+                var card = new Card(Integer.parseInt(message[2]));
+                try {
+                    player.setPlayedCard(p, card);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.PLAY_NEXT:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_PLIE_OWNER:

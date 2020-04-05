@@ -19,7 +19,7 @@ public interface IJassUi {
 
     BasePlayer choosePartner(List<BasePlayer> players);
 
-    void setPlayerCards(List<Card> hand);
+    void setPlayerHand(List<Card> hand);
 
     int chooseAtout(boolean allowedToPass);
 
@@ -28,4 +28,10 @@ public interface IJassUi {
     void play(Plie currentPlie, Thread threadToSignal);
 
     Card getPlayedCard();
+
+    void setPlayedCard(Card card, int playerPosition);
+
+    void setOtherPlayersHands(int numberOfCards);
+
+    void prepareGame();
 }
