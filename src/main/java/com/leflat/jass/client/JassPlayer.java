@@ -149,6 +149,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
         if (!frame.hasPlayerAnounced()) {
             return Collections.emptyList();
         }
+        // TODO: handle stoeck properly (only communicated when playing the second card)
         return Anouncement.findAnouncements(playerHand);
     }
 

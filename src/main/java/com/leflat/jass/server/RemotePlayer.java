@@ -152,13 +152,13 @@ public class RemotePlayer extends BasePlayer implements IPlayer {
     public List<Anouncement> getAnoucement() throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.GET_ANOUNCEMENTS));
         var tokens = network.receiveMessage();
-        List<Anouncement> anouncements = new ArrayList<>();
+        this.anoucements.clear();
         int nbrAnouncements = Integer.parseInt(tokens[0]);
         for (int i = 0; i < nbrAnouncements; i++) {
             var card = new Card(Integer.parseInt(tokens[i * 2 + 2]));
-            anouncements.add(new Anouncement(Integer.parseInt(tokens[i * 2 + 1]), card));
+            this.anoucements.add(new Anouncement(Integer.parseInt(tokens[i * 2 + 1]), card));
         }
-        return anouncements;
+        return this.anoucements;
     }
 
     @Override

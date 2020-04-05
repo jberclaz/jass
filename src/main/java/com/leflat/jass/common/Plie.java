@@ -21,4 +21,67 @@ public class Plie {
         this.highest = highestRank;
         this.cut = cut;
     }
+
+    public void playCard(Card card, int atout, BasePlayer player) throws BrokenRuleException {
+        if (card.getColor() == atout) {
+            if (color != atout) { // si on coupe
+                if (cut) { // already cut
+                    switch (card.getRank()) { // surcoupe
+                        case Card.RANK_NELL:  // si on joue le nell
+                            if (highest == Card.RANK_BOURG) {
+                                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+                            }
+                            highest = card.getRank();
+                            owner = player;
+                            break;
+                        case Card.RANK_BOURG:  // si on joue le bourg
+                            highest = card.getRank();
+                            owner = player;
+                            break;
+                        default: // sinon
+                            if ((highest == Card.RANK_BOURG) ||
+                                    (highest == Card.RANK_NELL) ||
+                                    (card.getRank() < highest)) {
+                                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+                            }
+                            highest = card.getRank();
+                            owner = player;
+                            break;
+                    }
+                    // else souscoupe => nothing to do
+                } else {  // first to cut
+                    cut = true;
+                    highest = card.getRank();
+                    owner = player;
+                }
+            } else {        // si c'est joué atout
+                switch (card.getRank()) {
+                    case Card.RANK_NELL: // si on joue le nell
+                        if (highest != Card.RANK_BOURG) {
+                            highest = card.getRank();
+                            owner = player;
+                        }
+                        break;
+                    case Card.RANK_BOURG:  // si on joue le bourg
+                        highest = card.getRank();
+                        owner = player;
+                        break;
+                    default: // sinon
+                        if ((highest != Card.RANK_BOURG) &&
+                                (highest != Card.RANK_NELL) &&
+                                (card.getRank() > highest)) {
+                            highest = card.getRank();
+                            owner = player;
+                        }
+                        break;
+                }
+            }
+        } else if (card.getColor() == color) {
+            if ((card.getRank() > highest) && !cut) {
+                highest = card.getRank();
+                owner = player;
+            }
+        }
+        score += card.getValue(atout); // augmente le score de la plie
+    }
 }

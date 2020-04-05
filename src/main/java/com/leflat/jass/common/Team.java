@@ -43,6 +43,7 @@ public class Team {
 
     public void addPlayer(BasePlayer p) {
         players.add(p);
+        p.setTeam(this);
     }
 
     public void addAnnoucementScore(List<Anouncement> anouncements, int atout) {

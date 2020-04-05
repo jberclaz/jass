@@ -7,8 +7,8 @@ public abstract class BasePlayer {
     // Variables
     protected String name;
     protected int id;
-    protected int team;
-    protected List<Anouncement> anounces = new ArrayList<>(); // annonces
+    protected Team team;
+    protected List<Anouncement> anoucements = new ArrayList<>(); // annonces
 
     // Constructeur
     public BasePlayer(int id) {
@@ -26,24 +26,24 @@ public abstract class BasePlayer {
 
     public void setName(String name) { this.name = name; }
 
-    public int getTeam() {
+    public Team getTeam() {
         return team;
     }
 
-    public void setTeam(int team) {
+    public void setTeam(Team team) {
         this.team = team;
     }
 
-    public void addAnouncement(int type, Card card) {
-        anounces.add(new Anouncement(type, card));
+    public void addAnouncement(Anouncement a) {
+        anoucements.add(a);
     }
 
     public List<Anouncement> getAnouncements() {
-        return anounces;
+        return anoucements;
     }
 
     public void clearAnouncement() {
-        anounces.clear();
+        anoucements.clear();
     }
 
     public String toString() { return name; }

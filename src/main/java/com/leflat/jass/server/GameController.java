@@ -10,6 +10,7 @@ public class GameController extends Thread {
     private List<RemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
     private int atout;
+    private Plie currentPlie;
 
     public GameController(int id) {
         this.gameId = id;
@@ -67,15 +68,14 @@ public class GameController extends Thread {
                     System.err.println("Player " + ee.getPlayerId() + " also left.");
                 }
             }
+        } catch (BrokenRuleException e) {
+            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
         }
 
         System.out.println("Game " + gameId + " ended");
     }
 
-    private void playOneGame() throws PlayerLeftExpection {
-        /* randomly choose the cards and send them */
-        // celui qui commence la partie et fait atout
-
+    private void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
         int firstToPlay = drawCards();
         int nextPlayer;
         do {
@@ -90,25 +90,23 @@ public class GameController extends Thread {
 
             if (nextPlayer >= 0) {    // si personne n'a gagné : on continue normalement
                 // 5 de der
-                teams[currentPlie..getTeam()].addScore(atout == Card.COLOR_SPADE ? 10 : 5);
+                currentPlie.owner.getTeam().addScore(atout == Card.COLOR_SPADE ? 10 : 5);
 
                 for (var p : players) {   // envoie le score
-                    p.sendScore(teams[p.getTeam()].getScore(), teams[(p.getTeam() + 1) % 2].getScore());
+                    var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
+                    p.setScores(p.getTeam().getScore(), opponentTeam.getScore());
                 }
 
                 /* waits a few seconds so that the players can see the last
                  * cards and the score */
-                try {
-                    Thread.sleep(2000);
-                } catch (InterruptedException ignored) {
-                }
+                waitSec(2);
 
                 firstToPlay = (firstToPlay + 1) % 4;
                 drawCards();
             } else { // si une équipe a gagné
                 for (var p : players) {   // envoie le score
-                    p.sendScore(teams[p.getTeam()].getScore(),
-                            teams[(p.getTeam() + 1) % 2].getScore());
+                    var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
+                    p.setScores(p.getTeam().getScore(), opponentTeam.getScore());
                 }
             }
 
@@ -116,19 +114,16 @@ public class GameController extends Thread {
         } while (!teams[0].hasWon() && !teams[1].hasWon());
 
         // Sends the winner to all player
-        int winner = teams[0].hasWon() ? 0 : 1;
+        var winners = teams[0].hasWon() ? teams[0] : teams[1];
         for (var p : players) {
-            p.sendWinner(winner, teams[winner].getPlayer(0).getId(), teams[winner].getPlayer(1).getId());
+            p.setGameResult(winners);
         }
 
         /* waits a few seconds so that the players can see all the cards */
-        try {
-            Thread.sleep(4000);
-        } catch (InterruptedException ignored) {
-        }
+        waitSec(4);
     }
 
-    int playPlie(int startingPlayer) throws PlayerLeftExpection {
+    int playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
         var player = players.get(startingPlayer);
         var cardPlayed = player.play(-1, -1, false);
         var currentPlie = new Plie(cardPlayed, atout, player);
@@ -137,29 +132,26 @@ public class GameController extends Thread {
             players.get((startingPlayer + i) % 4).setPlayedCard(player, cardPlayed);
         }
 
-        var announcements = player.getAnoucement();
-        processAnnouncements(player, announcements);
+        player.getAnoucement();
 
         for (int i = 1; i < 4; i++) {     // demande de jouer
             player = players.get((startingPlayer + i) % 4);
+            // TODO: replace arguments with currentPlie
             cardPlayed = player.play(currentPlie.highest, currentPlie.color, currentPlie.cut);
 
-            var announcement = player.getAnoucement();
-            processAnnouncements(player, announcement);
+            player.getAnoucement();
 
             for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
                 players.get((startingPlayer + i + j) % 4).setPlayedCard(player, cardPlayed);
             }
-            processCard(cardPlayed, (startingPlayer + i) % 4, nextAnswer[1]);
+
+            currentPlie.playCard(cardPlayed, atout, player);
         }
 
         /* now everybody has played ... */
 
         /* waits a few seconds so that the players can see all the cards */
-        try {
-            Thread.sleep(1500);
-        } catch (InterruptedException ignored) {
-        }
+        waitSec(1.5f);
 
         // communique qui a pris la plie
         for (var p : players) {
@@ -167,17 +159,71 @@ public class GameController extends Thread {
         }
 
         // choix et comptabilisation des annonces
-        handleAllAnnoucements();
+        processAnoucements();
 
         // comptabilisation des points
-        player = currentPlie.owner;
-        teams[player.getTeam()].addScore(atout == Card.COLOR_SPADE ? currentPlie.score * 2 : currentPlie.score);
+        currentPlie.owner.getTeam().addScore(atout == Card.COLOR_SPADE ? currentPlie.score * 2 : currentPlie.score);
 
         if (teams[0].hasWon() || teams[1].hasWon()) {
             return -1;
         }
 
-        return currentPlie.owner;
+        return getPlayerPosition(currentPlie.owner);
+    }
+
+    void processAnoucements() throws PlayerLeftExpection {
+        BasePlayer playerWithStoeck = null;
+        int highestAnouncement = -1;
+        int highestRank = Card.RANK_6;
+        Team anouncingTeam = null;  // joueur qui a la plus grosse annonce
+        for (var p : players) {
+            for (var anouncement : p.getAnouncements()) {
+                System.out.println(p + " announce : " + anouncement);
+                if (anouncement.getType() == Anouncement.STOECK) {
+                    playerWithStoeck = p;
+                    continue;
+                }
+                if (anouncement.getType() > highestAnouncement) {
+                    // plus grosse annonce
+                    anouncingTeam = p.getTeam();
+                    highestAnouncement = anouncement.getType();
+                    highestRank = anouncement.getCard().getRank();
+                } else if ((anouncement.getType() == highestAnouncement) &&
+                        (anouncement.getCard().getRank() > highestRank)) {
+                    // même annonce plus haute
+                    anouncingTeam = p.getTeam();
+                    highestRank = anouncement.getCard().getRank();
+                } else if ((anouncement.getType() == highestAnouncement) &&
+                        (anouncement.getCard().getRank() == highestRank) &&
+                        (anouncement.getCard().getColor() == atout)) {
+                    // meme annonce, meme hauteur, mais atout
+                    anouncingTeam = p.getTeam();
+                }
+            }
+        }
+
+        if (anouncingTeam != null) { // there are announces
+            for (var p : players) {
+                if (p.getAnoucement().isEmpty()) {
+                    continue;
+                }
+                if ((p.getTeam() == anouncingTeam)) {
+                    anouncingTeam.addAnnoucementScore(p.getAnouncements(), atout);
+                    for (var p2 : players) {
+                        p2.setAnouncement(p, p.getAnouncements());
+                    }
+                }
+                p.clearAnouncement();
+            }
+        } else if (playerWithStoeck != null) { // no announce but stock
+            for (var p : players) {
+                p.setAnouncement(playerWithStoeck, Collections.singletonList(new Anouncement(Anouncement.STOECK, null)));
+            }
+            int stoeckScore = atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
+            // add stock points
+            playerWithStoeck.getTeam().addScore(stoeckScore);
+            playerWithStoeck.clearAnouncement();
+        }
     }
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
@@ -245,10 +291,7 @@ public class GameController extends Thread {
                 }
             }
             // delay to allow players to watch cards
-            try {
-                Thread.sleep(2000);
-            } catch (InterruptedException ignored) {
-            }
+            waitSec(2);
 
             // détermine les équipes
             drawingSuccessful = calculateTeam(cardsDrawn);
@@ -287,10 +330,8 @@ public class GameController extends Thread {
 
         for (BasePlayer p : players) {
             if (p == lowest || p == highest) {
-                p.setTeam(0);
                 teams[0].addPlayer(p);
             } else {
-                p.setTeam(1);
                 teams[1].addPlayer(p);
             }
         }
@@ -302,17 +343,15 @@ public class GameController extends Thread {
         int partnerId = players.get(0).choosePartner();    // demande de choisir le partenaire
         for (var p : players) {
             if (p.getId() == partnerId || p == players.get(0)) {
-                p.setTeam(0);
                 teams[0].addPlayer(p);
             } else {
-                p.setTeam(1);
                 teams[1].addPlayer(p);
             }
         }
     }
 
     // distribue les cartes
-    private List<Card> shuffleCards() {
+    private static List<Card> shuffleCards() {
         List<Card> cards = new ArrayList<>();
         for (int i = 0; i < 36; i++) {
             cards.add(new Card(i));
@@ -337,6 +376,15 @@ public class GameController extends Thread {
         return null;
     }
 
+    private int getPlayerPosition(BasePlayer player) {
+        for (int i = 0; i < players.size(); i++) {
+            if (players.get(i).getId() == player.getId()) {
+                return i;
+            }
+        }
+        throw new IndexOutOfBoundsException("Player " + player.getId() + " not found");
+    }
+
     private void reorderPlayers() {
         var tempList = List.copyOf(players);
         players.clear();
@@ -344,5 +392,12 @@ public class GameController extends Thread {
         players.add(tempList.get(teams[1].getPlayer(0).getId()));
         players.add(tempList.get(teams[0].getPlayer(1).getId()));
         players.add(tempList.get(teams[1].getPlayer(1).getId()));
+    }
+
+    private static void waitSec(float seconds) {
+        try {
+            Thread.sleep((long) (seconds * 1000));
+        } catch (InterruptedException ignored) {
+        }
     }
 }
