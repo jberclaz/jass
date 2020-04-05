@@ -2,6 +2,7 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.common.Team;
 import jdk.jshell.spi.ExecutionControl;
 
 import java.io.BufferedReader;
@@ -306,10 +307,20 @@ public class RemoteController extends Thread {
                     player.setAnouncement(p, anouncements);
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     playerLeftExpection.printStackTrace();
+                    return;
                 }
                 break;
             case RemoteCommand.SET_GAME_RESULT:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var winningTeam = new Team(Integer.parseInt(message[1]));
+                    winningTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[2])));
+                    winningTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[3])));
+                    player.setGameResult(winningTeam);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.GET_NEW_GAME:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAYER_LEFT:

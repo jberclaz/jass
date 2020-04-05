@@ -376,7 +376,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         rightCanvas.setHand(hand);
     }
 
-
     // prépare l'écran pour une nouvelle partie
     @Override
     public void prepareGame() {
@@ -385,33 +384,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         lastPlieCanvas.hideAtout();
         setStatusBar("");
         removeLastPlie();
-    }
-
-    // affiche une carte jouée
-    void showPlayedCard(int player, int number) {
-        /*
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-        centerCanvas.showCard(new Card(number), diff);
-        switch (diff) {
-            case 1:
-                rightCanvas.removeCard();
-                rightCanvas.repaint();
-                break;
-            case 2:
-                topCanvas.removeCard();
-                topCanvas.repaint();
-                break;
-            case 3:
-                leftCanvas.removeCard();
-                leftCanvas.repaint();
-        }
-        centerCanvas.repaint();
-        // TODO: fix
-        //statusBar.setText(app.players[player].getFirstName() + " a joué...");
-
-         */
     }
 
     // ramasse la plie
@@ -443,6 +415,19 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     @Override
     public void displayStatusMessage(String message) {
         setStatusBar(message);
+    }
+
+    @Override
+    public void displayGameResult(Team winningTeam) {
+        centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
+        playerCanvas.setMode(JassCanvas.MODE_STATIC);
+        DialogInfo diw = new DialogInfo(this, false);
+        diw.setLocationRelativeTo(this);
+        diw.setText(0, "L'équipe de");
+        diw.setText(1, winningTeam.getPlayer(0).getName() + " & " + winningTeam.getPlayer(1).getName());
+        diw.setText(2, "a gagné la partie!");
+        setStatusBar("Partie terminée");
+        diw.setVisible(true);
     }
 
     void setStatusBar(String text) {

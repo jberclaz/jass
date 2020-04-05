@@ -42,4 +42,6 @@ public interface IJassUi {
     boolean hasPlayerAnounced();
 
     void displayStatusMessage(String message);
+
+    void displayGameResult(Team winningTeam);
 }

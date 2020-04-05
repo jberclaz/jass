@@ -6,7 +6,7 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.*;
 import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.server.Team;
+import com.leflat.jass.common.Team;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -80,7 +80,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     public void setPlayersOrder(List<Integer> playerIds) {
         int ownPosition = playerIds.indexOf(id);
         playersPositions.clear();
-        for (int i=0; i<playerIds.size(); i++) {
+        for (int i = 0; i < playerIds.size(); i++) {
             int playerId = playerIds.get(i);
             playersPositions.put(playerId, (i - ownPosition + 4) % 4);
         }
@@ -159,15 +159,19 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
         StringBuilder sb = new StringBuilder(players.get(player.getId()).getName());
         sb.append(" annonce ").append(anouncements.get(0));
-        for (int i=1; i<anouncements.size(); i++) {
+        for (int i = 1; i < anouncements.size(); i++) {
             sb.append(" et ").append(anouncements.get(i));
         }
         frame.displayStatusMessage(sb.toString());
     }
 
     @Override
-    public void setGameResult(Team winningTeam) throws PlayerLeftExpection {
-
+    public void setGameResult(Team winningTeam) {
+        var p0 = winningTeam.getPlayer(0);
+        p0.setName(players.get(p0.getId()).getName());
+        var p1 = winningTeam.getPlayer(1);
+        p1.setName(players.get(p1.getId()).getName());
+        frame.displayGameResult(winningTeam);
     }
 
     @Override

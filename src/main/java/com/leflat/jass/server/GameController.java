@@ -2,6 +2,7 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.common.Card;
+import com.leflat.jass.common.Team;
 import com.leflat.jass.common.TeamSelectionMethod;
 
 import java.util.*;

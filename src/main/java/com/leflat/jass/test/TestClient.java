@@ -126,6 +126,9 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_ANOUNCEMENTS + " 2 2 1 7 0 0");
         receiveMessage();
+
+        sendMessage(RemoteCommand.SET_GAME_RESULT + " 0 0 2");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

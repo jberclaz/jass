@@ -1,8 +1,4 @@
-package com.leflat.jass.server;
-
-import com.leflat.jass.common.Anouncement;
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.common.Card;
+package com.leflat.jass.common;
 
 import java.util.ArrayList;
 import java.util.List;
