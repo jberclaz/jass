@@ -4,9 +4,6 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.common.Team;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -180,8 +177,9 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public void playerLeft(BasePlayer player) throws PlayerLeftExpection {
-
+    public void playerLeft(BasePlayer player) {
+        frame.canceledGame(playersPositions.get(player.getId()));
+        controller.disconnect();
     }
 
     @Override

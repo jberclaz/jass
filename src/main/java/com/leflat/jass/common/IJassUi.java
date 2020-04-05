@@ -46,4 +46,6 @@ public interface IJassUi {
     void displayGameResult(Team winningTeam);
 
     boolean getNewGame();
+
+    void canceledGame(int leavingPlayerPosition);
 }

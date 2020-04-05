@@ -129,6 +129,15 @@ public class TestClient {
 
         sendMessage(String.valueOf(RemoteCommand.GET_NEW_GAME));
         receiveMessage();
+
+        sendMessage(RemoteCommand.PLAYER_LEFT + " 3");
+        receiveMessage();
+
+        try {
+            Thread.sleep(3000);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 
     public static void main(String[] args) {

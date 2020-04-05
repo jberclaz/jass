@@ -292,27 +292,18 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     public void disconnect() {
-        playerCanvas.clearHand();
-        playerCanvas.setName("");
-        playerCanvas.setAtout(false);
-        leftCanvas.clearHand();
-        leftCanvas.setMode(1);
-        leftCanvas.setName("");
-        leftCanvas.setAtout(false);
-        rightCanvas.clearHand();
-        rightCanvas.setMode(1);
-        rightCanvas.setName("");
-        rightCanvas.setAtout(false);
-        topCanvas.clearHand();
-        topCanvas.setMode(1);
-        topCanvas.setName("");
-        topCanvas.setAtout(false);
-        centerCanvas.setMode(0);
-        centerCanvas.repaint();
+        for (int i=0; i<4; i++) {
+            var canvas = getPlayerCanvas(i);
+            canvas.clearHand();
+            canvas.setName("");
+            canvas.setAtout(false);
+            canvas.setMode(JassCanvas.MODE_STATIC);
+        }
+        centerCanvas.resetCards();
+        centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
         removeLastPlie();
-        lastPlieCanvas.setAtout(4);
+        lastPlieCanvas.hideAtout();
         setScore(0, 0);
-        repaint(31);
 
         statusBar.setText("Déconnexion");
         jButtonConnect.setText("Connexion");
@@ -436,6 +427,18 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         dnp.setLocationRelativeTo(this);
         dnp.setVisible(true);
         return dnp.getNewPart();
+    }
+
+    @Override
+    public void canceledGame(int leavingPlayerPosition) {
+        var di = new DialogInfo(this, false);
+        di.setLocationRelativeTo(this);
+        var canvas = getPlayerCanvas(leavingPlayerPosition);
+        di.setText(0,  canvas.getName() + " a quitté le jeu.");
+        di.setText(1, "La partie est interrompue.");
+        setStatusBar("Partie interrompue");
+        disconnect();
+        di.setVisible(true);
     }
 
     void setStatusBar(String text) {

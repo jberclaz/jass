@@ -64,7 +64,7 @@ public class RemoteController extends Thread {
     }
 
     public boolean isConnected() {
-        return clientSocket != null && clientSocket.isConnected();
+        return clientSocket != null && !clientSocket.isClosed();
     }
 
     public void sendRawMessage(String message) {
@@ -331,7 +331,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.PLAYER_LEFT:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var p = new ClientPlayer(Integer.parseInt(message[1]));
+                    player.playerLeft(p);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             default:
                 System.err.println("Unknown command " + command);
         }
