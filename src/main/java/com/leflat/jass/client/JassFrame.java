@@ -440,6 +440,11 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         return anoucementPressed;
     }
 
+    @Override
+    public void displayStatusMessage(String message) {
+        setStatusBar(message);
+    }
+
     void setStatusBar(String text) {
         statusBar.setText(text);
     }

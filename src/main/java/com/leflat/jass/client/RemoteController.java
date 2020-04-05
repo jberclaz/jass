@@ -295,7 +295,19 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_ANOUNCEMENTS:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var p = new ClientPlayer(Integer.parseInt(message[1]));
+                    int numberAnoucements = Integer.parseInt(message[2]);
+                    List<Anouncement> anouncements = new ArrayList<>();
+                    for (int i = 0; i < numberAnoucements; i++) {
+                        var c = new Card(Integer.parseInt(message[4 + i * 2]));
+                        anouncements.add(new Anouncement(Integer.parseInt(message[3 + i * 2]), c));
+                    }
+                    player.setAnouncement(p, anouncements);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                }
+                break;
             case RemoteCommand.SET_GAME_RESULT:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.GET_NEW_GAME:

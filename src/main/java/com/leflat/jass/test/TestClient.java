@@ -123,6 +123,9 @@ public class TestClient {
             var a = new Anouncement(Integer.parseInt(answer[1+i*2]), c);
             System.out.println(a);
         }
+
+        sendMessage(RemoteCommand.SET_ANOUNCEMENTS + " 2 2 1 7 0 0");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

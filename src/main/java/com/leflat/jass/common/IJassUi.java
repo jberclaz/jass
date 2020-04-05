@@ -40,4 +40,6 @@ public interface IJassUi {
     void setScore(int ourScore, int opponentScore);
 
     boolean hasPlayerAnounced();
+
+    void displayStatusMessage(String message);
 }

@@ -156,8 +156,13 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) throws PlayerLeftExpection {
-
+    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
+        StringBuilder sb = new StringBuilder(players.get(player.getId()).getName());
+        sb.append(" annonce ").append(anouncements.get(0));
+        for (int i=1; i<anouncements.size(); i++) {
+            sb.append(" et ").append(anouncements.get(i));
+        }
+        frame.displayStatusMessage(sb.toString());
     }
 
     @Override
