@@ -44,4 +44,6 @@ public interface IJassUi {
     void displayStatusMessage(String message);
 
     void displayGameResult(Team winningTeam);
+
+    boolean getNewGame();
 }

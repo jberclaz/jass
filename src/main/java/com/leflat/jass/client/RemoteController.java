@@ -322,7 +322,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.GET_NEW_GAME:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    boolean newGame = player.getNewGame();
+                    answer = Collections.singletonList(newGame ? "1" : "0");
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.PLAYER_LEFT:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             default:

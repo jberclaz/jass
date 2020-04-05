@@ -175,8 +175,8 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public boolean getNewGame() throws PlayerLeftExpection {
-        return false;
+    public boolean getNewGame() {
+        return frame.getNewGame();
     }
 
     @Override

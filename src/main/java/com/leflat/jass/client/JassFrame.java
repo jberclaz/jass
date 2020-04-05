@@ -430,6 +430,14 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         diw.setVisible(true);
     }
 
+    @Override
+    public boolean getNewGame() {
+        DialogNewPart dnp = new DialogNewPart(this, true);
+        dnp.setLocationRelativeTo(this);
+        dnp.setVisible(true);
+        return dnp.getNewPart();
+    }
+
     void setStatusBar(String text) {
         statusBar.setText(text);
     }
