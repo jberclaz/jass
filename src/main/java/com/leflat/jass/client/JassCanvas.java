@@ -64,4 +64,6 @@ public abstract class JassCanvas extends Canvas {
         removeCard(0);
         repaint();
     }
+
+    public String getName() { return name; }
 }

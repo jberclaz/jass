@@ -365,7 +365,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     @Override
     public void setOtherPlayersHands(int numberOfCards) {
         var hand = new ArrayList<Card>();
-        for (int i=0; i<numberOfCards; i++) {
+        for (int i = 0; i < numberOfCards; i++) {
             hand.add(new Card(Card.BACK_NUMBER));
         }
         leftCanvas.setHand(hand);
@@ -412,17 +412,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     // ramasse la plie
-    void pickUpPlie(String player) {
-        statusBar.setText(player + " a pris la plie");
-        lastPlieCanvas.setLastPlie(centerCanvas.getShownCards());
-        for (int i = 0; i < 4; i++) {
-            System.out.println(i);
-            // TODO: fix
-            //lastPlieCanvas.cards[i] = playerCanvas.cards[centerCanvas.cardsChoosen[i]];
+    @Override
+    public void setPlieOwner(int playerPosition) {
+        if (playerPosition == 0) {
+            setStatusBar("Vous avez pris la plie");
+        } else {
+            statusBar.setText(getPlayerCanvas(playerPosition).getName() + " a pris la plie");
         }
+        lastPlieCanvas.setLastPlie(centerCanvas.getShownCards());
         centerCanvas.resetCards();
-        lastPlieCanvas.repaint();
-        centerCanvas.repaint();
     }
 
     void removeLastPlie() {

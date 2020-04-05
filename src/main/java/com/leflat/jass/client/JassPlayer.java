@@ -136,7 +136,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setPlieOwner(BasePlayer player) throws PlayerLeftExpection {
-
+        frame.setPlieOwner(playersPositions.get(player.getId()));
     }
 
     @Override

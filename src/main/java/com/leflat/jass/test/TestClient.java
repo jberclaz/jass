@@ -95,6 +95,9 @@ public class TestClient {
 
         sendMessage(RemoteCommand.PLAY_NEXT + " 3 1 0");
         receiveMessage();
+
+        sendMessage(RemoteCommand.SET_PLIE_OWNER + " 3");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

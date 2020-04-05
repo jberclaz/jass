@@ -34,4 +34,6 @@ public interface IJassUi {
     void setOtherPlayersHands(int numberOfCards);
 
     void prepareGame();
+
+    void setPlieOwner(int playerPosition);
 }

@@ -222,9 +222,9 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_ATOUT:
-                int atout = Integer.parseInt(message[1]);
-                var firstToPlay = new ClientPlayer(Integer.parseInt(message[2]));
                 try {
+                    int atout = Integer.parseInt(message[1]);
+                    var firstToPlay = new ClientPlayer(Integer.parseInt(message[2]));
                     player.setAtout(atout, firstToPlay);
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     playerLeftExpection.printStackTrace();
@@ -241,9 +241,9 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_PLAYED_CARD:
-                var p = new ClientPlayer(Integer.parseInt(message[1]));
-                var card = new Card(Integer.parseInt(message[2]));
                 try {
+                    var p = new ClientPlayer(Integer.parseInt(message[1]));
+                    var card = new Card(Integer.parseInt(message[2]));
                     player.setPlayedCard(p, card);
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     playerLeftExpection.printStackTrace();
@@ -263,7 +263,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_PLIE_OWNER:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var pl = new ClientPlayer(Integer.parseInt(message[1]));
+                    player.setPlieOwner(pl);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_SCORES:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.GET_ANOUNCEMENTS:
