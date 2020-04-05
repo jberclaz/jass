@@ -32,6 +32,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private IRemotePlayer myself;
     private Thread threadToSignal = null;
     private int drawnCardPosition = -1;
+    private Plie currentPlie;
+    private Card playedCard = null;
+    private int atoutColor;
 
 
     /**
@@ -229,38 +232,32 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
 
     void playerCanvas_mouseClicked(MouseEvent e) {
-        /*
-        if (playerCanvas.getMode() == 0) {
+        playedCard = playerCanvas.getCard(e.getX(), e.getY());
+        if (playedCard == null) {
             return;
         }
-        var card = playerCanvas.getCard(e.getX(), e.getY());
-        if (card == null) {
-            return;
-        }
-        int res = app.playCard(playerCanvas.getMode(), card);
-        switch (res) {
-            case 0:  // jouer la carte
-                jButtonAnounce.setEnabled(false);
-                setStatusBar(""); // remove "a vous de..."
-                centerCanvas.showCard(card, 0); //cardsChoosen[0] = playedCard;
-                playerCanvas.setMode(0);
-                playerCanvas.removeCard(card);
-                // TODO: fix
-                //app.hand[i] = 37;
-                repaint(17);
 
-                // sends the card to the server
-                app.sendCard(card.getNumber(), card.getValue(app.getAtout()));
-                break;
-            case -1: // suivre
-                System.out.println("Il faut suivre !!");
-                break;
-            case -2: // sous-couper
-                System.out.println("Vous ne pouvez pas sous-couper!!");
-                break;
+        int decision = Rules.canPlay(playedCard, currentPlie, playerCanvas.getHand(), atoutColor);
+        switch (decision) {
+            case Rules.RULES_MUST_FOLLOW:
+                playedCard = null;
+                statusBar.setText("Il faut suivre!");
+                return;
+            case Rules.RULES_CANNOT_UNDERCUT:
+                playedCard = null;
+                statusBar.setText("Vous ne pouvez pas sous-couper!");
+                return;
         }
 
-         */
+        jButtonAnounce.setEnabled(false);
+        setStatusBar("");
+        centerCanvas.showCard(playedCard, 0);
+        playerCanvas.setMode(JassCanvas.MODE_STATIC);
+        playerCanvas.removeCard(playedCard);
+        assert threadToSignal != null;
+        synchronized (threadToSignal) {
+            threadToSignal.notify();
+        }
     }
 
     void centerCanvas_mouseClicked(MouseEvent e) {
@@ -358,11 +355,28 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
+        atoutColor = atout;
         lastPlieCanvas.setAtout(atout);
-        for (int i=0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             var canvas = getPlayerCanvas(i);
             canvas.setAtout(i == positionOfPlayerToChooseAtout);
         }
+    }
+
+    @Override
+    public void play(Plie currentPlie, Thread threadToSignal) {
+        this.currentPlie = currentPlie;
+        this.threadToSignal = threadToSignal;
+        setStatusBar("A vous de jouer ...");
+        setAnounceEnabled(true);
+        playerCanvas.setMode(JassCanvas.MODE_PLAY);
+        centerCanvas.resetCards();
+        centerCanvas.setMode(CanvasCenter.MODE_GAME);
+    }
+
+    @Override
+    public Card getPlayedCard() {
+        return playedCard;
     }
 
 

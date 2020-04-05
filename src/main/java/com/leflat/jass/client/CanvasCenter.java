@@ -54,10 +54,12 @@ public class CanvasCenter extends Canvas {
     public void resetCards() {
         drawnCards.clear();
         shownCards.clear();
+        repaint();
     }
 
     public void showCard(Card card, int player) {
         shownCards.put(player, card);
+        repaint();
     }
 
     public Collection<Card> getShownCards() {

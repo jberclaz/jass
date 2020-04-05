@@ -104,7 +104,7 @@ public class RemotePlayer extends BasePlayer implements IPlayer {
     }
 
     @Override
-    public void play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection {
+    public Card play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection {
         if (currentColor < 0) {
             network.sendMessage(String.valueOf(RemoteCommand.PLAY));
         } else {
@@ -115,7 +115,8 @@ public class RemotePlayer extends BasePlayer implements IPlayer {
             message.add(String.valueOf(cut ? 1 : 0));
             network.sendMessage(message);
         }
-        network.receiveMessage();
+        var cardNumber = Integer.parseInt(network.receiveMessage()[0]);
+        return new Card(cardNumber);
     }
 
     @Override

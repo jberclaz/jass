@@ -109,13 +109,22 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
+    public void setAtout(int color, BasePlayer firstToPlay) {
         frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
     }
 
     @Override
-    public void play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection {
+    public Card play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection {
+        synchronized (controller) {
+            frame.play(new Plie(currentColor, highestRank, cut), controller);
+            try {
+                controller.wait();
 
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        return frame.getPlayedCard();
     }
 
     @Override

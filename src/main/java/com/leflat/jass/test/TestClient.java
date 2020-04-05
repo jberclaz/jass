@@ -85,6 +85,10 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_ATOUT + " " + color + " 2");
         receiveMessage();
+
+        sendMessage(String.valueOf(RemoteCommand.PLAY));
+        card = new Card(Integer.parseInt(receiveMessage()[0]));
+        System.out.println(card);
     }
 
     public static void main(String[] args) {

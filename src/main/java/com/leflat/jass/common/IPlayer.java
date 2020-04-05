@@ -26,7 +26,7 @@ public interface IPlayer {
 
     void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection;
 
-    void play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection;
+    Card play(int currentColor, int highestRank, boolean cut) throws PlayerLeftExpection;
 
     void setPlayedCard(BasePlayer player, Card card) throws PlayerLeftExpection;
 

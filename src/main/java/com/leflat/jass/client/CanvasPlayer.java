@@ -15,6 +15,8 @@ import com.leflat.jass.common.Card;
 
 import java.awt.*;
 
+import java.util.List;
+
 public class CanvasPlayer extends JassCanvas {
     private static final int X_STEP = 35;
 
@@ -38,6 +40,9 @@ public class CanvasPlayer extends JassCanvas {
     }
 
     public Card getCard(int x, int y) {
+        if (mode != JassCanvas.MODE_PLAY) {
+            return null;
+        }
         if (y < 20) {
             return null;
         }
@@ -54,5 +59,9 @@ public class CanvasPlayer extends JassCanvas {
 
     private int getCardsWidth() {
         return CardImages.IMG_WIDTH + (hand.size() - 1) * X_STEP;
+    }
+
+    public List<Card> getHand() {
+        return hand;
     }
 }

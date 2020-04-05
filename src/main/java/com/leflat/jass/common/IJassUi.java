@@ -24,4 +24,8 @@ public interface IJassUi {
     int chooseAtout(boolean allowedToPass);
 
     void setAtout(int atout, int positionOfPlayerToChooseAtout);
+
+    void play(Plie currentPlie, Thread threadToSignal);
+
+    Card getPlayedCard();
 }

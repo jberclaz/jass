@@ -232,7 +232,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.PLAY:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    var card = player.play(-1, -1, false);
+                    answer = Collections.singletonList(String.valueOf(card.getNumber()));
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.SET_PLAYED_CARD:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAY_NEXT:

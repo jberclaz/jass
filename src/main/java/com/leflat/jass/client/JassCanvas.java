@@ -51,6 +51,7 @@ public abstract class JassCanvas extends Canvas {
 
     public void removeCard(Card card) {
         hand.remove(card);
+        repaint();
     }
 
     public void removeCard(int position) {
