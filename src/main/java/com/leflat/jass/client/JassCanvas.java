@@ -34,6 +34,7 @@ public abstract class JassCanvas extends Canvas {
     public void setHand(List<Card> hand) {
         clearHand();
         this.hand.addAll(hand);
+        repaint();
     }
 
     public void clearHand() {

@@ -26,7 +26,7 @@ public class CanvasTop extends JassCanvas {
 
         int w = (d.width - 36 - hand.size() * X_STEP) / 2;
         for (int i = 0; i < hand.size(); i++) {
-            g.drawImage(CardImages.getInstance().getBackImage(), w + X_STEP * i, 20, this);
+            g.drawImage(CardImages.getInstance().getImage(hand.get(i)), w + X_STEP * i, 20, this);
         }
 
         g.drawString(name, 30, 15);

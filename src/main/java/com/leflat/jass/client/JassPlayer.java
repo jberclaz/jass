@@ -10,25 +10,33 @@ import com.leflat.jass.server.Team;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.locks.ReentrantLock;
+import java.util.Random;
 
 public class JassPlayer implements IPlayer, IRemotePlayer {
     private RemoteController controller;
     private IJassUi frame;
     private int id;
+    private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
+
 
     public JassPlayer() {
         controller = new RemoteController(this);
         frame = new JassFrame(this);
         frame.showUi(true);
+
+        // TODO: remove (DEBUG)
+        Random rnd = new Random();
+        connect(String.valueOf(rnd.nextInt(100)), "localhost", 0);
     }
 
     @Override
     public void setPlayerInfo(BasePlayer player) {
-        players.put(player.getId(), player);
         try {
-            frame.setPlayer(player, player.getId());
+            var relativePosition = getInitialRelativePosition(player);
+            playersPositions.put(player.getId(), relativePosition);
+            players.put(player.getId(), player);
+            frame.setPlayer(player, relativePosition);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -46,14 +54,14 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public int drawCard() {
-        var lock = new ReentrantLock();
-        var condition = lock.newCondition();
-        lock.lock();
-        frame.drawCard(condition);
-        try {
-            condition.await();
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        synchronized (controller) {
+            frame.drawCard(controller);
+            try {
+                controller.wait();
+
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         return frame.getDrawnCardPosition();
     }
@@ -61,15 +69,28 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) {
         try {
-            frame.setDrawnCard(player, cardPosition, card);
+            var relativePosition = playersPositions.get(player.getId());
+            frame.setDrawnCard(relativePosition, cardPosition, card);
         } catch (IndexOutOfBoundsException e) {
             e.printStackTrace();
         }
     }
 
     @Override
-    public void setPlayersOrder(List<BasePlayer> players) throws PlayerLeftExpection {
-
+    public void setPlayersOrder(List<Integer> playerIds) {
+        int ownPosition = playerIds.indexOf(id);
+        playersPositions.clear();
+        for (int i=0; i<playerIds.size(); i++) {
+            int playerId = playerIds.get(i);
+            playersPositions.put(playerId, (i - ownPosition + 4) % 4);
+        }
+        for (var player : players.values()) {
+            try {
+                frame.setPlayer(player, playersPositions.get(player.getId()));
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
     }
 
     @Override
@@ -144,6 +165,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
             return connectionInfo.error;
         }
         id = connectionInfo.playerId;
+        playersPositions.put(id, 0);
         controller.start();
         try {
             frame.setPlayer(new ClientPlayer(id, name), 0);
@@ -162,5 +184,9 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     @Override
     public boolean isConnected() {
         return controller.isConnected();
+    }
+
+    public int getInitialRelativePosition(BasePlayer player) {
+        return (player.getId() - id + 4) % 4;
     }
 }

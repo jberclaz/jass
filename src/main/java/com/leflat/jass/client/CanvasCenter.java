@@ -65,7 +65,7 @@ public class CanvasCenter extends Canvas {
     }
 
     public void paint(Graphics g) {
-        // System.out.println("Repaint");
+        System.out.println("Repaint");
         Dimension d = getSize();
         switch (mode) {
             case MODE_DRAW_TEAMS:

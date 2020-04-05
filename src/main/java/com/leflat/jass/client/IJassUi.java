@@ -16,11 +16,11 @@ public interface IJassUi {
 
     void prepareTeamDrawing(boolean firstAttempt);
 
-    void drawCard(Condition condition);
+    void drawCard(Thread thread);
 
     int getDrawnCardPosition();
 
-    void setDrawnCard(BasePlayer player, int cardPosition, Card card) throws IndexOutOfBoundsException;
+    void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException;
 
     void setPlayerCards(List<Card> hand);
 }

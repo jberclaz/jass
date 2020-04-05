@@ -16,11 +16,14 @@ public class CardImages {
     private CardImages() {
         Toolkit tk = Toolkit.getDefaultToolkit();
         for (int i = 0; i < 36; i++) {
-            images[i] = tk.getImage(IMG_PATH + i + ".png");
+            var imagePath = getClass().getClassLoader().getResource(IMG_PATH + i + ".png");
+            images[i] = tk.getImage(imagePath);
         }
-        backImage = tk.getImage(IMG_PATH + "dos.png");
+        var backImagePath = getClass().getClassLoader().getResource(IMG_PATH + "dos.png");
+        backImage = tk.getImage(backImagePath);
         for (int i = 0; i < 4; i++) {
-            colorImages[i] = tk.getImage(IMG_PATH + "c" + i + ".png");
+            var colorImagePath = getClass().getClassLoader().getResource(IMG_PATH + "c" + i + ".png");
+            colorImages[i] = tk.getImage(colorImagePath);
         }
     }
 
@@ -35,7 +38,11 @@ public class CardImages {
         return backImage;
     }
 
-    public Image getBackImage() { return backImage; }
+    public Image getBackImage() {
+        return backImage;
+    }
 
-    public Image getColorImage(int color) { return colorImages[color]; }
+    public Image getColorImage(int color) {
+        return colorImages[color];
+    }
 }

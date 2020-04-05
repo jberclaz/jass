@@ -1,6 +1,7 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
+import jdk.jshell.spi.ExecutionControl;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -9,8 +10,14 @@ import java.io.PrintWriter;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.stream.Collector;
+import java.util.stream.Collectors;
 
 public class RemoteController extends Thread {
     private static final int PORT_NUM = 23107;
@@ -84,7 +91,7 @@ public class RemoteController extends Thread {
         if (message != null)
             System.out.println("Received : " + message);
         else {
-            System.out.println("Client has left unexpectedly");
+            System.out.println("Server has left unexpectedly");
             throw new ServerDisconnectedException();
         }
         return message;
@@ -107,15 +114,21 @@ public class RemoteController extends Thread {
         while (running) {
             try {
                 String message = receiveRawMessage();
-                handleControllerMessage(message.split(" "));
+                try {
+                    handleControllerMessage(message.split(" "));
+                } catch (ExecutionControl.NotImplementedException e) {
+                    e.printStackTrace();
+                }
             } catch (ServerDisconnectedException e) {
                 e.printStackTrace();
+                running = false;
+                // TODO: player.serverDisconnected
             }
         }
         System.out.println("Exiting listener");
     }
 
-    private void handleControllerMessage(String[] message) {
+    private void handleControllerMessage(String[] message) throws ExecutionControl.NotImplementedException {
         int command = Integer.parseInt(message[0]);
         List<String> answer = Collections.emptyList();
         switch (command) {
@@ -167,39 +180,52 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.RESTART_TEAM_DRAWING:
+                try {
+                    player.prepareTeamDrawing(false);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
                 break;
             case RemoteCommand.CHOOSE_PARTNER:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_PLAYERS_ORDER:
-                break;
+                var order = Arrays.stream(message).skip(1).map(Integer::parseInt).collect(Collectors.toList());
+                try {
+                    player.setPlayersOrder(order);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_HAND:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.CHOOSE_ATOUT:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.CHOOSE_ATOUT_SECOND:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_ATOUT:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAY:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_PLAYED_CARD:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAY_NEXT:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_PLIE_OWNER:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_SCORES:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.GET_ANOUNCEMENTS:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_ANOUNCEMENTS:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_GAME_RESULT:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.GET_NEW_GAME:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.PLAYER_LEFT:
-                break;
+                throw new ExecutionControl.NotImplementedException("Not implemented");
             default:
                 System.err.println("Unknown command " + command);
         }

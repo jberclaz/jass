@@ -60,10 +60,10 @@ public class RemotePlayer extends BasePlayer implements IPlayer {
     }
 
     @Override
-    public void setPlayersOrder(List<BasePlayer> players) throws PlayerLeftExpection {
+    public void setPlayersOrder(List<Integer> playerIds) throws PlayerLeftExpection {
         var message = new ArrayList<String>();
         message.add(String.valueOf(RemoteCommand.SET_PLAYERS_ORDER));
-        message.addAll(players.stream().map(p -> String.valueOf(p.getId())).collect(Collectors.toList()));
+        message.addAll(playerIds.stream().map(String::valueOf).collect(Collectors.toList()));
         network.sendMessage(message);
         network.receiveMessage();
     }

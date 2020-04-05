@@ -33,7 +33,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     // Autres variables
     private IRemotePlayer myself;
-    private Condition condition = null;
+    private Thread threadToSignal = null;
     private int drawnCardPosition = -1;
 
 
@@ -190,8 +190,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             if (gameId >= 0) {
                 jButtonConnect.setText("Déconnexion");
                 setGameId(gameId);
-            }
-            else {
+            } else {
                 // TODO: error message
             }
         } else {
@@ -232,7 +231,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     // End of variables declaration//GEN-END:variables
 
 
-
     void playerCanvas_mouseClicked(MouseEvent e) {
         /*
         if (playerCanvas.getMode() == 0) {
@@ -269,14 +267,17 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     void centerCanvas_mouseClicked(MouseEvent e) {
+        System.out.println("Center click: " + e.getX() + " " + e.getY());
         drawnCardPosition = centerCanvas.getCard(e.getX(), e.getY());
         if (drawnCardPosition < 0) {
             return;
         }
         centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);    // on ne peut plus choisir une carte
         setStatusBar("");         // remove "veuillez tirer..."
-        assert condition != null;
-        condition.signal();
+        assert threadToSignal != null;
+        synchronized (threadToSignal) {
+            threadToSignal.notify();
+        }
     }
 
     //Fait un repaint des différents canvas
@@ -344,30 +345,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         jButtonConnect.setText("Connexion");
     }
 
-    public void setName(int player, String name) {
-        /*
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-        switch (diff) {
-            case 0:
-                playerCanvas.setName(name);
-                playerCanvas.repaint();
-                break;
-            case 1:
-                rightCanvas.setName(name);
-                rightCanvas.repaint();
-                break;
-            case 2:
-                topCanvas.setName(name);
-                topCanvas.repaint();
-                break;
-            case 3:
-                leftCanvas.setName(name);
-                leftCanvas.repaint();
-        }
-         */
-    }
 
     // attribue ses cartes aux joueur
     public void setPlayerCards(List<Card> hand) {
@@ -481,7 +458,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void setPlayer(BasePlayer player, int relativePosition) throws Exception {
+    public void setPlayer(BasePlayer player, int relativePosition) {
         JassCanvas canvas = getPlayerCanvas(relativePosition);
         canvas.setName(player.getName());
         canvas.repaint();
@@ -495,19 +472,20 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
         DialogTeamChoice dtc = new DialogTeamChoice(this, true);
+        dtc.setLocationRelativeTo(this);
         dtc.setVisible(true);
         return dtc.hasard ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
     }
 
     @Override
     public void prepareTeamDrawing(boolean firstAttempt) {
-        centerCanvas.resetCards();
+        System.out.println("frame: prepare team drawing");
         playerCanvas.clearHand();
         leftCanvas.clearHand();
         rightCanvas.clearHand();
         topCanvas.clearHand();
-        centerCanvas.setMode(1);
-        centerCanvas.repaint();
+        centerCanvas.resetCards();
+        centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);
         removeLastPlie();
         lastPlieCanvas.setAtout(4);
         setScore(0, 0);
@@ -515,10 +493,10 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void drawCard(Condition condition) {
-        centerCanvas.setMode(2);
+    public void drawCard(Thread thread) {
+        centerCanvas.setMode(CanvasCenter.MODE_PICK_CARD);
         setStatusBar("Veuillez choisir une carte");
-
+        this.threadToSignal = thread;
     }
 
     @Override
@@ -527,15 +505,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void setDrawnCard(BasePlayer player, int cardPosition, Card card)  {
+    public void setDrawnCard(int playerPosition, int cardPosition, Card card) {
         centerCanvas.drawCard(cardPosition);
-        var canvas = getPlayerCanvas(player.getId());
-
-        // canvas.setCards
-
+        var canvas = getPlayerCanvas(playerPosition);
+        canvas.setHand(Collections.singletonList(card));
     }
 
-    private JassCanvas getPlayerCanvas(int relativePosition)  {
+    private JassCanvas getPlayerCanvas(int relativePosition) {
         switch (relativePosition) {
             case 0:
                 return playerCanvas;
