@@ -83,6 +83,8 @@ public class TestClient {
         color = Integer.parseInt(receiveMessage()[0]);
         System.out.println("Chosen : " + color);
 
+        sendMessage(RemoteCommand.SET_ATOUT + " " + color + " 2");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

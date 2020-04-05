@@ -222,7 +222,15 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_ATOUT:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                int atout = Integer.parseInt(message[1]);
+                var firstToPlay = new ClientPlayer(Integer.parseInt(message[2]));
+                try {
+                    player.setAtout(atout, firstToPlay);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
+                break;
             case RemoteCommand.PLAY:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_PLAYED_CARD:

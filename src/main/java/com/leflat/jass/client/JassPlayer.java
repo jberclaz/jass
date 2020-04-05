@@ -110,7 +110,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
-
+        frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
     }
 
     @Override

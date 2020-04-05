@@ -22,4 +22,6 @@ public interface IJassUi {
     void setPlayerCards(List<Card> hand);
 
     int chooseAtout(boolean allowedToPass);
+
+    void setAtout(int atout, int positionOfPlayerToChooseAtout);
 }

@@ -25,6 +25,7 @@ public abstract class JassCanvas extends Canvas {
 
     public void setAtout(boolean atout) {
         this.atout = atout;
+        repaint();
     }
 
     public void setName(String name) {

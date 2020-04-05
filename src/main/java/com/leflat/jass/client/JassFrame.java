@@ -356,6 +356,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         return da.getSelectedColor();
     }
 
+    @Override
+    public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
+        lastPlieCanvas.setAtout(atout);
+        for (int i=0; i<4; i++) {
+            var canvas = getPlayerCanvas(i);
+            canvas.setAtout(i == positionOfPlayerToChooseAtout);
+        }
+    }
+
 
     // prépare l'écran pour une nouvelle partie
     void prepareMatch() {
@@ -415,7 +424,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     void setScore(int ourScore, int theirScore) {
-        lastPlieCanvas.setScore(ourScore, theirScore);
+        lastPlieCanvas.setScores(ourScore, theirScore);
         lastPlieCanvas.repaint();
     }
 
@@ -426,35 +435,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     void setAnounceEnabled(boolean b) {
         jButtonAnounce.setEnabled(b);
-    }
-
-    void setAtout(int player) {
-        /*
-        int diff = player - app.getPlayerId();
-        if (diff < 0)
-            diff += 4;
-
-        playerCanvas.setAtout(false);
-        rightCanvas.setAtout(false);
-        topCanvas.setAtout(false);
-        leftCanvas.setAtout(false);
-
-        switch (diff) {
-            case 0:
-                playerCanvas.setAtout(true);
-                break;
-            case 1:
-                rightCanvas.setAtout(true);
-                break;
-            case 2:
-                topCanvas.setAtout(true);
-                break;
-            case 3:
-                leftCanvas.setAtout(true);
-        }
-        repaint(31);
-
-         */
     }
 
     void setGameId(int gameId) {
