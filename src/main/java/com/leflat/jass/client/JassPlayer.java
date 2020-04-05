@@ -135,13 +135,13 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     }
 
     @Override
-    public void setPlieOwner(BasePlayer player) throws PlayerLeftExpection {
+    public void setPlieOwner(BasePlayer player) {
         frame.setPlieOwner(playersPositions.get(player.getId()));
     }
 
     @Override
-    public void setScores(int score, int opponentScore) throws PlayerLeftExpection {
-
+    public void setScores(int score, int opponentScore) {
+        frame.setScore(score, opponentScore);
     }
 
     @Override

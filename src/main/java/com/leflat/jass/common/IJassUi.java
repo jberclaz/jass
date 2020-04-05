@@ -36,4 +36,6 @@ public interface IJassUi {
     void prepareGame();
 
     void setPlieOwner(int playerPosition);
+
+    void setScore(int ourScore, int opponentScore);
 }

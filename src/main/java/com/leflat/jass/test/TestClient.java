@@ -98,6 +98,9 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_PLIE_OWNER + " 3");
         receiveMessage();
+
+        sendMessage(RemoteCommand.SET_SCORES + " 69 156");
+        receiveMessage();
     }
 
     public static void main(String[] args) {

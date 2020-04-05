@@ -428,9 +428,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         lastPlieCanvas.repaint();
     }
 
-    void setScore(int ourScore, int theirScore) {
-        lastPlieCanvas.setScores(ourScore, theirScore);
-        lastPlieCanvas.repaint();
+    public void setScore(int ourScore, int opponentScore) {
+        lastPlieCanvas.setScores(ourScore, opponentScore);
     }
 
 

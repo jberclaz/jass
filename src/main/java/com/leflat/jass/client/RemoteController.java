@@ -272,7 +272,14 @@ public class RemoteController extends Thread {
                 }
                 break;
             case RemoteCommand.SET_SCORES:
-                throw new ExecutionControl.NotImplementedException("Not implemented");
+                try {
+                    int ourScore = Integer.parseInt(message[1]);
+                    int opponentScore = Integer.parseInt(message[2]);
+                    player.setScores(ourScore, opponentScore);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    playerLeftExpection.printStackTrace();
+                    return;
+                }
             case RemoteCommand.GET_ANOUNCEMENTS:
                 throw new ExecutionControl.NotImplementedException("Not implemented");
             case RemoteCommand.SET_ANOUNCEMENTS:
