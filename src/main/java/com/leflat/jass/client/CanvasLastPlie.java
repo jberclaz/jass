@@ -53,17 +53,19 @@ public class CanvasLastPlie extends Canvas {
     }
 
     public void paint(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         for (int i = 0; i < lastPlie.size(); i++) {
-            g.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
+            g2.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
         }
 
         if (atout < 4) {
-            g.drawImage(CardImages.getInstance().getColorImage(atout), 380, 8, this);
+            g2.drawImage(CardImages.getInstance().getColorImage(atout), 380, 8, this);
         }
 
-        g.drawString("Dernière plie:", 20, 20);
-        g.drawString("Atout:", 340, 20);
-        g.drawString("Nous: " + String.valueOf(ourScore), 420, 13);
-        g.drawString("Eux : " + String.valueOf(theirScore), 420, 27);
+        g2.drawString("Dernière plie:", 20, 20);
+        g2.drawString("Atout:", 340, 20);
+        g2.drawString("Nous: " + String.valueOf(ourScore), 420, 13);
+        g2.drawString("Eux : " + String.valueOf(theirScore), 420, 27);
     }
 }

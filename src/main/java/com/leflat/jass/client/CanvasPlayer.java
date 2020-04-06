@@ -24,18 +24,20 @@ public class CanvasPlayer extends JassCanvas {
     }
 
     public void paint(Graphics g) {
+        Graphics2D g2 = (Graphics2D) g.create();
+        g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         if (!hand.isEmpty()) {
             Dimension d = getSize();
             int cardsWidth = getCardsWidth();
             int xOffset = (d.width - cardsWidth) / 2;
             for (int i = 0; i < hand.size(); i++) {
-                g.drawImage(CardImages.getInstance().getImage(hand.get(i)),
+                g2.drawImage(CardImages.getInstance().getImage(hand.get(i)),
                         xOffset + i * X_STEP, 20, this);
             }
         }
-        g.drawString(name, 30, 15);
+        g2.drawString(name, 30, 15);
         if (atout) {
-            g.drawString("atout", name.length() * 7 + 60, 15);
+            g2.drawString("atout", name.length() * 7 + 60, 15);
         }
     }
 
