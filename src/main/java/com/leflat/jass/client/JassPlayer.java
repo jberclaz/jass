@@ -23,8 +23,8 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
         frame.showUi(true);
 
         // TODO: remove (DEBUG)
-        Random rnd = new Random();
-        connect(String.valueOf(rnd.nextInt(100)), "localhost", 0);
+        //Random rnd = new Random();
+        //connect(String.valueOf(rnd.nextInt(100)), "localhost", 0);
     }
 
     @Override

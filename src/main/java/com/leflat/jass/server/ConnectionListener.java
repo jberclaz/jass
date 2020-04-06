@@ -16,7 +16,7 @@ public class ConnectionListener extends Thread {
         serverSocket = new ServerSocket(port);
 
         // TODO: remove (DEBUG)
-        games.put(0, new GameController(0));
+        // games.put(0, new GameController(0));
     }
 
     @Override
