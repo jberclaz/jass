@@ -1,73 +1,142 @@
-import com.leflat.jass.common.Anouncement;
+import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.common.Card;
+import com.leflat.jass.common.INetwork;
+import com.leflat.jass.common.RemoteCommand;
+import com.leflat.jass.server.GameController;
+import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.server.RemotePlayer;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.*;
 
+class MockNetwork implements INetwork {
+    public List<List<String>> sendParameters = new ArrayList<>();
+
+    @Override
+    public int sendMessage(String message) {
+        return 0;
+    }
+
+    @Override
+    public void setPlayerId(int id) {
+
+    }
+
+    @Override
+    public int sendMessage(List<String> message) {
+        sendParameters.add(message);
+        return 0;
+    }
+
+    @Override
+    public String[] receiveMessage() {
+        return new String[] {"name"};
+    }
+}
+
 public class ServerTests {
     @Test
-    public void card_test() {
-        var card = new Card(Card.RANK_BOURG, Card.COLOR_SPADE);
-        assertEquals(2, card.getValue());
-        assertEquals(20, card.getValue(Card.COLOR_SPADE));
-        assertEquals(Card.COLOR_SPADE, card.getColor());
-        assertEquals(Card.RANK_BOURG, card.getRank());
-        assertEquals("bourg de pique", card.toString());
-        assertEquals(5, card.getNumber());
-        var card2 = new Card(12);
-        assertEquals(Card.RANK_NELL, card2.getRank());
-        assertEquals(Card.COLOR_HEART, card2.getColor());
+    void player_position_test() {
+        Method getPlayerPosition = null;
+        try {
+            getPlayerPosition = GameController.class.getDeclaredMethod("getPlayerPosition", BasePlayer.class);
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        getPlayerPosition.setAccessible(true);
+
+        RemotePlayer p1, p2, p3, p4;
+        var game = new GameController(0);
+        try {
+            p1 = new RemotePlayer(1, new MockNetwork());
+            p2 = new RemotePlayer(2, new MockNetwork());
+            p3 = new RemotePlayer(3, new MockNetwork());
+            p4 = new RemotePlayer(4, new MockNetwork());
+            game.addPlayer(p2);
+            game.addPlayer(p1);
+            game.addPlayer(p4);
+            game.addPlayer(p3);
+        }
+        catch (PlayerLeftExpection ignored) {
+            return;
+        }
+
+        try {
+            int position = (Integer)getPlayerPosition.invoke(game, p4);
+            assertEquals(2, position);
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
+        }
     }
 
     @Test
-    public void anouncement_test() {
-        var card = new Card(Card.RANK_DAME, Card.COLOR_CLUB);
-        var anouncement = new Anouncement(Anouncement.FIFTY, card);
-        assertEquals("cinquante à la dame de trèfle", anouncement.toString());
-        assertEquals(50, anouncement.getValue());
+    void add_players_test() {
+        RemotePlayer p1, p2, p3, p4;
+        var game = new GameController(120);
+        assertEquals(0, game.getNbrPlayers());
+        assertEquals(120, game.getGameId());
+        try {
+            p1 = new RemotePlayer(1, new MockNetwork());
+            p2 = new RemotePlayer(2, new MockNetwork());
+            p3 = new RemotePlayer(3, new MockNetwork());
+            p4 = new RemotePlayer(4, new MockNetwork());
+            game.addPlayer(p2);
+            assertEquals(1, game.getNbrPlayers());
+            assertFalse(game.isGameFull());
+            game.addPlayer(p1);
+            game.addPlayer(p4);
+            game.addPlayer(p3);
+            assertTrue(game.isGameFull());
+        }
+        catch (PlayerLeftExpection ignored) {
+            return;
+        }
     }
 
     @Test
-    public void find_square_test() {
-        int[] list = {5, 9, 12, 14, 19, 23, 24, 32};
-        var annoucements = Anouncement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
-        assertEquals(1, annoucements.size());
-        var anouncement = annoucements.get(0);
-        assertEquals(anouncement.getType(), Anouncement.BOURG_SQUARE);
-        assertEquals(anouncement.getCard().getNumber(), 5);
-    }
+    void test_draw_cards() {
+        Method drawCards = null;
+        try {
+            drawCards = GameController.class.getDeclaredMethod("drawCards");
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        drawCards.setAccessible(true);
 
-    @Test
-    public void find_suit_test() {
-        int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 32};
-        var annoucements = Anouncement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
-        assertEquals(2, annoucements.size());
-        var firstAnouncement = annoucements.get(0);
-        assertEquals(firstAnouncement.getType(), Anouncement.THREE_CARDS);
-        assertEquals(firstAnouncement.getCard().getNumber(), 14);
-        var secondAnouncement = annoucements.get(1);
-        assertEquals(secondAnouncement.getType(), Anouncement.FIFTY);
-        assertEquals(secondAnouncement.getCard().getNumber(), 22);
-    }
+        List<RemotePlayer> players = new ArrayList<>();
+        List<MockNetwork> networks = new ArrayList<>();
+        var game = new GameController(0);
+        try {
+            for (int i=0; i<4; i++) {
+                networks.add(new MockNetwork());
+                players.add(new RemotePlayer(i, networks.get(i)));
+                game.addPlayer(players.get(i));
+            }
+        }
+        catch (PlayerLeftExpection ignored) {
+            return;
+        }
 
-    @Test
-    public void find_stoeck_test() {
-        int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25};
-        assertFalse(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()), Card.COLOR_HEART));
-        assertTrue(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()), Card.COLOR_DIAMOND));
-    }
-
-    @Test
-    public void card_sort_test() {
-        int[] list = {20, 30, 1, 3, 15, 12, 8, 35, 34};
-        List<Card> hand = Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList());
-        Card.sort(hand);
-        for (int i=1; i<hand.size(); i++) {
-            assertTrue(hand.get(i-1).getNumber() < hand.get(i).getNumber());
+        try {
+            int startingPlayer = (int)drawCards.invoke(game);
+            for (int i=0; i<4; i++) {
+                assertEquals(4, networks.get(i).sendParameters.size());
+            }
+            var parameters = networks.get(startingPlayer).sendParameters.get(3);
+            assertEquals(parameters.size(), 10);
+            assertEquals(RemoteCommand.SET_HAND, Integer.parseInt(parameters.get(0)));
+            assertTrue(parameters.stream().anyMatch(p -> Integer.parseInt(p) == Card.DIAMOND_SEVEN));
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        } catch (InvocationTargetException e) {
+            e.printStackTrace();
         }
     }
 }

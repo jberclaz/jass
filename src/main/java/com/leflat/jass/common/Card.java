@@ -32,7 +32,7 @@ public class Card {
     public static final int COLOR_CLUB = 3;
 
     public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
-    public static final String[] COLOR_NAMES = {"pique", "coeur", "carreau", "trèfle"};
+    public static final String[] COLOR_NAMES = {"pique", "cœur", "carreau", "trèfle"};
 
     public static final int[] VALUES = {0, 0, 0, 0, 10, 2, 3, 4, 11};
     public static final int[] VALUES_ATOUT = {0, 0, 0, 14, 10, 20, 3, 4, 11};
@@ -113,7 +113,7 @@ public class Card {
             cards.add(new Card(i));
         }
         Random rand = new Random();
-        for (int i = 35; i > 0; i--) {
+        for (int i = number - 1; i > 0; i--) {
             int j = rand.nextInt(i + 1);
             if (i != j) {
                 Collections.swap(cards, j, i);

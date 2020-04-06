@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class RemotePlayer extends BasePlayer implements IPlayer {
-    private PlayerNetwork network;
+    private INetwork network;
 
-    public RemotePlayer(int id, PlayerNetwork network) throws PlayerLeftExpection {
+    public RemotePlayer(int id, INetwork network) throws PlayerLeftExpection {
         super(id);
         this.network = network;
         this.network.setPlayerId(id);

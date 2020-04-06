@@ -1,11 +1,13 @@
 package com.leflat.jass.server;
 
+import com.leflat.jass.common.INetwork;
+
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
 
-public class PlayerNetwork {
+public class PlayerNetwork implements INetwork  {
     private BufferedReader is;
     private PrintWriter os;
     private int playerId = -1;
@@ -55,7 +57,7 @@ public class PlayerNetwork {
         return Arrays.copyOfRange(tokens, 1, tokens.length);
     }
 
-    void setPlayerId(int id) {
+    public void setPlayerId(int id) {
         playerId = id;
     }
 }
