@@ -72,8 +72,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             }
         });
 
-        // TODO: add new icon
-        //setIconImage();
+        loadLogos();
 
         pack();
     }
@@ -512,5 +511,23 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             default:
                 throw new IndexOutOfBoundsException("Unknown canvas " + relativePosition);
         }
+    }
+
+    private void loadLogos() {
+        Toolkit tk = Toolkit.getDefaultToolkit();
+        List<Image> images = new ArrayList<>();
+
+        var imagePath = getClass().getClassLoader().getResource("logos/logo_128.png");
+        images.add(tk.getImage(imagePath));
+        imagePath = getClass().getClassLoader().getResource("logos/logo_64.png");
+        images.add(tk.getImage(imagePath));
+        imagePath = getClass().getClassLoader().getResource("logos/logo_48.png");
+        images.add(tk.getImage(imagePath));
+        imagePath = getClass().getClassLoader().getResource("logos/logo_32.png");
+        images.add(tk.getImage(imagePath));
+        imagePath = getClass().getClassLoader().getResource("logos/logo_16.png");
+        images.add(tk.getImage(imagePath));
+
+        setIconImages(images);
     }
 }
