@@ -44,7 +44,7 @@ public class GameController extends Thread {
         System.out.println("Starting game room " + gameId);
 
         try {
-            boolean playAnotherGame = false;
+            boolean playAnotherGame;
             do {
                 chooseTeam();     // détermine les équipes
 

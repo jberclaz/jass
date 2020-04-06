@@ -8,6 +8,7 @@ public class Team {
     private int currentScore;
     private List<BasePlayer> players = new ArrayList<>();
     private int id;
+    public static final int WINNING_SCORE = 1500;
 
     // Constructeur
     public Team(int id) {
@@ -30,7 +31,7 @@ public class Team {
     }
 
     public boolean hasWon() {
-        return currentScore > 1499;
+        return currentScore >= WINNING_SCORE;
     }
 
     public int getScore() {
