@@ -10,7 +10,6 @@ public class GameController extends Thread {
     private List<RemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
     private int atout;
-    //private Plie currentPlie;
 
     public GameController(int id) {
         this.gameId = id;

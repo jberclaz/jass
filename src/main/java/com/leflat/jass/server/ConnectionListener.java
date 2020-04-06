@@ -7,12 +7,12 @@ import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
 
-public class NetworkListener extends Thread {
+public class ConnectionListener extends Thread {
     private ServerSocket serverSocket;
     private Map<Integer, GameController> games = new HashMap<>();
     private boolean running = false;
 
-    public NetworkListener(int port) throws IOException {
+    public ConnectionListener(int port) throws IOException {
         serverSocket = new ServerSocket(port);
 
         // TODO: remove (DEBUG)
@@ -34,15 +34,15 @@ public class NetworkListener extends Thread {
     }
 
     private void handleNewConnection(Socket clientSocket) throws IOException {
-        var rpc = new Rpc(clientSocket);
+        var network = new PlayerNetwork(clientSocket);
 
         try {
-            var game = selectGame(rpc);
+            var game = selectGame(network);
             if (game == null) {
                 return;
             }
 
-            var newPlayer = new RemotePlayer(game.getNbrPlayers(), rpc);
+            var newPlayer = new RemotePlayer(game.getNbrPlayers(), network);
             game.addPlayer(newPlayer);
 
             if (game.isGameFull()) {
@@ -53,28 +53,28 @@ public class NetworkListener extends Thread {
         }
     }
 
-    private GameController selectGame(Rpc rpc) throws PlayerLeftExpection {
+    private GameController selectGame(PlayerNetwork network) throws PlayerLeftExpection {
         GameController game;
-        String connectionMessage = rpc.receiveRawMessage();
+        String connectionMessage = network.receiveRawMessage();
         int gameId = Integer.parseInt(connectionMessage);
         if (gameId < 0) {
             int newGameId = getRandomGameId();
-            rpc.sendMessage(String.valueOf(newGameId));
+            network.sendMessage(String.valueOf(newGameId));
             game = new GameController(newGameId);
             games.put(newGameId, game);
         } else {
             if (!games.containsKey(gameId)) {
-                rpc.sendMessage(String.valueOf(ConnectionError.UNKNOWN_GAME));
+                network.sendMessage(String.valueOf(ConnectionError.UNKNOWN_GAME));
                 System.err.println("Error: unknown game id " + gameId);
                 return null;
             }
             game = games.get(gameId);
             if (game.isGameFull()) {
-                rpc.sendMessage(String.valueOf(ConnectionError.GAME_FULL));
+                network.sendMessage(String.valueOf(ConnectionError.GAME_FULL));
                 System.err.println("Error: attempting to enter full game " + gameId);
                 return null;
             }
-            rpc.sendMessage(String.valueOf(gameId));
+            network.sendMessage(String.valueOf(gameId));
         }
         return game;
     }

@@ -5,12 +5,12 @@ import java.net.Socket;
 import java.util.Arrays;
 import java.util.List;
 
-public class Rpc {
+public class PlayerNetwork {
     private BufferedReader is;
     private PrintWriter os;
     private int playerId = -1;
 
-    public Rpc(Socket socket) throws IOException {
+    public PlayerNetwork(Socket socket) throws IOException {
         var isr = new InputStreamReader(socket.getInputStream());
         is = new BufferedReader(isr);
         os = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()), false);
@@ -37,7 +37,7 @@ public class Rpc {
             System.out.println("Error during reception");
         }
         if (message != null)
-            System.out.println("Received : " + message);
+            System.out.println("Received : " + message); // DEBUG
         else {
             System.out.println("Client has left unexpectedly");
             throw new PlayerLeftExpection(playerId);

@@ -12,10 +12,10 @@ public class JassServer {
         System.out.println();
 
         // TODO: add command line argument parsing (Apache commons)
-        NetworkListener listener = null;
+        ConnectionListener listener = null;
 
         try {
-            listener = new NetworkListener(DEFAULT_PORT);
+            listener = new ConnectionListener(DEFAULT_PORT);
         } catch (IOException e) {
             e.printStackTrace();
             System.exit(1);
