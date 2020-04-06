@@ -62,7 +62,7 @@ public class RemoteController extends Thread {
     }
 
     public boolean isConnected() {
-        return clientSocket != null && !clientSocket.isClosed();
+        return clientSocket != null && clientSocket.isConnected() && !clientSocket.isClosed();
     }
 
     public void sendRawMessage(String message) {
