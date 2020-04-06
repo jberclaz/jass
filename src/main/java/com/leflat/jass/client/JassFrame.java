@@ -13,6 +13,8 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
 
+import javax.swing.border.BevelBorder;
+import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -70,6 +72,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             }
         });
 
+        // TODO: add new icon
+        //setIconImage();
+
         pack();
     }
 
@@ -95,7 +100,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         setSize(660, 565);
         setResizable(false);
         setTitle(APP_TITLE);
-        setFont(new java.awt.Font("SansSerif", 0, 10));
+        setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
         addWindowListener(new java.awt.event.WindowAdapter() {
                               public void windowClosing(java.awt.event.WindowEvent evt) {
                                   exitForm(evt);
@@ -107,75 +112,54 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         rightPanel.setName("rightPanel");
 
 
-        getContentPane().add(rightPanel, new AbsoluteConstraints(510, 0, 120,
-                450));
+        getContentPane().add(rightPanel, new AbsoluteConstraints(510, 0, 120, 450));
 
         leftPanel.setLayout(new java.awt.GridLayout(1, 1));
         leftPanel.setName("leftPanel");
 
 
-        getContentPane().add(leftPanel, new AbsoluteConstraints(0, 0, 120,
-                450));
+        getContentPane().add(leftPanel, new AbsoluteConstraints(0, 0, 120, 450));
 
         playerPanel.setLayout(new java.awt.GridLayout(1, 1));
 
 
-        getContentPane().add(playerPanel, new AbsoluteConstraints(120, 330,
-                390, 120));
+        getContentPane().add(playerPanel, new AbsoluteConstraints(120, 330, 390, 120));
 
         topPanel.setLayout(new java.awt.GridLayout(1, 1));
 
 
-        getContentPane().add(topPanel, new AbsoluteConstraints(120, 0, 390,
-                120));
+        getContentPane().add(topPanel, new AbsoluteConstraints(120, 0, 390, 120));
 
         centerPanel.setLayout(new java.awt.GridLayout(1, 1));
         centerPanel.setBackground(new java.awt.Color(51, 102, 0));
 
 
-        getContentPane().add(centerPanel, new AbsoluteConstraints(120, 120,
-                390, 210));
+        getContentPane().add(centerPanel, new AbsoluteConstraints(120, 120, 390, 210));
 
         lastPliePanel.setLayout(new java.awt.GridLayout(1, 1));
 
 
-        getContentPane().add(lastPliePanel, new AbsoluteConstraints(0, 450,
-                630, 40));
+        getContentPane().add(lastPliePanel, new AbsoluteConstraints(0, 450, 630, 40));
 
-        jPanel1.setBorder(new javax.swing.border.BevelBorder(1));
+        jPanel1.setBorder(new javax.swing.border.BevelBorder(BevelBorder.LOWERED));
 
 
         jPanel1.add(statusBar);
         jPanel1.add(infoBar);
-
 
         getContentPane().add(jPanel1, new AbsoluteConstraints(0, 490, 400, 40));
 
         jButtonAnounce.setAlignmentY(0.4F);
         jButtonAnounce.setText("Annoncer");
         jButtonAnounce.setEnabled(false);
-        jButtonAnounce.addActionListener(new java.awt.event.ActionListener() {
-                                             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                                                 jButtonAnounceActionPerformed(evt);
-                                             }
-                                         }
-        );
+        jButtonAnounce.addActionListener(this::jButtonAnounceActionPerformed);
 
-
-        getContentPane().add(jButtonAnounce, new AbsoluteConstraints(530, 500,
-                -1, -1));
+        getContentPane().add(jButtonAnounce, new AbsoluteConstraints(530, 500, -1, -1));
 
         jButtonConnect.setText("Connexion");
-        jButtonConnect.addActionListener(new java.awt.event.ActionListener() {
-                                             public void actionPerformed(java.awt.event.ActionEvent evt) {
-                                                 jButtonConnectActionPerformed();
-                                             }
-                                         }
-        );
+        jButtonConnect.addActionListener(evt -> jButtonConnectActionPerformed());
 
-
-        getContentPane().add(jButtonConnect, new AbsoluteConstraints(410, 500,
-                -1, -1));
+        getContentPane().add(jButtonConnect, new AbsoluteConstraints(410, 500, -1, -1));
 
     }//GEN-END:initComponents
 
@@ -208,7 +192,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
 // Add your handling code here:
         anoucementPressed = true;
-        jButtonAnounce.setEnabled(false);
+        setAnouncementEnabled(false);
     }//GEN-LAST:event_jButtonAnounceActionPerformed
 
     /**
@@ -292,7 +276,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     public void disconnect() {
-        for (int i=0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             var canvas = getPlayerCanvas(i);
             canvas.clearHand();
             canvas.setName("");
@@ -340,8 +324,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         anoucementPressed = false;
         setAnouncementEnabled(true);
         playerCanvas.setMode(JassCanvas.MODE_PLAY);
-        centerCanvas.resetCards();
-        centerCanvas.setMode(CanvasCenter.MODE_GAME);
     }
 
     @Override
@@ -391,7 +373,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     void removeLastPlie() {
         lastPlieCanvas.setLastPlie(Collections.emptyList());
-        lastPlieCanvas.repaint();
     }
 
     public void setScore(int ourScore, int opponentScore) {
@@ -434,7 +415,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         var di = new DialogInfo(this, false);
         di.setLocationRelativeTo(this);
         var canvas = getPlayerCanvas(leavingPlayerPosition);
-        di.setText(0,  canvas.getName() + " a quitté le jeu.");
+        di.setText(0, canvas.getName() + " a quitté le jeu.");
         di.setText(1, "La partie est interrompue.");
         setStatusBar("Partie interrompue");
         disconnect();
@@ -463,6 +444,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void showUi(boolean enable) {
+        setLocationRelativeTo(null);
         setVisible(enable);
     }
 

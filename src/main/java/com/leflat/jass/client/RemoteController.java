@@ -2,8 +2,6 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.common.Team;
-import jdk.jshell.spi.ExecutionControl;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -113,11 +111,7 @@ public class RemoteController extends Thread {
         while (running) {
             try {
                 String message = receiveRawMessage();
-                try {
-                    handleControllerMessage(message.split(" "));
-                } catch (ExecutionControl.NotImplementedException e) {
-                    e.printStackTrace();
-                }
+                handleControllerMessage(message.split(" "));
             } catch (ServerDisconnectedException e) {
                 e.printStackTrace();
                 running = false;
@@ -127,7 +121,7 @@ public class RemoteController extends Thread {
         System.out.println("Exiting listener");
     }
 
-    private void handleControllerMessage(String[] message) throws ExecutionControl.NotImplementedException {
+    private void handleControllerMessage(String[] message) {
         int command = Integer.parseInt(message[0]);
         List<String> answer = new ArrayList<>();
         switch (command) {

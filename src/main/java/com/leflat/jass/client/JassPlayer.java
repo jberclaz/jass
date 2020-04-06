@@ -99,6 +99,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     @Override
     public void setHand(List<Card> cards) {
         playerHand.clear();
+        Card.sort(cards);
         playerHand.addAll(cards);
         frame.prepareGame();
         frame.setPlayerHand(cards);
@@ -155,8 +156,13 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
-        StringBuilder sb = new StringBuilder(players.get(player.getId()).getName());
-        sb.append(" annonce ").append(anouncements.get(0));
+        StringBuilder sb;
+        if (player.getId() == id) {
+            sb = new StringBuilder("Vous annoncez ");
+        } else {
+            sb = new StringBuilder(players.get(player.getId()).getName()).append(" annonce ");
+        }
+        sb.append(anouncements.get(0));
         for (int i = 1; i < anouncements.size(); i++) {
             sb.append(" et ").append(anouncements.get(i));
         }
@@ -211,7 +217,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
         return controller.isConnected();
     }
 
-    public int getInitialRelativePosition(BasePlayer player) {
+    private int getInitialRelativePosition(BasePlayer player) {
         return (player.getId() - id + 4) % 4;
     }
 }

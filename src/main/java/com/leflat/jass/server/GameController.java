@@ -10,7 +10,7 @@ public class GameController extends Thread {
     private List<RemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
     private int atout;
-    private Plie currentPlie;
+    //private Plie currentPlie;
 
     public GameController(int id) {
         this.gameId = id;
@@ -90,7 +90,7 @@ public class GameController extends Thread {
 
             if (nextPlayer >= 0) {    // si personne n'a gagné : on continue normalement
                 // 5 de der
-                currentPlie.owner.getTeam().addScore(atout == Card.COLOR_SPADE ? 10 : 5);
+                players.get(nextPlayer).getTeam().addScore(atout == Card.COLOR_SPADE ? 10 : 5);
 
                 for (var p : players) {   // envoie le score
                     var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
@@ -137,7 +137,7 @@ public class GameController extends Thread {
         for (int i = 1; i < 4; i++) {     // demande de jouer
             player = players.get((startingPlayer + i) % 4);
             // TODO: replace arguments with currentPlie
-            cardPlayed = player.play(currentPlie.highest, currentPlie.color, currentPlie.cut);
+            cardPlayed = player.play(currentPlie.color, currentPlie.highest, currentPlie.cut);
 
             player.getAnoucement();
 
@@ -240,7 +240,7 @@ public class GameController extends Thread {
 
     int drawCards() throws PlayerLeftExpection {
         int playerWithDiamondSeven = 0;      // 7 de carreau
-        var cards = shuffleCards();     // choisir les cartes au hasard
+        var cards = Card.shuffle(36);     // choisir les cartes au hasard
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 9; j++) {
                 if (cards.get(i * 9 + j).getNumber() == Card.DIAMOND_SEVEN) {    // 7 de carreau
@@ -280,7 +280,7 @@ public class GameController extends Thread {
         boolean drawingSuccessful;
         do {
             HashMap<BasePlayer, Card> cardsDrawn = new HashMap<>();    // cartes tirées
-            var cards = shuffleCards();
+            var cards = Card.shuffle(36);
             for (var p : players) {
                 int cardNumber = p.drawCard();
 
@@ -348,22 +348,6 @@ public class GameController extends Thread {
                 teams[1].addPlayer(p);
             }
         }
-    }
-
-    // distribue les cartes
-    private static List<Card> shuffleCards() {
-        List<Card> cards = new ArrayList<>();
-        for (int i = 0; i < 36; i++) {
-            cards.add(new Card(i));
-        }
-        Random rand = new Random();
-        for (int i = 35; i > 0; i--) {
-            int j = rand.nextInt(i + 1);
-            if (i != j) {
-                Collections.swap(cards, j, i);
-            }
-        }
-        return cards;
     }
 
     private RemotePlayer getPlayerById(int id) {

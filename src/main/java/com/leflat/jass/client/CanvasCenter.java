@@ -44,6 +44,7 @@ public class CanvasCenter extends Canvas {
 
     public void setMode(int mode) {
         this.mode = mode;
+        repaint();
     }
 
     public void drawCard(int i) {

@@ -1,5 +1,10 @@
 package com.leflat.jass.common;
 
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.Random;
+
 /**
  * ************************** REMARQUE ******************************
  * Les cartes sont en fait représentées par des int de 0 à 35
@@ -69,7 +74,51 @@ public class Card {
         return atout == getColor() ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
     }
 
-    public boolean isBack() { return number == BACK_NUMBER; }
+    public boolean isBack() {
+        return number == BACK_NUMBER;
+    }
 
-    public static Card getBack() { return backCard; }
+    public static Card getBack() {
+        return backCard;
+    }
+
+    public static void sort(List<Card> cards) {
+        quickSortCards(cards, 0, cards.size() - 1);
+    }
+
+    private static void quickSortCards(List<Card> cards, int min, int max) {
+        int i = min;
+        int j = max;
+        int x = cards.get((min + max) / 2).getNumber();
+        do {
+            while (cards.get(i).getNumber() < x)
+                i++;
+            while (x < cards.get(j).getNumber())
+                j--;
+            if (i <= j) {
+                Collections.swap(cards, i, j);
+                i++;
+                j--;
+            }
+        } while (i <= j);
+        if (min < j)
+            quickSortCards(cards, min, j);
+        if (i < max)
+            quickSortCards(cards, i, max);
+    }
+
+    public static List<Card> shuffle(int number) {
+        List<Card> cards = new ArrayList<>();
+        for (int i = 0; i < number; i++) {
+            cards.add(new Card(i));
+        }
+        Random rand = new Random();
+        for (int i = 35; i > 0; i--) {
+            int j = rand.nextInt(i + 1);
+            if (i != j) {
+                Collections.swap(cards, j, i);
+            }
+        }
+        return cards;
+    }
 }
