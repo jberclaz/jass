@@ -38,7 +38,7 @@ public class DialogAtout extends javax.swing.JDialog {
      */
     private void initComponents() {//GEN-BEGIN:initComponents
         jLabel1 = new javax.swing.JLabel();
-        jComboBoxAtout = new javax.swing.JComboBox();
+        jComboBoxAtout = new javax.swing.JComboBox<>();
         jButtonOk = new javax.swing.JButton();
         jButtonPass = new javax.swing.JButton();
         getContentPane().setLayout(new AbsoluteLayout());
@@ -106,7 +106,7 @@ public class DialogAtout extends javax.swing.JDialog {
 
     // Variables declaration - do not modify//GEN-BEGIN:variables
     private javax.swing.JLabel jLabel1;
-    private javax.swing.JComboBox jComboBoxAtout;
+    private javax.swing.JComboBox<String> jComboBoxAtout;
     private javax.swing.JButton jButtonOk;
     private javax.swing.JButton jButtonPass;
     // End of variables declaration//GEN-END:variables

@@ -1,12 +1,10 @@
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.INetwork;
-import com.leflat.jass.common.RemoteCommand;
+import com.leflat.jass.common.*;
 import com.leflat.jass.server.GameController;
 import com.leflat.jass.server.PlayerLeftExpection;
 import com.leflat.jass.server.RemotePlayer;
 import org.junit.jupiter.api.Test;
 
+import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
@@ -35,7 +33,7 @@ class MockNetwork implements INetwork {
 
     @Override
     public String[] receiveMessage() {
-        return new String[] {"name"};
+        return new String[]{"name"};
     }
 }
 
@@ -61,17 +59,14 @@ public class ServerTests {
             game.addPlayer(p1);
             game.addPlayer(p4);
             game.addPlayer(p3);
-        }
-        catch (PlayerLeftExpection ignored) {
+        } catch (PlayerLeftExpection ignored) {
             return;
         }
 
         try {
-            int position = (Integer)getPlayerPosition.invoke(game, p4);
+            int position = (Integer) getPlayerPosition.invoke(game, p4);
             assertEquals(2, position);
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        } catch (IllegalAccessException | InvocationTargetException e) {
             e.printStackTrace();
         }
     }
@@ -94,8 +89,7 @@ public class ServerTests {
             game.addPlayer(p4);
             game.addPlayer(p3);
             assertTrue(game.isGameFull());
-        }
-        catch (PlayerLeftExpection ignored) {
+        } catch (PlayerLeftExpection ignored) {
             return;
         }
     }
@@ -114,28 +108,93 @@ public class ServerTests {
         List<MockNetwork> networks = new ArrayList<>();
         var game = new GameController(0);
         try {
-            for (int i=0; i<4; i++) {
+            for (int i = 0; i < 4; i++) {
                 networks.add(new MockNetwork());
                 players.add(new RemotePlayer(i, networks.get(i)));
                 game.addPlayer(players.get(i));
             }
-        }
-        catch (PlayerLeftExpection ignored) {
+        } catch (PlayerLeftExpection ignored) {
             return;
         }
 
         try {
-            int startingPlayer = (int)drawCards.invoke(game);
-            for (int i=0; i<4; i++) {
+            int startingPlayer = (int) drawCards.invoke(game);
+            for (int i = 0; i < 4; i++) {
                 assertEquals(4, networks.get(i).sendParameters.size());
             }
             var parameters = networks.get(startingPlayer).sendParameters.get(3);
             assertEquals(parameters.size(), 10);
             assertEquals(RemoteCommand.SET_HAND, Integer.parseInt(parameters.get(0)));
             assertTrue(parameters.stream().anyMatch(p -> Integer.parseInt(p) == Card.DIAMOND_SEVEN));
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+    }
+
+    @Test
+    void reorder_player_test() {
+        Method reorderPlayers = null;
+        try {
+            reorderPlayers = GameController.class.getDeclaredMethod("reorderPlayers");
+        } catch (NoSuchMethodException e) {
+            e.printStackTrace();
+        }
+        reorderPlayers.setAccessible(true);
+
+        Field teamsField = null;
+        try {
+            teamsField = GameController.class.getDeclaredField("teams");
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        teamsField.setAccessible(true);
+
+        Field playersField = null;
+        try {
+            playersField = GameController.class.getDeclaredField("players");
+        } catch (NoSuchFieldException e) {
+            e.printStackTrace();
+        }
+        playersField.setAccessible(true);
+
+        var game = new GameController(0);
+        List<RemotePlayer> players = new ArrayList<>();
+        for (int i = 0; i < 4; i++) {
+            try {
+                var player = new RemotePlayer(i, new MockNetwork());
+                players.add(player);
+                game.addPlayer(player);
+            } catch (PlayerLeftExpection playerLeftExpection) {
+                playerLeftExpection.printStackTrace();
+            }
+        }
+
+        var teams = new Team[2];
+        teams[0] = new Team(0);
+        teams[1] = new Team(1);
+        teams[0].addPlayer(players.get(3));
+        teams[0].addPlayer(players.get(2));
+        teams[1].addPlayer(players.get(0));
+        teams[1].addPlayer(players.get(1));
+        try {
+            teamsField.set(game, teams);
         } catch (IllegalAccessException e) {
             e.printStackTrace();
-        } catch (InvocationTargetException e) {
+        }
+
+        try {
+            reorderPlayers.invoke(game);
+        } catch (IllegalAccessException | InvocationTargetException e) {
+            e.printStackTrace();
+        }
+
+        try {
+            var privatePlayers = (ArrayList<RemotePlayer>)playersField.get(game);
+            assertEquals(3, privatePlayers.get(0).getId());
+            assertEquals(0, privatePlayers.get(1).getId());
+            assertEquals(2, privatePlayers.get(2).getId());
+            assertEquals(1, privatePlayers.get(3).getId());
+        } catch (IllegalAccessException e) {
             e.printStackTrace();
         }
     }

@@ -355,8 +355,7 @@ public class GameController extends Thread {
                 return p;
             }
         }
-        System.err.println("Error: unknown player id " + id);
-        return null;
+        throw new IndexOutOfBoundsException("Error: unknown player id " + id);
     }
 
     private int getPlayerPosition(BasePlayer player) {
