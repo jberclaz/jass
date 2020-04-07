@@ -55,6 +55,9 @@ public class TestClient {
         sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 3 + " Pischus");
         receiveMessage();
 
+        sendMessage(String.valueOf(RemoteCommand.CHOOSE_TEAM_SELECTION_METHOD));
+        receiveMessage();
+
         sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18 1 30 25 4");
         receiveMessage();
 

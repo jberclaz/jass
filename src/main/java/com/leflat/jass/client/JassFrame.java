@@ -449,10 +449,10 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
-        DialogTeamChoice dtc = new DialogTeamChoice(this, true);
-        dtc.setLocationRelativeTo(this);
-        dtc.setVisible(true);
-        return dtc.hasard ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
+        Object[] options = {"Hasard", "Manuel"};
+        int choice = JOptionPane.showOptionDialog(this, "Comment voulez-vous choisir les équipes?", "Choix des équipes",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        return choice == 0 ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
     }
 
     @Override
