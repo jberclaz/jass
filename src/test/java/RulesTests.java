@@ -14,10 +14,10 @@ public class RulesTests {
     @Test
     public void test_bourg_sec() {
         var hand = buildHand(new int[]{Card.RANK_6, Card.RANK_8, Card.RANK_BOURG, 20, 21, 22});
-        assertFalse(Rules.hasBourSec(hand, Card.COLOR_SPADE));
+        assertFalse(Rules.hasBourgSec(hand, Card.COLOR_SPADE));
 
         hand = buildHand(new int[]{Card.RANK_BOURG, 20, 21, 22, 28, 29, 30});
-        assertTrue(Rules.hasBourSec(hand, Card.COLOR_SPADE));
+        assertTrue(Rules.hasBourgSec(hand, Card.COLOR_SPADE));
     }
 
     @Test

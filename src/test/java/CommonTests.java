@@ -13,8 +13,10 @@ public class CommonTests {
     @Test
     public void card_test() {
         var card = new Card(Card.RANK_BOURG, Card.COLOR_SPADE);
+        Card.atout = Card.COLOR_HEART;
         assertEquals(2, card.getValue());
-        assertEquals(20, card.getValue(Card.COLOR_SPADE));
+        Card.atout = Card.COLOR_SPADE;
+        assertEquals(20, card.getValue());
         assertEquals(Card.COLOR_SPADE, card.getColor());
         assertEquals(Card.RANK_BOURG, card.getRank());
         assertEquals("bourg de pique", card.toString());
