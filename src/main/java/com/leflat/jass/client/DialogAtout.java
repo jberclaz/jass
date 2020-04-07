@@ -12,6 +12,8 @@
 package com.leflat.jass.client;
 
 
+import com.leflat.jass.common.Card;
+
 public class DialogAtout extends javax.swing.JDialog {
     private boolean pass = false;
 
@@ -23,10 +25,9 @@ public class DialogAtout extends javax.swing.JDialog {
         initComponents();
         pack();
         jButtonPass.setEnabled(allowedToPass);
-        jComboBoxAtout.addItem("Pique");
-        jComboBoxAtout.addItem("Cœur");
-        jComboBoxAtout.addItem("Carreau");
-        jComboBoxAtout.addItem("Trèfle");
+        for (var name : Card.COLOR_NAMES) {
+            jComboBoxAtout.addItem(name);
+        }
     }
 
     /**

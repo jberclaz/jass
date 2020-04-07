@@ -170,11 +170,14 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setGameResult(Team winningTeam) {
-        var p0 = winningTeam.getPlayer(0);
-        p0.setName(players.get(p0.getId()).getName());
-        var p1 = winningTeam.getPlayer(1);
-        p1.setName(players.get(p1.getId()).getName());
-        frame.displayGameResult(winningTeam);
+        boolean won = winningTeam.getPlayer(0).getId() == id || winningTeam.getPlayer(1).getId() == id;
+        if (!won) {
+            var p0 = winningTeam.getPlayer(0);
+            p0.setName(players.get(p0.getId()).getName());
+            var p1 = winningTeam.getPlayer(1);
+            p1.setName(players.get(p1.getId()).getName());
+        }
+        frame.displayGameResult(winningTeam, won);
     }
 
     @Override

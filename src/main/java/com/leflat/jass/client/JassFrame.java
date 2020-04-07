@@ -397,16 +397,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void displayGameResult(Team winningTeam) {
+    public void displayGameResult(Team winningTeam, boolean won) {
         centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
         playerCanvas.setMode(JassCanvas.MODE_STATIC);
-        DialogInfo diw = new DialogInfo(this, false);
-        diw.setLocationRelativeTo(this);
-        diw.setText(0, "L'équipe de");
-        diw.setText(1, winningTeam.getPlayer(0).getName() + " & " + winningTeam.getPlayer(1).getName());
-        diw.setText(2, "a gagné la partie!");
+        String message = won ? "Vous avez gagné la partie. Félicitations!" :
+                "L'équipe de " + winningTeam.getPlayer(0).getName() + " & " + winningTeam.getPlayer(1).getName() + " a gagné la partie!";
         setStatusBar("Partie terminée");
-        diw.setVisible(true);
+        JOptionPane.showMessageDialog(this, message, "Partie terminée", JOptionPane.INFORMATION_MESSAGE);
     }
 
     @Override

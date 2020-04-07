@@ -43,7 +43,7 @@ public interface IJassUi {
 
     void displayStatusMessage(String message);
 
-    void displayGameResult(Team winningTeam);
+    void displayGameResult(Team winningTeam, boolean won);
 
     boolean getNewGame();
 

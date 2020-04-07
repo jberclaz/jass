@@ -46,16 +46,27 @@ public class TestClient {
         String name = receiveMessage()[0];
         System.out.println("Client " + name + " connected");
 
-        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 0 + " Berte" );
+        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 0 + " Berte");
         receiveMessage();
 
-        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 2 + " GC" );
+        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 2 + " GC");
         receiveMessage();
 
-        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 3 + " Pischus" );
+        sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 3 + " Pischus");
         receiveMessage();
 
         sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18 1 30 25 4");
+        receiveMessage();
+
+        sleepSec(1);
+
+        sendMessage(String.valueOf(RemoteCommand.CHOOSE_ATOUT));
+        int color = Integer.parseInt(receiveMessage()[0]);
+        System.out.println("Chosen : " + color);
+
+        sleepSec(1);
+
+        sendMessage(String.valueOf(RemoteCommand.SET_GAME_RESULT + " 1 1 3"));
         receiveMessage();
 
         /*
@@ -132,16 +143,18 @@ public class TestClient {
 
         sendMessage(String.valueOf(RemoteCommand.GET_NEW_GAME));
         receiveMessage();
+*/
 
 
- */
-        sendMessage(RemoteCommand.PLAYER_LEFT + " 3");
-        receiveMessage();
+        //       sendMessage(RemoteCommand.PLAYER_LEFT + " 3");
+        //     receiveMessage();
 
+        sleepSec(30);
+    }
 
-
+    private static void sleepSec(float seconds) {
         try {
-            Thread.sleep(300000);
+            Thread.sleep((int) (seconds * 1000));
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
@@ -176,7 +189,7 @@ public class TestClient {
         return Arrays.copyOfRange(tokens, 1, tokens.length);
     }
 
-      public int sendMessage(String message) {
+    public int sendMessage(String message) {
         os.println(message);
         os.flush();
         System.out.println("Sent : " + message);  // DEBUG
