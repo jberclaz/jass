@@ -97,6 +97,7 @@ public class CommonTests {
         assertTrue(team.hasWon());
     }
 
+    /*
     @Test
     public void plie_play_card_test() {
         var player = new ClientPlayer(0);
@@ -161,6 +162,7 @@ public class CommonTests {
         assertEquals(10, plie.score);
         assertFalse(plie.cut);
     }
+*/
 
     @Test
     void shuffle_test() {

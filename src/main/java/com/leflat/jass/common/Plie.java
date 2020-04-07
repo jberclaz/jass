@@ -33,6 +33,8 @@ public class Plie {
 
     public boolean isCut() { return cut; }
 
+    public int getSize() { return cards.size(); }
+
     public void playCard(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
         if (cards.isEmpty()) {
             cards.add(card);
@@ -70,7 +72,7 @@ public class Plie {
 
     private void cutPlie(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
         if (!cut) {
-            takePlie(card, owner);
+            takePlie(card, player);
             cut = true;
             cards.add(card);
             return;
