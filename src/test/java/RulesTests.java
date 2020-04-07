@@ -3,6 +3,7 @@ import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -53,7 +54,7 @@ public class RulesTests {
     @Test
     public void test_follow_under() throws BrokenRuleException {
         var hand = buildHand(new int[]{9, 18, 27});
-        plie.playCard(new Card(Card.RANK_6, Card.COLOR_HEART), secondPlayer, hand);
+        plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_HEART), secondPlayer, hand);
         assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_DAME, plie.getHighest());
@@ -106,6 +107,83 @@ public class RulesTests {
         });
     }
 
+    @Test
+    void test_follow_atout() throws BrokenRuleException {
+        Card.atout = Card.COLOR_HEART;
+        var hand = buildHand(new int[]{9, 18, 27});
+        plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_HEART), secondPlayer, hand);
+        assertEquals(secondPlayer, plie.getOwner());
+        assertEquals(Card.COLOR_HEART, plie.getColor());
+        assertEquals(Card.RANK_NELL, plie.getHighest());
+        assertFalse(plie.isCut());
+        assertEquals(17, plie.getScore());
+        assertEquals(2, plie.getSize());
+    }
+
+    @Test
+    void test_first_card() throws BrokenRuleException {
+        var plie = new Plie();
+        var card = new Card(0);
+        plie.playCard(card, firstPlayer, new ArrayList<>());
+        assertEquals(firstPlayer, plie.getOwner());
+        assertEquals(Card.COLOR_SPADE, plie.getColor());
+        assertEquals(Card.RANK_6, plie.getHighest());
+        assertFalse(plie.isCut());
+        assertEquals(0, plie.getScore());
+        assertEquals(1, plie.getSize());
+    }
+
+    @Test
+    void test_over_cut() throws BrokenRuleException {
+        var hand = buildHand(new int[]{9, 17, 18, 27});
+        plie.playCard(new Card(Card.RANK_6, Card.COLOR_DIAMOND), firstPlayer, hand);
+        plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+        assertEquals(secondPlayer, plie.getOwner());
+        assertEquals(Card.COLOR_HEART, plie.getColor());
+        assertEquals(Card.RANK_8, plie.getHighest());
+        assertTrue(plie.isCut());
+        assertEquals(3, plie.getScore());
+        assertEquals(3, plie.getSize());
+    }
+
+    @Test
+    void test_under_cut_break() throws BrokenRuleException {
+        var hand = buildHand(new int[]{9, 17, 18, 27});
+        plie.playCard(new Card(Card.RANK_10, Card.COLOR_DIAMOND), firstPlayer, hand);
+        Assertions.assertThrows(BrokenRuleException.class, () -> {
+            plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+        });
+    }
+
+    @Test
+    void test_under_cut_valid() throws BrokenRuleException {
+        var hand = buildHand(new int[]{18, 19, 20, 22});
+        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_DIAMOND), firstPlayer, new ArrayList<>());
+        plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+    }
+
+    @Test
+    void test_under_cut_break2() throws BrokenRuleException {
+        var hand = buildHand(new int[]{18, 19, 20, 21});
+        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_DIAMOND), firstPlayer, new ArrayList<>());
+        Assertions.assertThrows(BrokenRuleException.class, () -> {
+            plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+        });
+    }
+
+    @Test
+    void test_play_with_bourg_sec() throws BrokenRuleException {
+        Card.atout = Card.COLOR_HEART;
+        var bourg = new Card(Card.RANK_BOURG, Card.COLOR_HEART);
+        var hand = buildHand(new int[]{0, 1, bourg.getNumber(), 25, 30});
+        plie.playCard(new Card(Card.RANK_6, Card.COLOR_SPADE), secondPlayer, hand);
+        assertEquals(firstPlayer, plie.getOwner());
+        assertEquals(Card.COLOR_HEART, plie.getColor());
+        assertEquals(Card.RANK_DAME, plie.getHighest());
+        assertFalse(plie.isCut());
+        assertEquals(3, plie.getScore());
+        assertEquals(2, plie.getSize());
+    }
 
     /*
     @Test

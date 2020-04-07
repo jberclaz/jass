@@ -10,6 +10,9 @@ public class Plie {
     private BasePlayer owner;      // celui qui tient la plie
     private ArrayList<Card> cards = new ArrayList<>();
 
+    public Plie() {
+    }
+
     public Plie(Card card, BasePlayer player) {
         cards.add(card);
         highest = card;
@@ -29,29 +32,32 @@ public class Plie {
         return Card.atout == Card.COLOR_SPADE ? 2 * score : score;
     }
 
-    public BasePlayer getOwner() { return owner; }
+    public BasePlayer getOwner() {
+        return owner;
+    }
 
-    public boolean isCut() { return cut; }
+    public boolean isCut() {
+        return cut;
+    }
 
-    public int getSize() { return cards.size(); }
+    public int getSize() {
+        return cards.size();
+    }
 
     public void playCard(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
         if (cards.isEmpty()) {
-            cards.add(card);
-            owner = player;
-        }
-
-        if (card.getColor() == this.getColor()) {
+            takePlie(card, player);
+        } else if (card.getColor() == this.getColor()) {
             follow(card, player);
-            return;
+        } else {
+            doesNotFollow(card, player, hand);
         }
-
-        doesNotFollow(card, player, hand);
     }
 
     private void follow(Card card, BasePlayer player) {
         if (!cut && card.compareTo(highest) > 0) {
             takePlie(card, player);
+            return;
         }
         cards.add(card);
     }
@@ -61,7 +67,7 @@ public class Plie {
             cutPlie(card, player, hand);
             return;
         }
-        boolean hasAskedColor = hand.stream().anyMatch(c->c.getColor() == this.getColor());
+        boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
         if (hasAskedColor) {
             if (!Rules.hasBourgSec(hand)) {
                 throw new BrokenRuleException(Rules.RULES_MUST_FOLLOW);
@@ -74,16 +80,18 @@ public class Plie {
         if (!cut) {
             takePlie(card, player);
             cut = true;
-            cards.add(card);
             return;
         }
         if (card.compareTo(highest) > 0) {
             takePlie(card, player);
-            cards.add(card);
             return;
         }
-        boolean hasNonAtoutCards = hand.stream().anyMatch(c->c.getColor() != Card.atout);
+        boolean hasNonAtoutCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
         if (hasNonAtoutCards) {
+            throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+        }
+        boolean hasHigherAtoutCards = hand.stream().anyMatch(c->c.compareTo(highest) > 0);
+        if (hasHigherAtoutCards ) {
             throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
         }
         cards.add(card);
@@ -92,5 +100,6 @@ public class Plie {
     private void takePlie(Card card, BasePlayer player) {
         highest = card;
         owner = player;
+        cards.add(card);
     }
 }
