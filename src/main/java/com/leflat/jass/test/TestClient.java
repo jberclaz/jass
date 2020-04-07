@@ -69,6 +69,11 @@ public class TestClient {
         sendMessage(String.valueOf(RemoteCommand.SET_GAME_RESULT + " 1 1 3"));
         receiveMessage();
 
+        sleepSec(1);
+
+        sendMessage(String.valueOf(RemoteCommand.GET_NEW_GAME));
+        receiveMessage();
+
         /*
         sendMessage(String.valueOf(RemoteCommand.DRAW_CARD));
 

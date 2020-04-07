@@ -408,10 +408,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public boolean getNewGame() {
-        DialogNewPart dnp = new DialogNewPart(this, true);
-        dnp.setLocationRelativeTo(this);
-        dnp.setVisible(true);
-        return dnp.getNewPart();
+        int choice = JOptionPane.showConfirmDialog(this, "Voulez vous faire une nouvelle partie?", "Nouvelle partie", JOptionPane.YES_NO_OPTION);
+        return choice == 0;
     }
 
     @Override
