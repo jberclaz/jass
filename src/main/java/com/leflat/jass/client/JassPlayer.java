@@ -9,7 +9,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JassPlayer implements IPlayer, IRemotePlayer {
-    private RemoteController controller;
+    private RemoteController controller = null;
     private IJassUi frame;
     private int id;
     private Map<Integer, Integer> playersPositions = new HashMap<>();
@@ -18,7 +18,6 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
 
     public JassPlayer() {
-        controller = new RemoteController(this);
         frame = new JassFrame(this);
         frame.showUi(true);
 
@@ -191,6 +190,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public int connect(String name, String host, int gameId) {
+        controller = new RemoteController(this);
         var connectionInfo = controller.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
             return connectionInfo.error;
@@ -209,12 +209,18 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
     @Override
     public boolean disconnect() {
         controller.disconnect();
+        try {
+            controller.join();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        controller = null;
         return true;
     }
 
     @Override
     public boolean isConnected() {
-        return controller.isConnected();
+        return controller != null && controller.isConnected();
     }
 
     private int getInitialRelativePosition(BasePlayer player) {

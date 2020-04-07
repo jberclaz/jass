@@ -22,7 +22,7 @@ public class RemoteController extends Thread {
     private boolean running = false;
     private int playerId;
     private IPlayer player;
-    private Socket clientSocket = new Socket();
+    private Socket clientSocket;
     private PrintWriter os;
     private BufferedReader is;
 
@@ -32,6 +32,7 @@ public class RemoteController extends Thread {
 
     public ClientConnectionInfo connect(String host, int requestedGameId, String name) {
         try {
+            clientSocket = new Socket();
             clientSocket.connect(new InetSocketAddress(host, PORT_NUM), CONNECTION_TIMEOUT_MS);
 
             os = new PrintWriter(clientSocket.getOutputStream(), false);
@@ -100,7 +101,6 @@ public class RemoteController extends Thread {
             clientSocket.close();
         } catch (IOException e) {
             System.out.println("Error while closing socket");
-            //System.exit(1);
         }
     }
 

@@ -80,6 +80,5 @@ public class DialogInfo extends javax.swing.JDialog {
 
   public void setText(int line, String text) {
     labelLine[line].setText(text);
-    System.out.println("Ecriture d'une ligne");
   }
 }

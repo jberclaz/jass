@@ -13,12 +13,14 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
 
+import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.awt.event.MouseEvent;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 
 public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
@@ -73,6 +75,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         });
 
         loadLogos();
+
+        Locale locale = new Locale("fr", "CH");
+        JOptionPane.setDefaultLocale(locale);
 
         pack();
     }
@@ -176,12 +181,14 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
                 jButtonConnect.setText("Déconnexion");
                 setGameId(gameId);
             } else {
-                // TODO: error message
+                JOptionPane.showMessageDialog(null, "La connection a échoué", "Erreur", JOptionPane.ERROR_MESSAGE);
             }
         } else {
-            // TODO: DISPLAY A CONFIRMATION MSG
-            if (myself.disconnect()) {
-                disconnect();
+            int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
+            if (choice == 0) {
+                if (myself.disconnect()) {
+                    disconnect();
+                }
             }
         }
     }//GEN-LAST:event_jButtonConnectActionPerformed
@@ -287,8 +294,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         removeLastPlie();
         lastPlieCanvas.hideAtout();
         setScore(0, 0);
+        setGameId(-1);
 
-        statusBar.setText("Déconnexion");
+        statusBar.setText("");
         jButtonConnect.setText("Connexion");
     }
 
@@ -411,14 +419,11 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void canceledGame(int leavingPlayerPosition) {
-        var di = new DialogInfo(this, false);
-        di.setLocationRelativeTo(this);
         var canvas = getPlayerCanvas(leavingPlayerPosition);
-        di.setText(0, canvas.getName() + " a quitté le jeu.");
-        di.setText(1, "La partie est interrompue.");
+        String message = canvas.getName() + " a quitté le jeu. La partie est interrompue.";
         setStatusBar("Partie interrompue");
         disconnect();
-        di.setVisible(true);
+        JOptionPane.showMessageDialog(this, message, "Partie interrompue", JOptionPane.INFORMATION_MESSAGE);
     }
 
     void setStatusBar(String text) {
@@ -430,7 +435,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     void setGameId(int gameId) {
-        String title = APP_TITLE + " - Jeu " + gameId;
+        String title = gameId >= 0 ? APP_TITLE + " - Jeu " + gameId : APP_TITLE;
         setTitle(title);
     }
 

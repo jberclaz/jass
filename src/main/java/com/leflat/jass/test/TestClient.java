@@ -40,7 +40,7 @@ public class TestClient {
 
         String connectionMessage = receiveRawMessage();
         int gameId = Integer.parseInt(connectionMessage);
-        sendMessage(String.valueOf(gameId));
+        sendMessage(String.valueOf(12));
         int playerId = 1;
         sendMessage(String.valueOf(playerId));
         String name = receiveMessage()[0];
@@ -53,6 +53,9 @@ public class TestClient {
         receiveMessage();
 
         sendMessage(RemoteCommand.SET_PLAYER_INFO + " " + 3 + " Pischus" );
+        receiveMessage();
+
+        sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18 1 30 25 4");
         receiveMessage();
 
         /*
@@ -103,7 +106,7 @@ public class TestClient {
 
         sendMessage(RemoteCommand.SET_SCORES + " 69 156");
         receiveMessage();
-*/
+
         sendMessage(RemoteCommand.SET_HAND + " 3 4 5 6 12 21 30");
         receiveMessage();
 
@@ -130,11 +133,15 @@ public class TestClient {
         sendMessage(String.valueOf(RemoteCommand.GET_NEW_GAME));
         receiveMessage();
 
+
+ */
         sendMessage(RemoteCommand.PLAYER_LEFT + " 3");
         receiveMessage();
 
+
+
         try {
-            Thread.sleep(3000);
+            Thread.sleep(300000);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
