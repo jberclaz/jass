@@ -37,10 +37,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private IRemotePlayer myself;
     private Thread threadToSignal = null;
     private int drawnCardPosition = -1;
-    private Plie currentPlie;
     private Card playedCard = null;
-    private int atoutColor;
-    private boolean anoucementPressed = false;
+    private boolean announcementPressed = false;
 
 
     /**
@@ -181,7 +179,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
                 jButtonConnect.setText("Déconnexion");
                 setGameId(gameId);
             } else {
-                JOptionPane.showMessageDialog(null, "La connection a échoué", "Erreur", JOptionPane.ERROR_MESSAGE);
+                JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
             }
         } else {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
@@ -197,8 +195,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private void jButtonAnounceActionPerformed(java.awt.event.ActionEvent evt) {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
 // Add your handling code here:
-        anoucementPressed = true;
-        setAnouncementEnabled(false);
+        announcementPressed = true;
+        setAnnouncementEnabled(false);
     }//GEN-LAST:event_jButtonAnounceActionPerformed
 
     /**
@@ -229,24 +227,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         if (playedCard == null) {
             return;
         }
-
-        int decision = Rules.canPlay(playedCard, currentPlie, playerCanvas.getHand(), atoutColor);
-        switch (decision) {
-            case Rules.RULES_MUST_FOLLOW:
-                playedCard = null;
-                statusBar.setText("Il faut suivre!");
-                return;
-            case Rules.RULES_CANNOT_UNDERCUT:
-                playedCard = null;
-                statusBar.setText("Vous ne pouvez pas sous-couper!");
-                return;
-        }
-
-        jButtonAnounce.setEnabled(false);
-        setStatusBar("");
-        centerCanvas.showCard(playedCard, 0);
         playerCanvas.setMode(JassCanvas.MODE_STATIC);
-        playerCanvas.removeCard(playedCard);
+
         assert threadToSignal != null;
         synchronized (threadToSignal) {
             threadToSignal.notify();
@@ -254,31 +236,16 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     void centerCanvas_mouseClicked(MouseEvent e) {
-        System.out.println("Center click: " + e.getX() + " " + e.getY());
         drawnCardPosition = centerCanvas.getCard(e.getX(), e.getY());
         if (drawnCardPosition < 0) {
             return;
         }
         centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);    // on ne peut plus choisir une carte
-        setStatusBar("");         // remove "veuillez tirer..."
+
         assert threadToSignal != null;
         synchronized (threadToSignal) {
             threadToSignal.notify();
         }
-    }
-
-    //Fait un repaint des différents canvas
-    public void repaint(int nbr) {
-        if ((nbr & 1) == 1)
-            playerCanvas.repaint();
-        if ((nbr & 2) == 2)
-            leftCanvas.repaint();
-        if ((nbr & 4) == 4)
-            topCanvas.repaint();
-        if ((nbr & 8) == 8)
-            rightCanvas.repaint();
-        if ((nbr & 16) == 16)
-            centerCanvas.repaint();
     }
 
     public void disconnect() {
@@ -291,7 +258,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         }
         centerCanvas.resetCards();
         centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
-        removeLastPlie();
+        clearLastPlie();
         lastPlieCanvas.hideAtout();
         setScore(0, 0);
         setGameId(-1);
@@ -315,7 +282,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
-        atoutColor = atout;
         lastPlieCanvas.setAtout(atout);
         for (int i = 0; i < 4; i++) {
             var canvas = getPlayerCanvas(i);
@@ -324,36 +290,34 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void play(Plie currentPlie, Thread threadToSignal) {
-        this.currentPlie = currentPlie;
+    public void chooseCard(Thread threadToSignal) {
         this.threadToSignal = threadToSignal;
-        setStatusBar("A vous de jouer ...");
-        anoucementPressed = false;
-        setAnouncementEnabled(true);
+        announcementPressed = false;
         playerCanvas.setMode(JassCanvas.MODE_PLAY);
     }
 
     @Override
-    public Card getPlayedCard() {
+    public Card getChosenCard() {
         return playedCard;
     }
 
     @Override
     public void setPlayedCard(Card card, int playerPosition) {
-        var canvas = getPlayerCanvas(playerPosition);
-        canvas.removeCard();
         centerCanvas.showCard(card, playerPosition);
     }
 
     @Override
     public void setOtherPlayersHands(int numberOfCards) {
-        var hand = new ArrayList<Card>();
-        for (int i = 0; i < numberOfCards; i++) {
-            hand.add(new Card(Card.BACK_NUMBER));
-        }
+        var hand = new ArrayList<>(Collections.nCopies(numberOfCards, new Card(Card.BACK_NUMBER)));
         leftCanvas.setHand(hand);
         topCanvas.setHand(hand);
         rightCanvas.setHand(hand);
+    }
+
+    @Override
+    public void removeCardFromPlayerHand(int playerPosition) {
+        var canvas = getPlayerCanvas(playerPosition);
+        canvas.removeCard();
     }
 
     // prépare l'écran pour une nouvelle partie
@@ -363,12 +327,12 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         centerCanvas.setMode(CanvasCenter.MODE_GAME);      // mode de jeu
         lastPlieCanvas.hideAtout();
         setStatusBar("");
-        removeLastPlie();
+        clearLastPlie();
     }
 
     // ramasse la plie
     @Override
-    public void setPlieOwner(int playerPosition) {
+    public void collectPlie(int playerPosition) {
         if (playerPosition == 0) {
             setStatusBar("Vous avez pris la plie");
         } else {
@@ -378,7 +342,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         centerCanvas.resetCards();
     }
 
-    void removeLastPlie() {
+    void clearLastPlie() {
         lastPlieCanvas.setLastPlie(Collections.emptyList());
     }
 
@@ -387,8 +351,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public boolean hasPlayerAnounced() {
-        return anoucementPressed;
+    public boolean hasPlayerAnnounced() {
+        return announcementPressed;
     }
 
     @Override
@@ -423,10 +387,12 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     void setStatusBar(String text) {
         statusBar.setText(text);
+        statusBar.repaint();
     }
 
-    void setAnouncementEnabled(boolean b) {
-        jButtonAnounce.setEnabled(b);
+    public void setAnnouncementEnabled(boolean enable) {
+        announcementPressed = false;
+        jButtonAnounce.setEnabled(enable);
     }
 
     void setGameId(int gameId) {
@@ -456,24 +422,21 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void prepareTeamDrawing(boolean firstAttempt) {
-        System.out.println("frame: prepare team drawing");
+    public void prepareTeamDrawing() {
         playerCanvas.clearHand();
         leftCanvas.clearHand();
         rightCanvas.clearHand();
         topCanvas.clearHand();
         centerCanvas.resetCards();
         centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);
-        removeLastPlie();
-        lastPlieCanvas.setAtout(4);
+        clearLastPlie();
+        lastPlieCanvas.hideAtout();
         setScore(0, 0);
-        repaint(31);
     }
 
     @Override
     public void drawCard(Thread thread) {
         centerCanvas.setMode(CanvasCenter.MODE_PICK_CARD);
-        setStatusBar("Veuillez choisir une carte");
         this.threadToSignal = thread;
     }
 

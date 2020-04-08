@@ -40,6 +40,7 @@ public abstract class JassCanvas extends Canvas {
 
     public void clearHand() {
         hand.clear();
+        repaint();
     }
 
     public void setBackCards(int number) {

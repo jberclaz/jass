@@ -9,9 +9,9 @@ public interface IJassUi {
 
     TeamSelectionMethod chooseTeamSelectionMethod();
 
-    void prepareTeamDrawing(boolean firstAttempt);
+    void prepareTeamDrawing();
 
-    void drawCard(Thread thread);
+    void drawCard(Thread threadToSignal);
 
     int getDrawnCardPosition();
 
@@ -21,25 +21,27 @@ public interface IJassUi {
 
     void setPlayerHand(List<Card> hand);
 
+    void setOtherPlayersHands(int numberOfCards);
+
+    void removeCardFromPlayerHand(int playerPosition);
+
     int chooseAtout(boolean allowedToPass);
 
     void setAtout(int atout, int positionOfPlayerToChooseAtout);
 
-    void play(Plie currentPlie, Thread threadToSignal);
+    void chooseCard(Thread threadToSignal);
 
-    Card getPlayedCard();
+    Card getChosenCard();
 
     void setPlayedCard(Card card, int playerPosition);
 
-    void setOtherPlayersHands(int numberOfCards);
-
     void prepareGame();
 
-    void setPlieOwner(int playerPosition);
+    void collectPlie(int playerPosition);
 
     void setScore(int ourScore, int opponentScore);
 
-    boolean hasPlayerAnounced();
+    boolean hasPlayerAnnounced();
 
     void displayStatusMessage(String message);
 
@@ -48,4 +50,7 @@ public interface IJassUi {
     boolean getNewGame();
 
     void canceledGame(int leavingPlayerPosition);
+    
+    void setAnnouncementEnabled(boolean enable);
 }
+

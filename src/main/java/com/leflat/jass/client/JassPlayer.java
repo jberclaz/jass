@@ -4,20 +4,20 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
+import com.leflat.jass.server.PlayerLeftExpection;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class JassPlayer implements IPlayer, IRemotePlayer {
+public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
     private RemoteController controller = null;
     private IJassUi frame;
-    private int id;
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
-    private List<Card> playerHand = new ArrayList<>();
-
+    private Plie plie;
 
     public JassPlayer() {
+        super(-1);
         frame = new JassFrame(this);
         frame.showUi(true);
 
@@ -45,12 +45,16 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void prepareTeamDrawing(boolean firstAttempt) {
-        frame.prepareTeamDrawing(firstAttempt);
+        frame.prepareTeamDrawing();
+        if (!firstAttempt) {
+            frame.displayStatusMessage("Le tirage des équipes a échoué. On recommence.");
+        }
     }
 
     @Override
     public int drawCard() {
         synchronized (controller) {
+            frame.displayStatusMessage("Veuillez choisir une carte");
             frame.drawCard(controller);
             try {
                 controller.wait();
@@ -59,6 +63,7 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
                 e.printStackTrace();
             }
         }
+        frame.displayStatusMessage("");
         return frame.getDrawnCardPosition();
     }
 
@@ -97,12 +102,15 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setHand(List<Card> cards) {
-        playerHand.clear();
         Card.sort(cards);
-        playerHand.addAll(cards);
+        try {
+            super.setHand(cards);
+        } catch (PlayerLeftExpection ignored) {
+        }
         frame.prepareGame();
         frame.setPlayerHand(cards);
         frame.setOtherPlayersHands(9);
+        plie = new Plie();
     }
 
     @Override
@@ -112,31 +120,67 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
+        Card.atout = color;
         frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
     }
 
     @Override
-    public Card play(int currentColor, int highestRank, boolean cut) {
+    public Card play() {
+        frame.displayStatusMessage("A vous de jouer...");
+        frame.setAnnouncementEnabled(true);
+        Card card;
         synchronized (controller) {
-            frame.play(new Plie(currentColor, highestRank, cut), controller);
-            try {
-                controller.wait();
-
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+            do {
+                frame.chooseCard(controller);
+                try {
+                    controller.wait();
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                card = frame.getChosenCard();
+                try {
+                    plie.playCard(card, this, hand);
+                    break;
+                } catch (BrokenRuleException e) {
+                    switch (e.getBrokenRule()) {
+                        case Rules.RULES_MUST_FOLLOW:
+                            frame.displayStatusMessage("Il faut suivre!");
+                            break;
+                        case Rules.RULES_CANNOT_UNDERCUT:
+                            frame.displayStatusMessage("Vous ne pouvez pas sous-couper!");
+                            break;
+                        default:
+                            System.err.println("Unknown rule " + e.getBrokenRule());
+                    }
+                }
+            } while (true);
         }
-        return frame.getPlayedCard();
+        removeCard(card);
+        frame.setAnnouncementEnabled(false);
+        frame.setPlayerHand(hand);
+        frame.setPlayedCard(card, 0);
+        frame.displayStatusMessage("");
+        return card;
     }
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
-        frame.setPlayedCard(card, playersPositions.get(player.getId()));
+        try {
+            plie.playCard(card, player, null);
+        } catch (BrokenRuleException e) {
+            e.printStackTrace();
+            System.exit(1);
+        }
+        int position = playersPositions.get(player.getId());
+        frame.removeCardFromPlayerHand(position);
+        frame.setPlayedCard(card, position);
     }
 
     @Override
-    public void setPlieOwner(BasePlayer player) {
-        frame.setPlieOwner(playersPositions.get(player.getId()));
+    public void collectPlie(BasePlayer player) {
+        int position = playersPositions.get(player.getId());
+        frame.collectPlie(position);
+        plie = new Plie();
     }
 
     @Override
@@ -146,11 +190,13 @@ public class JassPlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public List<Anouncement> getAnoucement() {
-        if (!frame.hasPlayerAnounced()) {
+
+        // TODO: compute annoucement in Play method and store it somewhere. Here, it's too late and one card would already have been removed from the hand.
+        if (!frame.hasPlayerAnnounced()) {
             return Collections.emptyList();
         }
         // TODO: handle stoeck properly (only communicated when playing the second card)
-        return Anouncement.findAnouncements(playerHand);
+        return Anouncement.findAnouncements(hand);
     }
 
     @Override

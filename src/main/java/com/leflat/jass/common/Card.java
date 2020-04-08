@@ -99,10 +99,12 @@ public class Card implements Comparable {
                 j--;
             }
         } while (i <= j);
-        if (min < j)
+        if (min < j) {
             quickSortCards(cards, min, j);
-        if (i < max)
+        }
+        if (i < max) {
             quickSortCards(cards, i, max);
+        }
     }
 
     public static List<Card> shuffle(int number) {

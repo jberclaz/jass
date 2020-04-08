@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Anouncement {
+public class Anouncement implements Comparable {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;
     public static final int FIFTY = 2;
@@ -125,5 +125,31 @@ public class Anouncement {
             }
         }
         return announcements;
+    }
+
+    @Override
+    public int compareTo(Object o) {
+        Anouncement anouncement = (Anouncement)o;
+        if (this.type < anouncement.getType()) {
+            return -1;
+        }
+        if (this.type > anouncement.getType()) {
+            return 1;
+        }
+        // same type
+        if (this.card.getRank() < anouncement.getCard().getRank()) {
+            return -1;
+        }
+        if (this.card.getRank() > anouncement.getCard().getRank()) {
+            return 1;
+        }
+        // same rank
+        if (anouncement.getCard().getColor() == Card.atout) {
+            return -1;
+        }
+        if (this.getCard().getColor() == Card.atout) {
+            return 1;
+        }
+        return 0;
     }
 }

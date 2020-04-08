@@ -229,7 +229,7 @@ public class RemoteController extends Thread {
                 break;
             case RemoteCommand.PLAY:
                 try {
-                    var card = player.play(-1, -1, false);
+                    var card = player.play();
                     answer = Collections.singletonList(String.valueOf(card.getNumber()));
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     playerLeftExpection.printStackTrace();
@@ -246,22 +246,10 @@ public class RemoteController extends Thread {
                     return;
                 }
                 break;
-            case RemoteCommand.PLAY_NEXT:
-                try {
-                    int highestRank = Integer.parseInt(message[1]);
-                    int currentColor = Integer.parseInt(message[2]);
-                    boolean cut = message[3].equals("1");
-                    var playedCard = player.play(currentColor, highestRank, cut);
-                    answer = Collections.singletonList(String.valueOf(playedCard.getNumber()));
-                } catch (PlayerLeftExpection playerLeftExpection) {
-                    playerLeftExpection.printStackTrace();
-                    return;
-                }
-                break;
-            case RemoteCommand.SET_PLIE_OWNER:
+            case RemoteCommand.COLLECT_PLIE:
                 try {
                     var pl = new ClientPlayer(Integer.parseInt(message[1]));
-                    player.setPlieOwner(pl);
+                    player.collectPlie(pl);
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     playerLeftExpection.printStackTrace();
                     return;

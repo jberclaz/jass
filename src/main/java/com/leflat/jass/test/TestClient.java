@@ -3,6 +3,7 @@ package com.leflat.jass.test;
 import com.leflat.jass.common.Anouncement;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.RemoteCommand;
+import com.leflat.jass.common.TeamSelectionMethod;
 
 import java.io.*;
 import java.net.ServerSocket;
@@ -18,7 +19,7 @@ public class TestClient {
     private PrintWriter os;
 
     TestClient() {
-        ServerSocket serverSocket = null;
+        ServerSocket serverSocket;
         Socket clientSocket = null;
         try {
             serverSocket = new ServerSocket(PORT);
@@ -29,7 +30,7 @@ public class TestClient {
             System.exit(1);
         }
 
-        InputStreamReader isr = null;
+        InputStreamReader isr;
         try {
             isr = new InputStreamReader(clientSocket.getInputStream());
             is = new BufferedReader(isr);
@@ -40,7 +41,7 @@ public class TestClient {
 
         String connectionMessage = receiveRawMessage();
         int gameId = Integer.parseInt(connectionMessage);
-        sendMessage(String.valueOf(12));
+        sendMessage(String.valueOf(123456));
         int playerId = 1;
         sendMessage(String.valueOf(playerId));
         String name = receiveMessage()[0];
@@ -56,12 +57,26 @@ public class TestClient {
         receiveMessage();
 
         sendMessage(String.valueOf(RemoteCommand.CHOOSE_TEAM_SELECTION_METHOD));
-        receiveMessage();
+        TeamSelectionMethod choice = TeamSelectionMethod.valueOf(receiveMessage()[0]);
+
+        if (choice == TeamSelectionMethod.RANDOM) {
+
+        }
 
         sendMessage(RemoteCommand.SET_HAND + " 10 12 14 16 18 1 30 25 4");
         receiveMessage();
 
+        sendMessage(RemoteCommand.SET_ATOUT + " " + Card.COLOR_DIAMOND + " 2");
+        receiveMessage();
+
         sleepSec(1);
+
+        sendMessage(RemoteCommand.SET_PLAYED_CARD + " 0 35");
+        receiveMessage();
+
+        sendMessage(String.valueOf(RemoteCommand.PLAY));
+        var card = new Card(Integer.parseInt(receiveMessage()[0]));
+        System.out.println(card);
 
         sendMessage(String.valueOf(RemoteCommand.CHOOSE_ATOUT));
         int color = Integer.parseInt(receiveMessage()[0]);

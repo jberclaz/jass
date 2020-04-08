@@ -15,8 +15,7 @@ public abstract class RemoteCommand {
     public static final int SET_ATOUT = 13;
     public static final int PLAY = 14;
     public static final int SET_PLAYED_CARD = 15;
-    public static final int PLAY_NEXT = 16;
-    public static final int SET_PLIE_OWNER = 17;
+    public static final int COLLECT_PLIE = 16;
     public static final int SET_SCORES = 18;
     public static final int GET_ANOUNCEMENTS = 19;
     public static final int SET_ANOUNCEMENTS = 20;

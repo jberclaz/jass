@@ -20,10 +20,16 @@ public class Plie {
     }
 
     public int getColor() {
+        if (cards.isEmpty()) {
+            return -1;
+        }
         return cards.get(0).getColor();
     }
 
     public int getHighest() {
+        if (highest == null) {
+            return -1;
+        }
         return highest.getRank();
     }
 
@@ -67,10 +73,12 @@ public class Plie {
             cutPlie(card, player, hand);
             return;
         }
-        boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
-        if (hasAskedColor) {
-            if (!Rules.hasBourgSec(hand)) {
-                throw new BrokenRuleException(Rules.RULES_MUST_FOLLOW);
+        if (hand != null) {
+            boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
+            if (hasAskedColor) {
+                if (!Rules.hasBourgSec(hand)) {
+                    throw new BrokenRuleException(Rules.RULES_MUST_FOLLOW);
+                }
             }
         }
         cards.add(card);
@@ -86,13 +94,15 @@ public class Plie {
             takePlie(card, player);
             return;
         }
-        boolean hasNonAtoutCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
-        if (hasNonAtoutCards) {
-            throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
-        }
-        boolean hasHigherAtoutCards = hand.stream().anyMatch(c->c.compareTo(highest) > 0);
-        if (hasHigherAtoutCards ) {
-            throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+        if (hand != null) {
+            boolean hasNonAtoutCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
+            if (hasNonAtoutCards) {
+                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+            }
+            boolean hasHigherAtoutCards = hand.stream().anyMatch(c -> c.compareTo(highest) > 0);
+            if (hasHigherAtoutCards) {
+                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+            }
         }
         cards.add(card);
     }
