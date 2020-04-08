@@ -124,7 +124,6 @@ public class GameController extends Thread {
 
         for (int i = 0; i < 4; i++) {     // demande de jouer
             var player = players.get((startingPlayer + i) % 4);
-            // TODO: replace arguments with plie
             var card = player.play();
 
             player.getAnoucement();
