@@ -14,9 +14,11 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public class RemoteController extends Thread {
+public class RemoteController implements IController, Runnable {
     private static final int PORT_NUM = 23107;
     private static final int CONNECTION_TIMEOUT_MS = 10000;
     private boolean running = false;
@@ -25,11 +27,13 @@ public class RemoteController extends Thread {
     private Socket clientSocket;
     private PrintWriter os;
     private BufferedReader is;
+    private Lock lock;
 
     public RemoteController(IPlayer player) {
         this.player = player;
     }
 
+    @Override
     public ClientConnectionInfo connect(String host, int requestedGameId, String name) {
         try {
             clientSocket = new Socket();
@@ -62,21 +66,25 @@ public class RemoteController extends Thread {
         return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
     }
 
+    @Override
     public boolean isConnected() {
         return clientSocket != null && clientSocket.isConnected() && !clientSocket.isClosed();
     }
 
+    @Override
     public void sendRawMessage(String message) {
         os.println(message);
         os.flush();
         System.out.println("Envoi au serveur : " + message);
     }
 
+    @Override
     public void sendMessage(List<String> message) {
         String stringMessage = playerId + " " + String.join(" ", message);
         sendRawMessage(stringMessage);
     }
 
+    @Override
     public String receiveRawMessage() throws ServerDisconnectedException {
         String message = null;
 
@@ -95,6 +103,7 @@ public class RemoteController extends Thread {
         return message;
     }
 
+    @Override
     public void disconnect() {
         try {
             running = false;
@@ -105,7 +114,13 @@ public class RemoteController extends Thread {
     }
 
     @Override
+    public Lock getLock() {
+        return lock;
+    }
+
+    @Override
     public void run() {
+        lock = new ReentrantLock();
         running = true;
         System.out.println("Starting Listener...");
         while (running) {

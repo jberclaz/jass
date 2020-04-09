@@ -1,6 +1,8 @@
 package com.leflat.jass.common;
 
 import java.util.List;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 
 public interface IJassUi {
     void setPlayer(BasePlayer player, int relativePosition) throws Exception;
@@ -11,7 +13,7 @@ public interface IJassUi {
 
     void prepareTeamDrawing();
 
-    void drawCard(Thread threadToSignal);
+    void drawCard(Lock lock, Condition condition);
 
     int getDrawnCardPosition();
 
@@ -29,7 +31,7 @@ public interface IJassUi {
 
     void setAtout(int atout, int positionOfPlayerToChooseAtout);
 
-    void chooseCard(Thread threadToSignal);
+    void chooseCard(Lock lock, Condition condition);
 
     Card getChosenCard();
 

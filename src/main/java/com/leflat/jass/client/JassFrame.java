@@ -21,6 +21,8 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.concurrent.locks.Condition;
+import java.util.concurrent.locks.Lock;
 
 public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
@@ -35,11 +37,11 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     // Autres variables
     private IRemotePlayer myself;
-    private Thread threadToSignal = null;
     private int drawnCardPosition = -1;
     private Card playedCard = null;
     private boolean announcementPressed = false;
-
+    private Lock lock;
+    private Condition condition;
 
     /**
      * Creates new form ClientFrame
@@ -229,10 +231,12 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         }
         playerCanvas.setMode(JassCanvas.MODE_STATIC);
 
-        assert threadToSignal != null;
-        synchronized (threadToSignal) {
-            threadToSignal.notify();
-        }
+        assert lock != null;
+        assert condition != null;
+
+        lock.lock();
+        condition.signal();
+        lock.unlock();
     }
 
     void centerCanvas_mouseClicked(MouseEvent e) {
@@ -242,32 +246,16 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         }
         centerCanvas.setMode(CanvasCenter.MODE_DRAW_TEAMS);    // on ne peut plus choisir une carte
 
-        assert threadToSignal != null;
-        synchronized (threadToSignal) {
-            threadToSignal.notify();
-        }
-    }
+        assert lock != null;
+        assert condition != null;
 
-    public void disconnect() {
-        for (int i = 0; i < 4; i++) {
-            var canvas = getPlayerCanvas(i);
-            canvas.clearHand();
-            canvas.setName("");
-            canvas.setAtout(false);
-            canvas.setMode(JassCanvas.MODE_STATIC);
-        }
-        centerCanvas.resetCards();
-        centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
-        clearLastPlie();
-        lastPlieCanvas.hideAtout();
-        setScore(0, 0);
-        setGameId(-1);
-
-        statusBar.setText("");
-        jButtonConnect.setText("Connexion");
+        lock.lock();
+        condition.signal();
+        lock.unlock();
     }
 
     // attribue ses cartes aux joueur
+    @Override
     public void setPlayerHand(List<Card> hand) {
         playerCanvas.setHand(hand);
     }
@@ -290,8 +278,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void chooseCard(Thread threadToSignal) {
-        this.threadToSignal = threadToSignal;
+    public void chooseCard(Lock lock, Condition condition) {
+        this.lock = lock;
+        this.condition = condition;
         announcementPressed = false;
         playerCanvas.setMode(JassCanvas.MODE_PLAY);
     }
@@ -342,12 +331,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         centerCanvas.resetCards();
     }
 
-    void clearLastPlie() {
-        lastPlieCanvas.setLastPlie(Collections.emptyList());
-    }
-
+    @Override
     public void setScore(int ourScore, int opponentScore) {
         lastPlieCanvas.setScores(ourScore, opponentScore);
+    }
+
+    @Override
+    public void setAnnouncementEnabled(boolean enable) {
+        announcementPressed = false;
+        jButtonAnounce.setEnabled(enable);
     }
 
     @Override
@@ -385,21 +377,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         JOptionPane.showMessageDialog(this, message, "Partie interrompue", JOptionPane.INFORMATION_MESSAGE);
     }
 
-    void setStatusBar(String text) {
-        statusBar.setText(text);
-        statusBar.repaint();
-    }
-
-    public void setAnnouncementEnabled(boolean enable) {
-        announcementPressed = false;
-        jButtonAnounce.setEnabled(enable);
-    }
-
-    void setGameId(int gameId) {
-        String title = gameId >= 0 ? APP_TITLE + " - Jeu " + gameId : APP_TITLE;
-        setTitle(title);
-    }
-
     @Override
     public void setPlayer(BasePlayer player, int relativePosition) {
         JassCanvas canvas = getPlayerCanvas(relativePosition);
@@ -435,9 +412,10 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void drawCard(Thread thread) {
+    public void drawCard(Lock lock, Condition condition) {
         centerCanvas.setMode(CanvasCenter.MODE_PICK_CARD);
-        this.threadToSignal = thread;
+        this.lock = lock;
+        this.condition = condition;
     }
 
     @Override
@@ -459,6 +437,11 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         partners.forEach(dpc::addPlayer);
         dpc.setVisible(true);
         return dpc.getSelectedPlayer();
+    }
+
+    private void setStatusBar(String text) {
+        statusBar.setText(text);
+        statusBar.repaint();
     }
 
     private JassCanvas getPlayerCanvas(int relativePosition) {
@@ -492,5 +475,33 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         images.add(tk.getImage(imagePath));
 
         setIconImages(images);
+    }
+
+    private void setGameId(int gameId) {
+        String title = gameId >= 0 ? APP_TITLE + " - Jeu " + gameId : APP_TITLE;
+        setTitle(title);
+    }
+
+    private void clearLastPlie() {
+        lastPlieCanvas.setLastPlie(Collections.emptyList());
+    }
+
+    private void disconnect() {
+        for (int i = 0; i < 4; i++) {
+            var canvas = getPlayerCanvas(i);
+            canvas.clearHand();
+            canvas.setName("");
+            canvas.setAtout(false);
+            canvas.setMode(JassCanvas.MODE_STATIC);
+        }
+        centerCanvas.resetCards();
+        centerCanvas.setMode(CanvasCenter.MODE_PASSIVE);
+        clearLastPlie();
+        lastPlieCanvas.hideAtout();
+        setScore(0, 0);
+        setGameId(-1);
+
+        statusBar.setText("");
+        jButtonConnect.setText("Connexion");
     }
 }

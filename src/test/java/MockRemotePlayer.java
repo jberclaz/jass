@@ -17,17 +17,17 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setPlayerInfo(BasePlayer player) throws PlayerLeftExpection {
+    public void setPlayerInfo(BasePlayer player) {
 
     }
 
     @Override
-    public TeamSelectionMethod chooseTeamSelectionMethod() throws PlayerLeftExpection {
+    public TeamSelectionMethod chooseTeamSelectionMethod() {
         return rand.nextBoolean() ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
     }
 
     @Override
-    public void prepareTeamDrawing(boolean firstAttempt) throws PlayerLeftExpection {
+    public void prepareTeamDrawing(boolean firstAttempt) {
 
     }
 
@@ -37,27 +37,31 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setCard(BasePlayer player, int cardPosition, Card card) throws PlayerLeftExpection {
+    public void setCard(BasePlayer player, int cardPosition, Card card) {
 
     }
 
     @Override
-    public void setPlayersOrder(List<Integer> playerIds) throws PlayerLeftExpection {
+    public void setPlayersOrder(List<Integer> playerIds) {
 
     }
 
     @Override
-    public int choosePartner() throws PlayerLeftExpection {
-        return rand.nextInt(4);
+    public int choosePartner() {
+        int partner;
+        do {
+            partner = rand.nextInt(4);
+        } while (partner == id);
+        return partner;
     }
 
     @Override
-    public int chooseAtout(boolean first) throws PlayerLeftExpection {
+    public int chooseAtout(boolean first) {
         return rand.nextInt(first ? 5 : 4);
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
+    public void setAtout(int color, BasePlayer firstToPlay) {
 
     }
 
@@ -68,7 +72,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public Card play() throws PlayerLeftExpection {
+    public Card play() {
         if (hand.size() == 9) {
             if (rand.nextBoolean()) {
                 anouncements = Anouncement.findAnouncements(hand);
@@ -87,7 +91,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setPlayedCard(BasePlayer player, Card card) throws PlayerLeftExpection {
+    public void setPlayedCard(BasePlayer player, Card card) {
         try {
             plie.playCard(card, player, null);
         } catch (BrokenRuleException e) {
@@ -96,28 +100,28 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void collectPlie(BasePlayer player) throws PlayerLeftExpection {
+    public void collectPlie(BasePlayer player) {
         plie = new Plie();
         anouncements.clear();
     }
 
     @Override
-    public void setScores(int score, int opponentScore) throws PlayerLeftExpection {
+    public void setScores(int score, int opponentScore) {
 
     }
 
     @Override
-    public List<Anouncement> getAnoucement() throws PlayerLeftExpection {
+    public List<Anouncement> getAnoucement() {
         return anouncements;
     }
 
     @Override
-    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) throws PlayerLeftExpection {
+    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
 
     }
 
     @Override
-    public void setGameResult(Team winningTeam) throws PlayerLeftExpection {
+    public void setGameResult(Team winningTeam) {
 
     }
 
@@ -127,7 +131,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void playerLeft(BasePlayer player) throws PlayerLeftExpection {
+    public void playerLeft(BasePlayer player) {
 
     }
 }

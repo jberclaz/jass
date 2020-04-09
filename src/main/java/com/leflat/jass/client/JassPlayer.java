@@ -4,23 +4,27 @@
 package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
+import com.leflat.jass.server.AbstractRemotePlayer;
 import com.leflat.jass.server.PlayerLeftExpection;
 
 import java.util.*;
 import java.util.stream.Collectors;
 
-public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
-    private RemoteController controller = null;
+public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private IJassUi frame;
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
+    private IControllerFactory controllerFactory;
+    private IController controller = null;
+    private Thread controllerThread = null;
 
-    public JassPlayer() {
+    public JassPlayer(IControllerFactory controllerFactory, IJassUiFactory uiFactory) {
         super(-1);
-        frame = new JassFrame(this);
-        frame.showUi(true);
+        this.controllerFactory = controllerFactory;
+        frame = uiFactory.getUi(this);
 
+        frame.showUi(true);
         // TODO: remove (DEBUG)
         //Random rnd = new Random();
         //connect(String.valueOf(rnd.nextInt(100)), "localhost", 0);
@@ -53,16 +57,19 @@ public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public int drawCard() {
-        synchronized (controller) {
-            frame.displayStatusMessage("Veuillez choisir une carte");
-            frame.drawCard(controller);
-            try {
-                controller.wait();
+        var lock = controller.getLock();
+        lock.lock();
+        var condition = lock.newCondition();
+        frame.displayStatusMessage("Veuillez choisir une carte");
+        frame.drawCard(lock, condition);
+        try {
+            condition.await();
 
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        } catch (InterruptedException e) {
+            e.printStackTrace();
         }
+        lock.unlock();
+
         frame.displayStatusMessage("");
         return frame.getDrawnCardPosition();
     }
@@ -129,32 +136,37 @@ public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
         frame.displayStatusMessage("A vous de jouer...");
         frame.setAnnouncementEnabled(true);
         Card card;
-        synchronized (controller) {
-            do {
-                frame.chooseCard(controller);
-                try {
-                    controller.wait();
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+        var lock = controller.getLock();
+        lock.lock();
+        var condition = lock.newCondition();
+
+        do {
+            frame.chooseCard(lock, condition);
+            try {
+                condition.await();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            card = frame.getChosenCard();
+            try {
+                plie.playCard(card, this, hand);
+                break;
+            } catch (BrokenRuleException e) {
+                switch (e.getBrokenRule()) {
+                    case Rules.RULES_MUST_FOLLOW:
+                        frame.displayStatusMessage("Il faut suivre!");
+                        break;
+                    case Rules.RULES_CANNOT_UNDERCUT:
+                        frame.displayStatusMessage("Vous ne pouvez pas sous-couper!");
+                        break;
+                    default:
+                        System.err.println("Unknown rule " + e.getBrokenRule());
                 }
-                card = frame.getChosenCard();
-                try {
-                    plie.playCard(card, this, hand);
-                    break;
-                } catch (BrokenRuleException e) {
-                    switch (e.getBrokenRule()) {
-                        case Rules.RULES_MUST_FOLLOW:
-                            frame.displayStatusMessage("Il faut suivre!");
-                            break;
-                        case Rules.RULES_CANNOT_UNDERCUT:
-                            frame.displayStatusMessage("Vous ne pouvez pas sous-couper!");
-                            break;
-                        default:
-                            System.err.println("Unknown rule " + e.getBrokenRule());
-                    }
-                }
-            } while (true);
-        }
+            }
+        } while (true);
+
+        lock.unlock();
+
         removeCard(card);
         frame.setAnnouncementEnabled(false);
         frame.setPlayerHand(hand);
@@ -239,14 +251,15 @@ public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
 
     @Override
     public int connect(String name, String host, int gameId) {
-        controller = new RemoteController(this);
+        controller = controllerFactory.getController(this);
         var connectionInfo = controller.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
             return connectionInfo.error;
         }
         id = connectionInfo.playerId;
         playersPositions.put(id, 0);
-        controller.start();
+        controllerThread = new Thread(controller, "controller-thread");
+        controllerThread.start();
         try {
             frame.setPlayer(new ClientPlayer(id, name), 0);
         } catch (Exception e) {
@@ -259,11 +272,12 @@ public class JassPlayer extends BasePlayer implements IPlayer, IRemotePlayer {
     public boolean disconnect() {
         controller.disconnect();
         try {
-            controller.join();
+            controllerThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
         controller = null;
+        controllerThread = null;
         return true;
     }
 
