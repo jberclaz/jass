@@ -6,7 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class RemotePlayer extends BasePlayer implements IPlayer {
+public class RemotePlayer extends AbstractRemotePlayer {
     private INetwork network;
 
     public RemotePlayer(int id, INetwork network) throws PlayerLeftExpection {

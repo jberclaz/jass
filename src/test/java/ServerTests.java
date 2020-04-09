@@ -222,5 +222,18 @@ public class ServerTests {
             e.printStackTrace();
         }
     }
+
+    @Test
+    void test_full_game() throws PlayerLeftExpection {
+        var game = new GameController(0);
+        game.setNoWait(true);
+
+        game.addPlayer(new MockRemotePlayer(0, "Mono"));
+        game.addPlayer(new MockRemotePlayer(1, "Berte"));
+        game.addPlayer(new MockRemotePlayer(2, "GC"));
+        game.addPlayer(new MockRemotePlayer(3, "Pischus"));
+
+        game.run();
+    }
 }
 

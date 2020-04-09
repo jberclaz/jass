@@ -7,8 +7,9 @@ import java.util.stream.Collectors;
 
 public class GameController extends Thread {
     private int gameId;
-    private List<RemotePlayer> players = new ArrayList<>();
+    private List<AbstractRemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
+    private boolean noWait = false;
 
     public GameController(int id) {
         this.gameId = id;
@@ -17,7 +18,7 @@ public class GameController extends Thread {
         }
     }
 
-    public void addPlayer(RemotePlayer newPlayer) throws PlayerLeftExpection {
+    public void addPlayer(AbstractRemotePlayer newPlayer) throws PlayerLeftExpection {
         assert players.size() < 4;
         for (var p : players) {
             p.setPlayerInfo(newPlayer);
@@ -37,6 +38,8 @@ public class GameController extends Thread {
     public int getGameId() {
         return gameId;
     }
+
+    public void setNoWait(boolean enable) { noWait = enable; }
 
     @Override
     public void run() {
@@ -325,7 +328,7 @@ public class GameController extends Thread {
         }
     }
 
-    private RemotePlayer getPlayerById(int id) {
+    private AbstractRemotePlayer getPlayerById(int id) {
         for (var p : players) {
             if (p.getId() == id) {
                 return p;
@@ -352,7 +355,10 @@ public class GameController extends Thread {
         players.add(tempList.get(teams[1].getPlayer(1).getId()));
     }
 
-    private static void waitSec(float seconds) {
+    private void waitSec(float seconds) {
+        if (noWait) {
+            return;
+        }
         try {
             Thread.sleep((long) (seconds * 1000));
         } catch (InterruptedException ignored) {
