@@ -7,9 +7,9 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 public class RemotePlayer extends AbstractRemotePlayer {
-    private INetwork network;
+    private IServerNetwork network;
 
-    public RemotePlayer(int id, INetwork network) throws PlayerLeftExpection {
+    public RemotePlayer(int id, IServerNetwork network) throws PlayerLeftExpection {
         super(id);
         this.network = network;
         this.network.setPlayerId(id);
@@ -18,11 +18,8 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayerInfo(BasePlayer player) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_PLAYER_INFO));
-        message.add(String.valueOf(player.getId()));
-        message.add(player.getName());
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_PLAYER_INFO),
+                String.valueOf(player.getId()), player.getName());
         network.receiveMessage();
     }
 
@@ -51,12 +48,10 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_CARD));
-        message.add(String.valueOf(player.getId()));
-        message.add(String.valueOf(cardPosition));
-        message.add(String.valueOf(card.getNumber()));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_CARD),
+                String.valueOf(player.getId()),
+                String.valueOf(cardPosition),
+                String.valueOf(card.getNumber()));
         network.receiveMessage();
     }
 
@@ -65,7 +60,7 @@ public class RemotePlayer extends AbstractRemotePlayer {
         var message = new ArrayList<String>();
         message.add(String.valueOf(RemoteCommand.SET_PLAYERS_ORDER));
         message.addAll(playerIds.stream().map(String::valueOf).collect(Collectors.toList()));
-        network.sendMessage(message);
+        network.sendMessage(message.toArray(new String[0]));
         network.receiveMessage();
     }
 
@@ -80,7 +75,7 @@ public class RemotePlayer extends AbstractRemotePlayer {
         var message = new ArrayList<String>();
         message.add(String.valueOf(RemoteCommand.SET_HAND));
         message.addAll(cards.stream().map(c -> String.valueOf(c.getNumber())).collect(Collectors.toList()));
-        network.sendMessage(message);
+        network.sendMessage(message.toArray(new String[0]));
         network.receiveMessage();
     }
 
@@ -96,11 +91,7 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_ATOUT));
-        message.add(String.valueOf(color));
-        message.add(String.valueOf(firstToPlay.getId()));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_ATOUT), String.valueOf(color), String.valueOf(firstToPlay.getId()));
         network.receiveMessage();
     }
 
@@ -113,30 +104,19 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_PLAYED_CARD));
-        message.add(String.valueOf(player.getId()));
-        message.add(String.valueOf(card.getNumber()));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_PLAYED_CARD), String.valueOf(player.getId()),String.valueOf(card.getNumber()) );
         network.receiveMessage();
     }
 
     @Override
     public void collectPlie(BasePlayer player) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.COLLECT_PLIE));
-        message.add(String.valueOf(player.getId()));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.COLLECT_PLIE), String.valueOf(player.getId()));
         network.receiveMessage();
     }
 
     @Override
     public void setScores(int score, int opponentScore) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_SCORES));
-        message.add(String.valueOf(score));
-        message.add(String.valueOf(opponentScore));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_SCORES),String.valueOf(score),String.valueOf(opponentScore));
         network.receiveMessage();
     }
 
@@ -163,18 +143,16 @@ public class RemotePlayer extends AbstractRemotePlayer {
             message.add(String.valueOf(anoucement.getType()));
             message.add(String.valueOf(anoucement.getCard().getNumber()));
         }
-        network.sendMessage(message);
+        network.sendMessage(message.toArray(new String[0]));
         network.receiveMessage();
     }
 
     @Override
     public void setGameResult(Team winningTeam) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.SET_GAME_RESULT));
-        message.add(String.valueOf(winningTeam.getId()));
-        message.add(String.valueOf(winningTeam.getPlayer(0)));
-        message.add(String.valueOf(winningTeam.getPlayer(1)));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.SET_GAME_RESULT),
+                String.valueOf(winningTeam.getId()),
+                String.valueOf(winningTeam.getPlayer(0)),
+                String.valueOf(winningTeam.getPlayer(1)));
         network.receiveMessage();
     }
 
@@ -186,10 +164,8 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void playerLeft(BasePlayer player) throws PlayerLeftExpection {
-        var message = new ArrayList<String>();
-        message.add(String.valueOf(RemoteCommand.PLAYER_LEFT));
-        message.add(String.valueOf(player.getId()));
-        network.sendMessage(message);
+        network.sendMessage(String.valueOf(RemoteCommand.PLAYER_LEFT),
+                String.valueOf(player.getId()));
         network.receiveMessage();
     }
 

@@ -3,13 +3,6 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
-import java.net.InetSocketAddress;
-import java.net.Socket;
-import java.net.SocketTimeoutException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -19,98 +12,13 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
 public class RemoteController implements IController, Runnable {
-    private static final int PORT_NUM = 23107;
-    private static final int CONNECTION_TIMEOUT_MS = 10000;
     private boolean running = false;
-    private int playerId;
     private IPlayer player;
-    private Socket clientSocket;
-    private PrintWriter os;
-    private BufferedReader is;
     private Lock lock;
+    private IClientNetwork network;
 
-    public RemoteController(IPlayer player) {
-        this.player = player;
-    }
-
-    @Override
-    public ClientConnectionInfo connect(String host, int requestedGameId, String name) {
-        try {
-            clientSocket = new Socket();
-            clientSocket.connect(new InetSocketAddress(host, PORT_NUM), CONNECTION_TIMEOUT_MS);
-
-            os = new PrintWriter(clientSocket.getOutputStream(), false);
-            is = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            System.out.println("Connection successful");
-        } catch (SocketTimeoutException e) {
-            System.out.println("Server does not answer");
-            return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
-        } catch (IOException e) {
-            System.out.println("Unable to create socket: " + e);
-            return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
-        }
-
-        sendRawMessage(String.valueOf(requestedGameId));
-
-        try {
-            int receivedGameId = Integer.parseInt(receiveRawMessage());
-            if (receivedGameId < 0) {
-                return new ClientConnectionInfo(receivedGameId);
-            }
-            playerId = Integer.parseInt(receiveRawMessage());
-            sendMessage(Collections.singletonList(name));
-            return new ClientConnectionInfo(playerId, receivedGameId, ConnectionError.CONNECTION_SUCCESSFUL);
-        } catch (ServerDisconnectedException e) {
-            e.printStackTrace();
-        }
-        return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
-    }
-
-    @Override
-    public boolean isConnected() {
-        return clientSocket != null && clientSocket.isConnected() && !clientSocket.isClosed();
-    }
-
-    @Override
-    public void sendRawMessage(String message) {
-        os.println(message);
-        os.flush();
-        System.out.println("Envoi au serveur : " + message);
-    }
-
-    @Override
-    public void sendMessage(List<String> message) {
-        String stringMessage = playerId + " " + String.join(" ", message);
-        sendRawMessage(stringMessage);
-    }
-
-    @Override
-    public String receiveRawMessage() throws ServerDisconnectedException {
-        String message = null;
-
-        // TODO: implementer timeout + exc
-        try {
-            message = is.readLine();
-        } catch (IOException e) {
-            System.out.println("Error during reception");
-        }
-        if (message != null)
-            System.out.println("Received : " + message);
-        else {
-            System.out.println("Server has left unexpectedly");
-            throw new ServerDisconnectedException();
-        }
-        return message;
-    }
-
-    @Override
-    public void disconnect() {
-        try {
-            running = false;
-            clientSocket.close();
-        } catch (IOException e) {
-            System.out.println("Error while closing socket");
-        }
+    public RemoteController(IPlayer player, IClientNetwork network) {
+        this.player = player; this.network = network;
     }
 
     @Override
@@ -125,7 +33,7 @@ public class RemoteController implements IController, Runnable {
         System.out.println("Starting Listener...");
         while (running) {
             try {
-                String message = receiveRawMessage();
+                String message = network.receiveRawMessage();
                 handleControllerMessage(message.split(" "));
             } catch (ServerDisconnectedException e) {
                 e.printStackTrace();
@@ -133,7 +41,12 @@ public class RemoteController implements IController, Runnable {
                 // TODO: player.serverDisconnected
             }
         }
-        System.out.println("Exiting listener");
+        System.out.println("Exiting listener ");
+    }
+
+    @Override
+    public void terminate() {
+        running = false;
     }
 
     private void handleControllerMessage(String[] message) {
@@ -339,6 +252,6 @@ public class RemoteController implements IController, Runnable {
             default:
                 System.err.println("Unknown command " + command);
         }
-        sendMessage(answer);
+        network.sendMessage(answer);
     }
 }

@@ -7,59 +7,9 @@ import org.junit.jupiter.api.Test;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Queue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
-
-class MockNetwork implements INetwork {
-    public List<List<String>> sendParameters = new ArrayList<>();
-    private Queue<String[]> answers = new LinkedBlockingQueue<>();
-
-    public MockNetwork() {
-
-    }
-
-    public MockNetwork(String[] answer) {
-        addAnswer(answer);
-    }
-
-    public void addAnswer(String[] message) {
-        answers.add(message);
-    }
-
-    public void clearParameters() {
-        sendParameters.clear();
-    }
-
-    @Override
-    public int sendMessage(String message) {
-        sendParameters.add(Collections.singletonList(message));
-        return 0;
-    }
-
-    @Override
-    public void setPlayerId(int id) {
-
-    }
-
-    @Override
-    public int sendMessage(List<String> message) {
-        sendParameters.add(message);
-        return 0;
-    }
-
-    @Override
-    public String[] receiveMessage() {
-        if (answers.isEmpty()) {
-            return new String[]{};
-        }
-        return answers.remove();
-    }
-}
 
 public class ServerTests {
     @Test
@@ -75,10 +25,10 @@ public class ServerTests {
         RemotePlayer p1, p2, p3, p4;
         var game = new GameController(0);
         try {
-            p1 = new RemotePlayer(1, new MockNetwork(new String[]{"GC"}));
-            p2 = new RemotePlayer(2, new MockNetwork(new String[]{"Pischus"}));
-            p3 = new RemotePlayer(3, new MockNetwork(new String[]{"Berte"}));
-            p4 = new RemotePlayer(4, new MockNetwork(new String[]{"Wein"}));
+            p1 = new RemotePlayer(1, new MockServerNetwork(new String[]{"GC"}));
+            p2 = new RemotePlayer(2, new MockServerNetwork(new String[]{"Pischus"}));
+            p3 = new RemotePlayer(3, new MockServerNetwork(new String[]{"Berte"}));
+            p4 = new RemotePlayer(4, new MockServerNetwork(new String[]{"Wein"}));
             game.addPlayer(p2);
             game.addPlayer(p1);
             game.addPlayer(p4);
@@ -102,10 +52,10 @@ public class ServerTests {
         assertEquals(0, game.getNbrPlayers());
         assertEquals(120, game.getGameId());
         try {
-            p1 = new RemotePlayer(1, new MockNetwork(new String[]{"GC"}));
-            p2 = new RemotePlayer(2, new MockNetwork(new String[]{"Pischus"}));
-            p3 = new RemotePlayer(3, new MockNetwork(new String[]{"Berte"}));
-            p4 = new RemotePlayer(4, new MockNetwork(new String[]{"Wein"}));
+            p1 = new RemotePlayer(1, new MockServerNetwork(new String[]{"GC"}));
+            p2 = new RemotePlayer(2, new MockServerNetwork(new String[]{"Pischus"}));
+            p3 = new RemotePlayer(3, new MockServerNetwork(new String[]{"Berte"}));
+            p4 = new RemotePlayer(4, new MockServerNetwork(new String[]{"Wein"}));
             game.addPlayer(p2);
             assertEquals(1, game.getNbrPlayers());
             assertFalse(game.isGameFull());
@@ -129,11 +79,11 @@ public class ServerTests {
         drawCards.setAccessible(true);
 
         List<RemotePlayer> players = new ArrayList<>();
-        List<MockNetwork> networks = new ArrayList<>();
+        List<MockServerNetwork> networks = new ArrayList<>();
         var game = new GameController(0);
         try {
             for (int i = 0; i < 4; i++) {
-                networks.add(new MockNetwork(new String[]{"Wein"}));
+                networks.add(new MockServerNetwork(new String[]{"Wein"}));
                 players.add(new RemotePlayer(i, networks.get(i)));
                 game.addPlayer(players.get(i));
             }
@@ -185,7 +135,7 @@ public class ServerTests {
         List<RemotePlayer> players = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             try {
-                var player = new RemotePlayer(i, new MockNetwork(new String[]{"Hhip"}));
+                var player = new RemotePlayer(i, new MockServerNetwork(new String[]{"Hhip"}));
                 players.add(player);
                 game.addPlayer(player);
             } catch (PlayerLeftExpection playerLeftExpection) {

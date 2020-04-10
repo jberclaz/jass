@@ -5,18 +5,17 @@ import com.leflat.jass.server.RemotePlayer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 public class RemotePlayerTests {
-    private MockNetwork network;
+    private MockServerNetwork network;
     private RemotePlayer player;
 
     @BeforeEach
     public void setUp() {
-        network = new MockNetwork();
+        network = new MockServerNetwork();
         network.addAnswer(new String[]{"GC"});
         try {
             player = new RemotePlayer(0, network);
