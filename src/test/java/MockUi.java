@@ -37,15 +37,12 @@ public class MockUi implements IJassUi {
     @Override
     public void drawCard(Lock lock, Condition condition) {
         Runnable runnable = () -> {
-            System.out.println("Inside : " + Thread.currentThread().getName());
             lock.lock();
             condition.signal();
             lock.unlock();
-            System.out.println("Done : " + Thread.currentThread().getName());
         };
 
         Thread thread = new Thread(runnable, "mock-ui-thread-draw");
-
         thread.start();
     }
 
@@ -92,12 +89,9 @@ public class MockUi implements IJassUi {
     @Override
     public void chooseCard(Lock lock, Condition condition) {
         Runnable runnable = () -> {
-            System.out.println("Inside : " + Thread.currentThread().getName());
-            System.out.println(lock);
             lock.lock();
             condition.signal();
             lock.unlock();
-            System.out.println("Done : " + Thread.currentThread().getName());
         };
 
         Thread thread = new Thread(runnable, "mock-ui-thread-play");
