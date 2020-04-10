@@ -18,6 +18,8 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private IControllerFactory controllerFactory;
     private IController controller = null;
     private Thread controllerThread = null;
+    private List<Anouncement> anouncements;
+    private boolean hasStoeck;
 
     public JassPlayer(IControllerFactory controllerFactory, IJassUiFactory uiFactory) {
         super(-1);
@@ -129,6 +131,8 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     public void setAtout(int color, BasePlayer firstToPlay) {
         Card.atout = color;
         frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
+        anouncements = Anouncement.findAnouncements(hand);
+        hasStoeck = Anouncement.findStoeck(hand);
     }
 
     @Override
@@ -202,13 +206,17 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public List<Anouncement> getAnoucement() {
-
-        // TODO: compute annoucement in Play method and store it somewhere. Here, it's too late and one card would already have been removed from the hand.
         if (!frame.hasPlayerAnnounced()) {
             return Collections.emptyList();
         }
-        // TODO: handle stoeck properly (only communicated when playing the second card)
-        return Anouncement.findAnouncements(hand);
+        if (hand.size() == 8) {
+            // can announce only on first plie
+            return anouncements;
+        }
+        if (playedStoeck()) {
+            return Collections.singletonList(Anouncement.getStoeck());
+        }
+        return Collections.emptyList();
     }
 
     @Override
@@ -288,5 +296,25 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     private int getInitialRelativePosition(BasePlayer player) {
         return (player.getId() - id + 4) % 4;
+    }
+
+    private boolean playedStoeck() {
+        if (!hasStoeck) {
+            return false;
+        }
+        var playedCard = plie.getCards().get(plie.getSize() - 1);
+        if (playedCard.getColor() != Card.atout ||
+                (playedCard.getRank() != Card.RANK_DAME &&
+                        playedCard.getRank() != Card.RANK_ROI)) {
+            return false;
+        }
+        for (var card : hand) {
+            if (card.getColor() == Card.atout &&
+                    (card.getRank() == Card.RANK_DAME ||
+                            card.getRank() == Card.RANK_ROI)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

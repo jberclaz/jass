@@ -50,6 +50,8 @@ public class Plie {
         return cards.size();
     }
 
+    public List<Card> getCards() { return cards; }
+
     public void playCard(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
         if (cards.isEmpty()) {
             takePlie(card, player);

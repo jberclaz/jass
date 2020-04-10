@@ -14,7 +14,7 @@ import java.util.Random;
  * ***************************************************************
  */
 
-public class Card implements Comparable {
+public class Card implements Comparable<Card> {
     public static final int DIAMOND_SEVEN = 19;
     public static final int RANK_6 = 0;
     public static final int RANK_7 = 1;
@@ -123,8 +123,7 @@ public class Card implements Comparable {
     }
 
     @Override
-    public int compareTo(Object o) {
-        Card card = (Card)o;
+    public int compareTo(Card card) {
         if (card.getColor() != this.getColor()) {
             throw new ClassCastException("Cannot compare cards of different colors");
         }

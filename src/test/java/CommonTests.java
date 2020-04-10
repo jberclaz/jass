@@ -63,8 +63,10 @@ public class CommonTests {
     @Test
     public void find_stoeck_test() {
         int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25};
-        assertFalse(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()), Card.COLOR_HEART));
-        assertTrue(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()), Card.COLOR_DIAMOND));
+        Card.atout = Card.COLOR_HEART;
+        assertFalse(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
+        Card.atout = Card.COLOR_DIAMOND;
+        assertTrue(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
     }
 
     @Test
@@ -72,8 +74,8 @@ public class CommonTests {
         int[] list = {20, 30, 1, 3, 15, 12, 8, 35, 34};
         List<Card> hand = Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList());
         Card.sort(hand);
-        for (int i=1; i<hand.size(); i++) {
-            assertTrue(hand.get(i-1).getNumber() < hand.get(i).getNumber());
+        for (int i = 1; i < hand.size(); i++) {
+            assertTrue(hand.get(i - 1).getNumber() < hand.get(i).getNumber());
         }
     }
 

@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Anouncement implements Comparable {
+public class Anouncement implements Comparable<Anouncement> {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;
     public static final int FIFTY = 2;
@@ -16,6 +16,8 @@ public class Anouncement implements Comparable {
 
     public static final int[] VALUES = {20, 20, 50, 100, 100, 150, 200};
     public static final String[] NAMES = {"stoeck", "3 cartes", "cinquante", "cent", "cent", "cent cinquante", "deux cents"};
+
+    public static Anouncement getStoeck() { return new Anouncement(Anouncement.STOECK, new Card(0));}
 
     public Anouncement(int type, Card card) {
         this.type = type;
@@ -78,9 +80,9 @@ public class Anouncement implements Comparable {
         return new ArrayList<>(announcements);
     }
 
-    public static boolean findStoeck(List<Card> hand, int atout) {
-        int queen = atout * 9 + Card.RANK_DAME;
-        int king = atout * 9 + Card.RANK_ROI;
+    public static boolean findStoeck(List<Card> hand) {
+        int queen = Card.atout * 9 + Card.RANK_DAME;
+        int king = Card.atout * 9 + Card.RANK_ROI;
         var numbers = hand.stream().map(Card::getNumber).collect(Collectors.toList());
         return numbers.contains(queen) && numbers.contains(king);
     }
@@ -128,8 +130,7 @@ public class Anouncement implements Comparable {
     }
 
     @Override
-    public int compareTo(Object o) {
-        Anouncement anouncement = (Anouncement)o;
+    public int compareTo(Anouncement anouncement) {
         if (this.type < anouncement.getType()) {
             return -1;
         }

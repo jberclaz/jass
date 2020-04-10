@@ -2,7 +2,7 @@ package com.leflat.jass.test;
 
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.server.PlayerNetwork;
+import com.leflat.jass.server.ServerNetwork;
 import com.leflat.jass.server.RemotePlayer;
 
 import java.io.IOException;
@@ -38,11 +38,11 @@ public class TestSingleClient {
             System.exit(1);
         }
 
-        var network = new PlayerNetwork(clientSocket);
+        var network = new ServerNetwork(clientSocket);
         network.receiveRawMessage();
         network.sendMessage(String.valueOf(123456));
 
-        mainPlayer = new RemotePlayer(0, new PlayerNetwork(clientSocket));
+        mainPlayer = new RemotePlayer(0, new ServerNetwork(clientSocket));
 
         players.add(mainPlayer);
         players.add(new TestPlayer(1, "Berte"));
