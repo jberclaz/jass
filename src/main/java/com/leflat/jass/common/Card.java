@@ -149,4 +149,19 @@ public class Card implements Comparable<Card> {
         }
         return 1;
     }
+
+     @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Card)) {
+            return false;
+        }
+
+        Card c = (Card) o;
+
+        return c.getNumber() == this.number;
+    }
 }

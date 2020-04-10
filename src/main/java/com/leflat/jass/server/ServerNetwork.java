@@ -7,14 +7,18 @@ import java.net.Socket;
 import java.util.Arrays;
 
 public class ServerNetwork implements IServerNetwork {
-    private BufferedReader is;
-    private PrintWriter os;
-    private int playerId = -1;
+    protected BufferedReader is;
+    protected PrintWriter os;
+    protected int playerId = -1;
 
     public ServerNetwork(Socket socket) throws IOException {
         var isr = new InputStreamReader(socket.getInputStream());
         is = new BufferedReader(isr);
         os = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()), false);
+    }
+
+    protected ServerNetwork() {
+
     }
 
     @Override

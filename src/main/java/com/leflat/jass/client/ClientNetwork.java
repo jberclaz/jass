@@ -18,14 +18,15 @@ public class ClientNetwork implements IClientNetwork {
     private static final int PORT_NUM = 23107;
     private static final int CONNECTION_TIMEOUT_MS = 10000;
 
-    private PrintWriter os;
-    private BufferedReader is;
-    private int playerId;
+    private Socket clientSocket;
+    protected PrintWriter os;
+    protected BufferedReader is;
+    protected int playerId;
 
     @Override
     public ClientConnectionInfo connect(String host, int requestedGameId, String name) {
         try {
-            Socket clientSocket = new Socket();
+            clientSocket = new Socket();
             clientSocket.connect(new InetSocketAddress(host, PORT_NUM), CONNECTION_TIMEOUT_MS);
 
             os = new PrintWriter(clientSocket.getOutputStream(), false);
@@ -57,12 +58,16 @@ public class ClientNetwork implements IClientNetwork {
 
     @Override
     public boolean isConnected() {
-        return false;
+        return clientSocket != null && clientSocket.isConnected() && !clientSocket.isClosed();
     }
 
     @Override
     public void disconnect() {
-
+        try {
+            clientSocket.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     @Override

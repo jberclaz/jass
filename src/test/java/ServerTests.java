@@ -1,15 +1,23 @@
+import com.leflat.jass.client.ClientPlayer;
+import com.leflat.jass.client.JassPlayer;
+import com.leflat.jass.client.RemoteController;
+import com.leflat.jass.client.ServerDisconnectedException;
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.GameController;
 import com.leflat.jass.server.PlayerLeftExpection;
 import com.leflat.jass.server.RemotePlayer;
 import org.junit.jupiter.api.Test;
 
+import java.io.IOException;
+import java.io.PipedInputStream;
+import java.io.PipedOutputStream;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.util.*;
 
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.*;
 
 public class ServerTests {
     @Test
@@ -184,6 +192,73 @@ public class ServerTests {
         game.addPlayer(new MockRemotePlayer(3, "Pischus"));
 
         game.run();
+    }
+
+    @Test
+    void test_client_server_transmission() throws IOException, PlayerLeftExpection, InterruptedException, ServerDisconnectedException {
+        IPlayer mockedPlayer = mock(JassPlayer.class);
+        var hand = RulesTests.buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9);
+        var otherPlayer = new ClientPlayer(2, "GC");
+        var card = new Card(31);
+        var order = new Integer[]{3, 1, 0, 2};
+        var anouncement = Collections.singletonList(new Anouncement(Anouncement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
+
+        when(mockedPlayer.choosePartner()).thenReturn(3);
+        when(mockedPlayer.chooseTeamSelectionMethod()).thenReturn(TeamSelectionMethod.RANDOM);
+        when(mockedPlayer.drawCard()).thenReturn(23);
+        when(mockedPlayer.chooseAtout(true)).thenReturn(4);
+        when(mockedPlayer.play()).thenReturn(card);
+        when(mockedPlayer.getAnoucement()).thenReturn(anouncement);
+
+        var serverOutput = new PipedOutputStream();
+        var clientOutput = new PipedOutputStream();
+        var clientInput = new PipedInputStream(serverOutput);
+        var serverInput = new PipedInputStream(clientOutput);
+        var serverThread = new Thread(() -> {
+            var serverNetwork = new LocalServerNetwork(serverInput, serverOutput, 1);
+            try {
+                var remotePlayer = new RemotePlayer(1, serverNetwork);
+                remotePlayer.setPlayerInfo(otherPlayer);
+                remotePlayer.setScores(10, 20);
+                assertEquals(TeamSelectionMethod.RANDOM, remotePlayer.chooseTeamSelectionMethod());
+                remotePlayer.prepareTeamDrawing(true);
+                assertEquals(23, remotePlayer.drawCard());
+                remotePlayer.setCard(otherPlayer, 12, card);
+                remotePlayer.setPlayersOrder(Arrays.asList(order));
+                assertEquals(3, remotePlayer.choosePartner());
+                remotePlayer.setHand(hand);
+                assertEquals(4, remotePlayer.chooseAtout(true));
+                remotePlayer.setAtout(Card.COLOR_HEART, otherPlayer);
+                assertEquals(card, remotePlayer.play());
+                remotePlayer.setPlayedCard(otherPlayer, card);
+                remotePlayer.collectPlie(otherPlayer);
+                var result =  remotePlayer.getAnoucement();
+                assertEquals(anouncement.size(), result.size());
+                assertEquals(anouncement.get(0), result.get(0));
+                remotePlayer.setAnouncement(otherPlayer, anouncement);
+            } catch (PlayerLeftExpection playerLeftExpection) {
+                playerLeftExpection.printStackTrace();
+            }
+        });
+
+        serverThread.start();
+
+        var clientNetwork = new LocalClientNetwork(clientInput, clientOutput);
+        var remoteController = new RemoteController(mockedPlayer, clientNetwork);
+        var remoteThread = new Thread(remoteController);
+        remoteThread.start();
+
+        serverThread.join();
+
+        verify(mockedPlayer).setScores(10, 20);
+        verify(mockedPlayer).choosePartner();
+        verify(mockedPlayer).chooseTeamSelectionMethod();
+        verify(mockedPlayer).prepareTeamDrawing(true);
+        verify(mockedPlayer).drawCard();
+        verify(mockedPlayer).setPlayersOrder(Arrays.asList(order));
+        verify(mockedPlayer).chooseAtout(true);
+        verify(mockedPlayer).play();
+        verify(mockedPlayer).getAnoucement();
     }
 }
 

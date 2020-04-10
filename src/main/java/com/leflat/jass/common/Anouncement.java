@@ -49,6 +49,7 @@ public class Anouncement implements Comparable<Anouncement> {
         return VALUES[type];
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(NAMES[type]);
@@ -72,6 +73,21 @@ public class Anouncement implements Comparable<Anouncement> {
             sb.append(card.toString());
         }
         return sb.toString();
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Anouncement)) {
+            return false;
+        }
+
+        Anouncement a = (Anouncement) o;
+
+        return a.getType() == this.type && a.getCard().equals(this.card);
     }
 
     public static List<Anouncement> findAnouncements(List<Card> hand) {
