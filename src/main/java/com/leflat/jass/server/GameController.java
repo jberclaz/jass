@@ -39,7 +39,9 @@ public class GameController extends Thread {
         return gameId;
     }
 
-    public void setNoWait(boolean enable) { noWait = enable; }
+    public void setNoWait(boolean enable) {
+        noWait = enable;
+    }
 
     @Override
     public void run() {
@@ -82,21 +84,7 @@ public class GameController extends Thread {
         int firstToPlay = drawCards();
         Plie plie = null;
         do {
-            Card.atout = chooseAtout(firstToPlay);                     // choisit l'atout
-            int nextPlayer = firstToPlay;
-
-            for (int i = 0; i < 9; i++) {
-                plie = playPlie(nextPlayer);
-                if (plie == null) {
-                    break;
-                }
-                nextPlayer = getPlayerPosition(plie.getOwner());
-            }
-
-            if (plie != null) {    // si personne n'a gagné : on continue normalement
-                // 5 de der
-                players.get(nextPlayer).getTeam().addScore(Card.atout == Card.COLOR_SPADE ? 10 : 5);
-            }
+            plie = playOneHand(firstToPlay);
 
             for (var p : players) {   // envoie le score
                 var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
@@ -122,6 +110,37 @@ public class GameController extends Thread {
 
         /* waits a few seconds so that the players can see all the cards */
         waitSec(4);
+    }
+
+    Plie playOneHand(int firstToPlay) throws PlayerLeftExpection, BrokenRuleException {
+        int nextPlayer = firstToPlay;
+        Plie plie = null;
+
+        Arrays.stream(teams).forEach(Team::resetPlies);
+        Card.atout = chooseAtout(firstToPlay);
+
+        for (int i = 0; i < 9; i++) {
+            plie = playPlie(nextPlayer);
+            if (plie == null) {
+                break;
+            }
+            nextPlayer = getPlayerPosition(plie.getOwner());
+            plie.getOwner().getTeam().addPlie();
+        }
+
+        if (plie != null) {    // si personne n'a gagné : on continue normalement
+            // 5 de der
+            players.get(nextPlayer).getTeam().addScore(Card.atout == Card.COLOR_SPADE ? 10 : 5);
+        }
+
+        for (var team : teams) {
+            if (team.getNumberOfPlies() == 9) {
+                // match
+                team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
+            }
+        }
+
+        return plie;
     }
 
     Plie playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {

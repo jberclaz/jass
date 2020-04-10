@@ -202,6 +202,9 @@ public class ServerTests {
         var card = new Card(31);
         var order = new Integer[]{3, 1, 0, 2};
         var anouncement = Collections.singletonList(new Anouncement(Anouncement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
+        var team = new Team(0);
+        team.addPlayer(otherPlayer);
+        team.addPlayer(new ClientPlayer(3, "Layenne"));
 
         when(mockedPlayer.choosePartner()).thenReturn(3);
         when(mockedPlayer.chooseTeamSelectionMethod()).thenReturn(TeamSelectionMethod.RANDOM);
@@ -209,6 +212,7 @@ public class ServerTests {
         when(mockedPlayer.chooseAtout(true)).thenReturn(4);
         when(mockedPlayer.play()).thenReturn(card);
         when(mockedPlayer.getAnoucement()).thenReturn(anouncement);
+        when(mockedPlayer.getNewGame()).thenReturn(true);
 
         var serverOutput = new PipedOutputStream();
         var clientOutput = new PipedOutputStream();
@@ -236,6 +240,9 @@ public class ServerTests {
                 assertEquals(anouncement.size(), result.size());
                 assertEquals(anouncement.get(0), result.get(0));
                 remotePlayer.setAnouncement(otherPlayer, anouncement);
+                remotePlayer.setGameResult(team);
+                assertTrue(remotePlayer.getNewGame());
+                remotePlayer.playerLeft(otherPlayer);
             } catch (PlayerLeftExpection playerLeftExpection) {
                 playerLeftExpection.printStackTrace();
             }
@@ -250,15 +257,24 @@ public class ServerTests {
 
         serverThread.join();
 
-        verify(mockedPlayer).setScores(10, 20);
-        verify(mockedPlayer).choosePartner();
-        verify(mockedPlayer).chooseTeamSelectionMethod();
-        verify(mockedPlayer).prepareTeamDrawing(true);
-        verify(mockedPlayer).drawCard();
-        verify(mockedPlayer).setPlayersOrder(Arrays.asList(order));
-        verify(mockedPlayer).chooseAtout(true);
-        verify(mockedPlayer).play();
-        verify(mockedPlayer).getAnoucement();
+        verify(mockedPlayer, times(1)).setPlayerInfo(otherPlayer);
+        verify(mockedPlayer, times(1)).setScores(10, 20);
+        verify(mockedPlayer, times(1)).chooseTeamSelectionMethod();
+        verify(mockedPlayer, times(1)).prepareTeamDrawing(true);
+        verify(mockedPlayer, times(1)).drawCard();
+        verify(mockedPlayer, times(1)).setCard(otherPlayer, 12, card);
+        verify(mockedPlayer, times(1)).setPlayersOrder(Arrays.asList(order));
+        verify(mockedPlayer, times(1)).choosePartner();
+        verify(mockedPlayer, times(1)).setHand(hand);
+        verify(mockedPlayer, times(1)).chooseAtout(true);
+        verify(mockedPlayer, times(1)).setAtout(Card.COLOR_HEART, otherPlayer);
+        verify(mockedPlayer, times(1)).play();
+        verify(mockedPlayer, times(1)).setPlayedCard(otherPlayer, card);
+        verify(mockedPlayer, times(1)).collectPlie(otherPlayer);
+        verify(mockedPlayer, times(1)).getAnoucement();
+        verify(mockedPlayer, times(1)).setAnouncement(otherPlayer, anouncement);
+        verify(mockedPlayer, times(1)).getNewGame();
+        verify(mockedPlayer, times(1)).playerLeft(otherPlayer);
     }
 }
 

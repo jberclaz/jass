@@ -151,8 +151,8 @@ public class RemotePlayer extends AbstractRemotePlayer {
     public void setGameResult(Team winningTeam) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.SET_GAME_RESULT),
                 String.valueOf(winningTeam.getId()),
-                String.valueOf(winningTeam.getPlayer(0)),
-                String.valueOf(winningTeam.getPlayer(1)));
+                String.valueOf(winningTeam.getPlayer(0).getId()),
+                String.valueOf(winningTeam.getPlayer(1).getId()));
         network.receiveMessage();
     }
 

@@ -11,4 +11,19 @@ public class ClientPlayer extends BasePlayer {
     public ClientPlayer(int id) {
         super(id);
     }
+
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof BasePlayer)) {
+            return false;
+        }
+
+        BasePlayer p = (BasePlayer) o;
+
+        return p.getId() == this.id;
+    }
 }
