@@ -121,25 +121,25 @@ public class RemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public List<Anouncement> getAnoucement() throws PlayerLeftExpection {
+    public List<Announcement> getAnnouncements() throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.GET_ANOUNCEMENTS));
         var tokens = network.receiveMessage();
-        this.anoucements.clear();
+        this.announcements.clear();
         int nbrAnouncements = Integer.parseInt(tokens[0]);
         for (int i = 0; i < nbrAnouncements; i++) {
             var card = new Card(Integer.parseInt(tokens[i * 2 + 2]));
-            this.anoucements.add(new Anouncement(Integer.parseInt(tokens[i * 2 + 1]), card));
+            this.announcements.add(new Announcement(Integer.parseInt(tokens[i * 2 + 1]), card));
         }
-        return this.anoucements;
+        return this.announcements;
     }
 
     @Override
-    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) throws PlayerLeftExpection {
+    public void setAnnouncements(BasePlayer player, List<Announcement> announcements) throws PlayerLeftExpection {
         var message = new ArrayList<String>();
         message.add(String.valueOf(RemoteCommand.SET_ANOUNCEMENTS));
         message.add(String.valueOf(player.getId()));
-        message.add(String.valueOf(anouncements.size()));
-        for (var anoucement : anouncements) {
+        message.add(String.valueOf(announcements.size()));
+        for (var anoucement : announcements) {
             message.add(String.valueOf(anoucement.getType()));
             message.add(String.valueOf(anoucement.getCard().getNumber()));
         }

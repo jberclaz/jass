@@ -1,5 +1,6 @@
-import com.leflat.jass.client.ClientPlayer;
-import com.leflat.jass.common.*;
+import com.leflat.jass.common.Announcement;
+import com.leflat.jass.common.Card;
+import com.leflat.jass.common.Team;
 import org.junit.jupiter.api.Test;
 
 import java.util.ArrayList;
@@ -29,10 +30,10 @@ public class CommonTests {
     @Test
     public void anouncement_test() {
         var card = new Card(Card.RANK_DAME, Card.COLOR_CLUB);
-        var anouncement = new Anouncement(Anouncement.FIFTY, card);
+        var anouncement = new Announcement(Announcement.FIFTY, card);
         assertEquals("cinquante à la dame de trèfle", anouncement.toString());
         assertEquals(50, anouncement.getValue());
-        anouncement = new Anouncement(Anouncement.SQUARE, card);
+        anouncement = new Announcement(Announcement.SQUARE, card);
         assertEquals("cent des dames", anouncement.toString());
         assertEquals(100, anouncement.getValue());
     }
@@ -40,23 +41,23 @@ public class CommonTests {
     @Test
     public void find_square_test() {
         int[] list = {5, 9, 12, 14, 19, 23, 24, 32};
-        var annoucements = Anouncement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
+        var annoucements = Announcement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
         assertEquals(1, annoucements.size());
         var anouncement = annoucements.get(0);
-        assertEquals(anouncement.getType(), Anouncement.BOURG_SQUARE);
+        assertEquals(anouncement.getType(), Announcement.BOURG_SQUARE);
         assertEquals(anouncement.getCard().getNumber(), 5);
     }
 
     @Test
     public void find_suit_test() {
         int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 32};
-        var annoucements = Anouncement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
+        var annoucements = Announcement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
         assertEquals(2, annoucements.size());
         var firstAnouncement = annoucements.get(0);
-        assertEquals(firstAnouncement.getType(), Anouncement.THREE_CARDS);
+        assertEquals(firstAnouncement.getType(), Announcement.THREE_CARDS);
         assertEquals(firstAnouncement.getCard().getNumber(), 14);
         var secondAnouncement = annoucements.get(1);
-        assertEquals(secondAnouncement.getType(), Anouncement.FIFTY);
+        assertEquals(secondAnouncement.getType(), Announcement.FIFTY);
         assertEquals(secondAnouncement.getCard().getNumber(), 22);
     }
 
@@ -64,9 +65,9 @@ public class CommonTests {
     public void find_stoeck_test() {
         int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25};
         Card.atout = Card.COLOR_HEART;
-        assertFalse(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
+        assertFalse(Announcement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
         Card.atout = Card.COLOR_DIAMOND;
-        assertTrue(Anouncement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
+        assertTrue(Announcement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
     }
 
     @Test
@@ -82,15 +83,17 @@ public class CommonTests {
     @Test
     public void team_score_test() {
         var team = new Team(0);
-        var ans = new ArrayList<Anouncement>();
-        ans.add(new Anouncement(Anouncement.NELL_SQUARE, new Card(5)));
-        ans.add(new Anouncement(Anouncement.THREE_CARDS, new Card(12)));
+        var ans = new ArrayList<Announcement>();
+        ans.add(new Announcement(Announcement.NELL_SQUARE, new Card(5)));
+        ans.add(new Announcement(Announcement.THREE_CARDS, new Card(12)));
 
-        team.addAnnoucementScore(ans, Card.COLOR_HEART);
+        Card.atout = Card.COLOR_HEART;
+        team.addAnnoucementScore(ans);
         assertEquals(170, team.getScore());
 
         team.resetScore();
-        team.addAnnoucementScore(ans, Card.COLOR_SPADE);
+        Card.atout = Card.COLOR_SPADE;
+        team.addAnnoucementScore(ans);
         assertEquals(340, team.getScore());
 
         assertFalse(team.hasWon());

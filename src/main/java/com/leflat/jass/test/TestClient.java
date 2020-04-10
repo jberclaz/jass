@@ -1,6 +1,5 @@
 package com.leflat.jass.test;
 
-import com.leflat.jass.common.Anouncement;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.RemoteCommand;
 import com.leflat.jass.common.TeamSelectionMethod;
@@ -8,7 +7,6 @@ import com.leflat.jass.common.TeamSelectionMethod;
 import java.io.*;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 

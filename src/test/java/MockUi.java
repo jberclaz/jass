@@ -125,7 +125,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public boolean hasPlayerAnnounced() {
-        return rand.nextBoolean();
+        return true;
     }
 
     @Override

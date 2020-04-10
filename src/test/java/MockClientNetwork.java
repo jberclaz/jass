@@ -1,4 +1,3 @@
-import com.leflat.jass.client.ServerDisconnectedException;
 import com.leflat.jass.common.ClientConnectionInfo;
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IClientNetwork;

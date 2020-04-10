@@ -33,9 +33,9 @@ public interface IPlayer {
 
     void setScores(int score, int opponentScore) throws PlayerLeftExpection;
 
-    List<Anouncement> getAnoucement() throws PlayerLeftExpection;
+    List<Announcement> getAnnouncements() throws PlayerLeftExpection;
 
-    void setAnouncement(BasePlayer player, List<Anouncement> anouncements) throws PlayerLeftExpection;
+    void setAnnouncements(BasePlayer player, List<Announcement> announcements) throws PlayerLeftExpection;
 
     void setGameResult(Team winningTeam) throws PlayerLeftExpection;
 

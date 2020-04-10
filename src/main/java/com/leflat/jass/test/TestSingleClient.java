@@ -128,7 +128,7 @@ public class TestSingleClient {
             if (player.getId() == 0) {
                 card = mainPlayer.play();
 
-                mainPlayer.getAnoucement();
+                mainPlayer.getAnnouncements();
 
                 plie.playCard(card, player, player.getHand());
             } else {

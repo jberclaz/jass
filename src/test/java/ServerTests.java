@@ -201,7 +201,7 @@ public class ServerTests {
         var otherPlayer = new ClientPlayer(2, "GC");
         var card = new Card(31);
         var order = new Integer[]{3, 1, 0, 2};
-        var anouncement = Collections.singletonList(new Anouncement(Anouncement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
+        var anouncement = Collections.singletonList(new Announcement(Announcement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
         var team = new Team(0);
         team.addPlayer(otherPlayer);
         team.addPlayer(new ClientPlayer(3, "Layenne"));
@@ -211,7 +211,7 @@ public class ServerTests {
         when(mockedPlayer.drawCard()).thenReturn(23);
         when(mockedPlayer.chooseAtout(true)).thenReturn(4);
         when(mockedPlayer.play()).thenReturn(card);
-        when(mockedPlayer.getAnoucement()).thenReturn(anouncement);
+        when(mockedPlayer.getAnnouncements()).thenReturn(anouncement);
         when(mockedPlayer.getNewGame()).thenReturn(true);
 
         var serverOutput = new PipedOutputStream();
@@ -236,10 +236,10 @@ public class ServerTests {
                 assertEquals(card, remotePlayer.play());
                 remotePlayer.setPlayedCard(otherPlayer, card);
                 remotePlayer.collectPlie(otherPlayer);
-                var result =  remotePlayer.getAnoucement();
+                var result =  remotePlayer.getAnnouncements();
                 assertEquals(anouncement.size(), result.size());
                 assertEquals(anouncement.get(0), result.get(0));
-                remotePlayer.setAnouncement(otherPlayer, anouncement);
+                remotePlayer.setAnnouncements(otherPlayer, anouncement);
                 remotePlayer.setGameResult(team);
                 assertTrue(remotePlayer.getNewGame());
                 remotePlayer.playerLeft(otherPlayer);
@@ -271,8 +271,8 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).play();
         verify(mockedPlayer, times(1)).setPlayedCard(otherPlayer, card);
         verify(mockedPlayer, times(1)).collectPlie(otherPlayer);
-        verify(mockedPlayer, times(1)).getAnoucement();
-        verify(mockedPlayer, times(1)).setAnouncement(otherPlayer, anouncement);
+        verify(mockedPlayer, times(1)).getAnnouncements();
+        verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, anouncement);
         verify(mockedPlayer, times(1)).getNewGame();
         verify(mockedPlayer, times(1)).playerLeft(otherPlayer);
     }

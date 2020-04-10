@@ -11,9 +11,13 @@ public class FunctionalTest {
 
         var clientNetworkFactory = new MockNetworkFactory();
         var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        player1.setName("Berte");
         var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        player2.setName("GC");
         var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        player3.setName("Pischus");
         var player4 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        player4.setName("Wein");
 
         game.addPlayer(player1);
         game.addPlayer(player2);

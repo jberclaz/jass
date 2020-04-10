@@ -121,7 +121,7 @@ public class RemoteController implements IController, Runnable {
                     this.player.setScores(ourScore, opponentScore);
                     break;
                 case RemoteCommand.GET_ANOUNCEMENTS:
-                    var anouncements = this.player.getAnoucement();
+                    var anouncements = this.player.getAnnouncements();
                     answer.add(String.valueOf(anouncements.size()));
                     for (var an : anouncements) {
                         answer.add(String.valueOf(an.getType()));
@@ -134,9 +134,9 @@ public class RemoteController implements IController, Runnable {
                     anouncements = new ArrayList<>();
                     for (int i = 0; i < numberAnoucements; i++) {
                         var c = new Card(Integer.parseInt(message[4 + i * 2]));
-                        anouncements.add(new Anouncement(Integer.parseInt(message[3 + i * 2]), c));
+                        anouncements.add(new Announcement(Integer.parseInt(message[3 + i * 2]), c));
                     }
-                    this.player.setAnouncement(player, anouncements);
+                    this.player.setAnnouncements(player, anouncements);
                     break;
                 case RemoteCommand.SET_GAME_RESULT:
                     var winningTeam = new Team(Integer.parseInt(message[1]));

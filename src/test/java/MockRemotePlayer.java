@@ -9,7 +9,7 @@ import java.util.Random;
 public class MockRemotePlayer extends AbstractRemotePlayer {
     private Random rand = new Random();
     private Plie plie = new Plie();
-    private List<Anouncement> anouncements = new ArrayList<>();
+    private List<Announcement> anouncements = new ArrayList<>();
 
     public MockRemotePlayer(int id, String name) {
         super(id);
@@ -75,7 +75,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     public Card play() {
         if (hand.size() == 9) {
             if (rand.nextBoolean()) {
-                anouncements = Anouncement.findAnouncements(hand);
+                anouncements = Announcement.findAnouncements(hand);
             }
         }
         Card card;
@@ -111,12 +111,12 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public List<Anouncement> getAnoucement() {
+    public List<Announcement> getAnnouncements() {
         return anouncements;
     }
 
     @Override
-    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
+    public void setAnnouncements(BasePlayer player, List<Announcement> announcements) {
 
     }
 

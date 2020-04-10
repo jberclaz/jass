@@ -49,9 +49,9 @@ public class Team {
         p.setTeam(this);
     }
 
-    public void addAnnoucementScore(List<Anouncement> anouncements, int atout) {
+    public void addAnnoucementScore(List<Announcement> anouncements) {
         for (var a : anouncements) {
-            currentScore += atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
+            currentScore += Card.atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
         }
     }
 

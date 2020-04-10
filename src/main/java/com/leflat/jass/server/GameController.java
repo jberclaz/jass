@@ -150,8 +150,6 @@ public class GameController extends Thread {
             var player = players.get((startingPlayer + i) % 4);
             var card = player.play();
 
-            player.getAnoucement();
-
             for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
                 players.get((startingPlayer + i + j) % 4).setPlayedCard(player, card);
             }
@@ -183,44 +181,50 @@ public class GameController extends Thread {
     }
 
     void processAnoucements() throws PlayerLeftExpection {
+        Map<Integer, List<Announcement>> annoucements = new HashMap<>();
         BasePlayer playerWithStoeck = null;
-        Anouncement highestAnouncement = null;
-        Team anouncingTeam = null;  // joueur qui a la plus grosse annonce
+        Announcement highestAnnouncement = null;
+        Team announcingTeam = null;  // joueur qui a la plus grosse annonce
         for (var p : players) {
-            for (var anouncement : p.getAnouncements()) {
-                System.out.println(p + " announce : " + anouncement);
-                if (anouncement.getType() == Anouncement.STOECK) {
+            var a = p.getAnnouncements();
+            if (a.isEmpty()) {
+                continue;
+            }
+            annoucements.put(p.getId(), a);
+            for (var announcement : a) {
+                System.out.println(p + " announces : " + announcement);
+                if (announcement.getType() == Announcement.STOECK) {
                     playerWithStoeck = p;
                     continue;
                 }
-                if (highestAnouncement == null || anouncement.compareTo(highestAnouncement) > 0) {
-                    highestAnouncement = anouncement;
-                    anouncingTeam = p.getTeam();
+                if (highestAnnouncement == null || announcement.compareTo(highestAnnouncement) > 0) {
+                    highestAnnouncement = announcement;
+                    announcingTeam = p.getTeam();
                 }
             }
         }
 
-        if (anouncingTeam != null) { // there are announces
+        if (announcingTeam != null) { // there are announces
             for (var p : players) {
-                if (p.getAnoucement().isEmpty()) {
+                if (!annoucements.containsKey(p.getId())) {
                     continue;
                 }
-                if ((p.getTeam() == anouncingTeam)) {
-                    anouncingTeam.addAnnoucementScore(p.getAnouncements(), Card.atout);
+                if ((p.getTeam() == announcingTeam)) {
+                    announcingTeam.addAnnoucementScore(annoucements.get(p.getId()));
                     for (var p2 : players) {
-                        p2.setAnouncement(p, p.getAnouncements());
+                        p2.setAnnouncements(p, annoucements.get(p.getId()));
                     }
                 }
-                p.clearAnouncement();
+                p.clearAnnouncements();
             }
         } else if (playerWithStoeck != null) { // no announce but stock
             for (var p : players) {
-                p.setAnouncement(playerWithStoeck, Collections.singletonList(new Anouncement(Anouncement.STOECK, null)));
+                p.setAnnouncements(playerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null)));
             }
-            int stoeckScore = Card.atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
+            int stoeckScore = Card.atout == Card.COLOR_SPADE ? Announcement.VALUES[Announcement.STOECK] * 2 : Announcement.VALUES[Announcement.STOECK];
             // add stock points
             playerWithStoeck.getTeam().addScore(stoeckScore);
-            playerWithStoeck.clearAnouncement();
+            playerWithStoeck.clearAnnouncements();
         }
     }
 

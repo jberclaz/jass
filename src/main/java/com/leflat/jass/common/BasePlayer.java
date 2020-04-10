@@ -10,7 +10,7 @@ public abstract class BasePlayer {
     protected String name;
     protected int id;
     protected Team team;
-    protected List<Anouncement> anoucements = new ArrayList<>(); // annonces
+    protected List<Announcement> announcements = new ArrayList<>(); // annonces
     protected List<Card> hand = new ArrayList<>();
 
     // Constructeur
@@ -37,16 +37,12 @@ public abstract class BasePlayer {
         this.team = team;
     }
 
-    public void addAnouncement(Anouncement a) {
-        anoucements.add(a);
+    public List<Announcement> getAnnouncements() throws PlayerLeftExpection {
+        return announcements;
     }
 
-    public List<Anouncement> getAnouncements() {
-        return anoucements;
-    }
-
-    public void clearAnouncement() {
-        anoucements.clear();
+    public void clearAnnouncements() {
+        announcements.clear();
     }
 
     public List<Card> getHand() { return hand; }

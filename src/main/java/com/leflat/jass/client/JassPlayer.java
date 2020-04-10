@@ -23,7 +23,6 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private Thread controllerThread = null;
     private IClientNetwork network = null;
     private IClientNetworkFactory networkFactory;
-    private List<Anouncement> anouncements;
     private boolean hasStoeck;
 
     public JassPlayer(IClientNetworkFactory networkFactory, IJassUiFactory uiFactory) {
@@ -133,8 +132,8 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     public void setAtout(int color, BasePlayer firstToPlay) {
         Card.atout = color;
         frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
-        anouncements = Anouncement.findAnouncements(hand);
-        hasStoeck = Anouncement.findStoeck(hand);
+        announcements = Announcement.findAnouncements(hand);
+        hasStoeck = Announcement.findStoeck(hand);
     }
 
     @Override
@@ -207,31 +206,31 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     }
 
     @Override
-    public List<Anouncement> getAnoucement() {
+    public List<Announcement> getAnnouncements() {
         if (!frame.hasPlayerAnnounced()) {
             return Collections.emptyList();
         }
         if (hand.size() == 8) {
             // can announce only on first plie
-            return anouncements;
+            return announcements;
         }
         if (playedStoeck()) {
-            return Collections.singletonList(Anouncement.getStoeck());
+            return Collections.singletonList(Announcement.getStoeck());
         }
         return Collections.emptyList();
     }
 
     @Override
-    public void setAnouncement(BasePlayer player, List<Anouncement> anouncements) {
+    public void setAnnouncements(BasePlayer player, List<Announcement> announcements) {
         StringBuilder sb;
         if (player.getId() == id) {
             sb = new StringBuilder("Vous annoncez ");
         } else {
             sb = new StringBuilder(players.get(player.getId()).getName()).append(" annonce ");
         }
-        sb.append(anouncements.get(0));
-        for (int i = 1; i < anouncements.size(); i++) {
-            sb.append(" et ").append(anouncements.get(i));
+        sb.append(announcements.get(0));
+        for (int i = 1; i < announcements.size(); i++) {
+            sb.append(" et ").append(announcements.get(i));
         }
         frame.displayStatusMessage(sb.toString());
     }

@@ -1,11 +1,8 @@
 import com.leflat.jass.client.ClientNetwork;
 import com.leflat.jass.client.ServerDisconnectedException;
-import com.leflat.jass.common.ClientConnectionInfo;
-import com.leflat.jass.common.IClientNetwork;
 
 import java.io.*;
 import java.util.Collections;
-import java.util.List;
 
 public class LocalClientNetwork extends ClientNetwork {
 
