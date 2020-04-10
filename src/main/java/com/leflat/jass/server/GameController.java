@@ -45,6 +45,7 @@ public class GameController extends Thread {
     public void run() {
         System.out.println("Starting game room " + gameId);
 
+        BasePlayer disconnectedPlayer = null;
         try {
             boolean playAnotherGame;
             do {
@@ -60,17 +61,18 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
         } catch (PlayerLeftExpection e) {
-            var disconnectedPlayer = getPlayerById(e.getPlayerId());
+            disconnectedPlayer = getPlayerById(e.getPlayerId());
             players.remove(disconnectedPlayer);
+        } catch (BrokenRuleException e) {
+            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
+        } finally {
             for (var player : players) {
                 try {
-                    player.playerLeft(disconnectedPlayer);
+                    player.playerLeft(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
                 } catch (PlayerLeftExpection ee) {
                     System.err.println("Player " + ee.getPlayerId() + " also left.");
                 }
             }
-        } catch (BrokenRuleException e) {
-            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
         }
 
         System.out.println("Game " + gameId + " ended");

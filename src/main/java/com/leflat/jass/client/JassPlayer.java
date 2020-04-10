@@ -7,7 +7,10 @@ import com.leflat.jass.common.*;
 import com.leflat.jass.server.AbstractRemotePlayer;
 import com.leflat.jass.server.PlayerLeftExpection;
 
-import java.util.*;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
@@ -15,21 +18,20 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
-    private IControllerFactory controllerFactory;
+
     private IController controller = null;
     private Thread controllerThread = null;
+    private IClientNetwork network = null;
+    private IClientNetworkFactory networkFactory;
     private List<Anouncement> anouncements;
     private boolean hasStoeck;
 
-    public JassPlayer(IControllerFactory controllerFactory, IJassUiFactory uiFactory) {
+    public JassPlayer(IClientNetworkFactory networkFactory, IJassUiFactory uiFactory) {
         super(-1);
-        this.controllerFactory = controllerFactory;
+        this.networkFactory = networkFactory;
         frame = uiFactory.getUi(this);
 
         frame.showUi(true);
-        // TODO: remove (DEBUG)
-        //Random rnd = new Random();
-        //connect(String.valueOf(rnd.nextInt(100)), "localhost", 0);
     }
 
     @Override
@@ -254,18 +256,19 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     @Override
     public void playerLeft(BasePlayer player) {
         frame.canceledGame(playersPositions.get(player.getId()));
-        controller.disconnect();
+        disconnect();
     }
 
     @Override
     public int connect(String name, String host, int gameId) {
-        controller = controllerFactory.getController(this);
-        var connectionInfo = controller.connect(host, gameId, name);
+        network = networkFactory.getClientNetwork();
+        var connectionInfo = network.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
             return connectionInfo.error;
         }
         id = connectionInfo.playerId;
         playersPositions.put(id, 0);
+        controller = new RemoteController(this, network);
         controllerThread = new Thread(controller, "controller-thread");
         controllerThread.start();
         try {
@@ -278,12 +281,13 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public boolean disconnect() {
-        controller.disconnect();
+        controller.terminate();
         try {
             controllerThread.join();
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
+        network.disconnect();
         controller = null;
         controllerThread = null;
         return true;
@@ -291,7 +295,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public boolean isConnected() {
-        return controller != null && controller.isConnected();
+        return network != null && network.isConnected();
     }
 
     private int getInitialRelativePosition(BasePlayer player) {

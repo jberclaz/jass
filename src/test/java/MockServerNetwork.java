@@ -1,20 +1,21 @@
-import com.leflat.jass.common.INetwork;
+import com.leflat.jass.common.IServerNetwork;
+import com.leflat.jass.server.PlayerLeftExpection;
 
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Queue;
 import java.util.concurrent.LinkedBlockingQueue;
 
-class MockNetwork implements INetwork {
+class MockServerNetwork implements IServerNetwork {
     public List<List<String>> sendParameters = new ArrayList<>();
     private Queue<String[]> answers = new LinkedBlockingQueue<>();
 
-    public MockNetwork() {
+    public MockServerNetwork() {
 
     }
 
-    public MockNetwork(String[] answer) {
+    public MockServerNetwork(String[] answer) {
         addAnswer(answer);
     }
 
@@ -27,20 +28,18 @@ class MockNetwork implements INetwork {
     }
 
     @Override
-    public int sendMessage(String message) {
-        sendParameters.add(Collections.singletonList(message));
-        return 0;
-    }
-
-    @Override
     public void setPlayerId(int id) {
 
     }
 
     @Override
-    public int sendMessage(List<String> message) {
-        sendParameters.add(message);
-        return 0;
+    public String receiveRawMessage() throws PlayerLeftExpection {
+        return null;
+    }
+
+    @Override
+    public void sendMessage(String... message) {
+        sendParameters.add(Arrays.asList(message));
     }
 
     @Override

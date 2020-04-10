@@ -9,11 +9,11 @@ public class FunctionalTest {
         var game = new GameController(0);
         game.setNoWait(true);
 
-        var controllerFactory = new MockControllerFactory();
-        var player1 = new JassPlayer(controllerFactory, new MockUiFactory());
-        var player2 = new JassPlayer(controllerFactory, new MockUiFactory());
-        var player3 = new JassPlayer(controllerFactory, new MockUiFactory());
-        var player4 = new JassPlayer(controllerFactory, new MockUiFactory());
+        var clientNetworkFactory = new MockNetworkFactory();
+        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
+        var player4 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
 
         game.addPlayer(player1);
         game.addPlayer(player2);
