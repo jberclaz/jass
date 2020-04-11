@@ -2,11 +2,11 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.Card;
 
-import java.awt.*;
+import javax.swing.*;
 import java.util.ArrayList;
 import java.util.List;
 
-public abstract class JassCanvas extends Canvas {
+public abstract class JassCanvas extends JPanel {
     public static final int MODE_STATIC = 0;
     public static final int MODE_PLAY = 1;
 
@@ -17,6 +17,7 @@ public abstract class JassCanvas extends Canvas {
 
     protected JassCanvas() {
         mode = MODE_STATIC;
+        setDoubleBuffered(true);
     }
 
     public void setMode(int mode) {
@@ -40,19 +41,6 @@ public abstract class JassCanvas extends Canvas {
 
     public void clearHand() {
         hand.clear();
-        repaint();
-    }
-
-    public void setBackCards(int number) {
-        clearHand();
-        for (int i=0; i<number; i++) {
-            hand.add(Card.getBack());
-        }
-        repaint();
-    }
-
-    public void removeCard(Card card) {
-        hand.remove(card);
         repaint();
     }
 

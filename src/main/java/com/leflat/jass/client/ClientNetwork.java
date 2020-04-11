@@ -40,7 +40,7 @@ public class ClientNetwork implements IClientNetwork {
             return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
         }
 
-        sendMessage(Collections.singletonList(String.valueOf(requestedGameId)));
+        sendRawMessage(String.valueOf(requestedGameId));
 
         try {
             int receivedGameId = Integer.parseInt(receiveRawMessage());

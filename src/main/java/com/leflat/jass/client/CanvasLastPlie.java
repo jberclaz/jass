@@ -14,12 +14,13 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.Card;
 
+import javax.swing.*;
 import java.awt.*;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 
-public class CanvasLastPlie extends Canvas {
+public class CanvasLastPlie extends JPanel {
     private List<Card> lastPlie = new ArrayList<>();
     private int atout;
     private int ourScore, theirScore;
@@ -28,6 +29,7 @@ public class CanvasLastPlie extends Canvas {
         ourScore = 0;
         theirScore = 0;
         atout = 4;      // ne rien afficher
+        setDoubleBuffered(true);
     }
 
     public void setLastPlie(Collection<Card> plie) {
@@ -52,9 +54,15 @@ public class CanvasLastPlie extends Canvas {
         repaint();
     }
 
-    public void paint(Graphics g) {
+    @Override
+    public void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        Dimension d = getSize();
+
+        g2.clearRect(0, 0, d.width, d.height);
+
         for (int i = 0; i < lastPlie.size(); i++) {
             g2.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
         }
@@ -65,7 +73,9 @@ public class CanvasLastPlie extends Canvas {
 
         g2.drawString("Dernière plie:", 20, 20);
         g2.drawString("Atout:", 340, 20);
-        g2.drawString("Nous: " + String.valueOf(ourScore), 420, 13);
-        g2.drawString("Eux : " + String.valueOf(theirScore), 420, 27);
+        g2.drawString("Nous:", 420, 13);
+        g2.drawString("Eux:", 420, 27);
+        g2.drawString(String.valueOf(ourScore), 470, 13);
+        g2.drawString(String.valueOf(theirScore), 470, 27);
     }
 }
