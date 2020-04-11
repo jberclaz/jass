@@ -14,9 +14,6 @@ public class ConnectionListener extends Thread {
 
     public ConnectionListener(int port) throws IOException {
         serverSocket = new ServerSocket(port);
-
-        // TODO: remove (DEBUG)
-        // games.put(0, new GameController(0));
     }
 
     @Override
@@ -34,7 +31,7 @@ public class ConnectionListener extends Thread {
     }
 
     private void handleNewConnection(Socket clientSocket) throws IOException {
-        var network = new PlayerNetwork(clientSocket);
+        var network = new ServerNetwork(clientSocket);
 
         try {
             var game = selectGame(network);
@@ -53,7 +50,7 @@ public class ConnectionListener extends Thread {
         }
     }
 
-    private GameController selectGame(PlayerNetwork network) throws PlayerLeftExpection {
+    private GameController selectGame(ServerNetwork network) throws PlayerLeftExpection {
         GameController game;
         String connectionMessage = network.receiveRawMessage();
         int gameId = Integer.parseInt(connectionMessage);

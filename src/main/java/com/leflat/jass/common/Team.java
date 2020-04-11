@@ -8,12 +8,14 @@ public class Team {
     private int currentScore;
     private List<BasePlayer> players = new ArrayList<>();
     private int id;
+    private int numberOfPlies;
     public static final int WINNING_SCORE = 1500;
 
     // Constructeur
     public Team(int id) {
         currentScore = 0;
         this.id = id;
+        numberOfPlies = 0;
     }
 
     // Méthodes
@@ -47,11 +49,23 @@ public class Team {
         p.setTeam(this);
     }
 
-    public void addAnnoucementScore(List<Anouncement> anouncements, int atout) {
+    public void addAnnoucementScore(List<Announcement> anouncements) {
         for (var a : anouncements) {
-            currentScore += atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
+            currentScore += Card.atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
         }
     }
 
-    public int getId() { return id; }
+    public int getId() {
+        return id;
+    }
+
+    public void addPlie() {
+        numberOfPlies++;
+    }
+
+    public void resetPlies() {
+        numberOfPlies = 0;
+    }
+
+    public int getNumberOfPlies() { return numberOfPlies; }
 }

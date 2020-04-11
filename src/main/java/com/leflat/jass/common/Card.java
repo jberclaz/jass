@@ -14,7 +14,7 @@ import java.util.Random;
  * ***************************************************************
  */
 
-public class Card {
+public class Card implements Comparable<Card> {
     public static final int DIAMOND_SEVEN = 19;
     public static final int RANK_6 = 0;
     public static final int RANK_7 = 1;
@@ -39,6 +39,8 @@ public class Card {
 
     public static final int BACK_NUMBER = 200;
     private static final Card backCard = new Card(BACK_NUMBER);
+
+    public static int atout;
 
     private int number;
 
@@ -67,11 +69,7 @@ public class Card {
     }
 
     public int getValue() {
-        return getValue(-1);
-    }
-
-    public int getValue(int atout) {
-        return atout == getColor() ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
+        return getColor() == Card.atout ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
     }
 
     public boolean isBack() {
@@ -101,10 +99,12 @@ public class Card {
                 j--;
             }
         } while (i <= j);
-        if (min < j)
+        if (min < j) {
             quickSortCards(cards, min, j);
-        if (i < max)
+        }
+        if (i < max) {
             quickSortCards(cards, i, max);
+        }
     }
 
     public static List<Card> shuffle(int number) {
@@ -120,5 +120,48 @@ public class Card {
             }
         }
         return cards;
+    }
+
+    @Override
+    public int compareTo(Card card) {
+        if (card.getColor() != this.getColor()) {
+            throw new ClassCastException("Cannot compare cards of different colors");
+        }
+        if (this.getRank() == card.getRank()) {
+            return 0;
+        }
+        if (card.getColor() == Card.atout) {
+            if (card.getRank() == Card.RANK_BOURG) {
+                return -1;
+            }
+            else if (this.getRank() == Card.RANK_BOURG) {
+                return 1;
+            }
+            else if (card.getRank() == Card.RANK_NELL) {
+                return -1;
+            }
+            else if (this.getRank() == Card.RANK_NELL) {
+                return 1;
+            }
+        }
+        if (this.getRank() < card.getRank()) {
+            return -1;
+        }
+        return 1;
+    }
+
+     @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Card)) {
+            return false;
+        }
+
+        Card c = (Card) o;
+
+        return c.getNumber() == this.number;
     }
 }

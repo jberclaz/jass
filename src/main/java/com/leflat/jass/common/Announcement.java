@@ -5,7 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class Anouncement {
+public class Announcement implements Comparable<Announcement> {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;
     public static final int FIFTY = 2;
@@ -17,7 +17,9 @@ public class Anouncement {
     public static final int[] VALUES = {20, 20, 50, 100, 100, 150, 200};
     public static final String[] NAMES = {"stoeck", "3 cartes", "cinquante", "cent", "cent", "cent cinquante", "deux cents"};
 
-    public Anouncement(int type, Card card) {
+    public static Announcement getStoeck() { return new Announcement(Announcement.STOECK, new Card(0));}
+
+    public Announcement(int type, Card card) {
         this.type = type;
         this.card = card;
     }
@@ -47,6 +49,7 @@ public class Anouncement {
         return VALUES[type];
     }
 
+    @Override
     public String toString() {
         StringBuilder sb = new StringBuilder();
         sb.append(NAMES[type]);
@@ -72,23 +75,38 @@ public class Anouncement {
         return sb.toString();
     }
 
-    public static List<Anouncement> findAnouncements(List<Card> hand) {
+    @Override
+    public boolean equals(Object o) {
+        if (o == this) {
+            return true;
+        }
+
+        if (!(o instanceof Announcement)) {
+            return false;
+        }
+
+        Announcement a = (Announcement) o;
+
+        return a.getType() == this.type && a.getCard().equals(this.card);
+    }
+
+    public static List<Announcement> findAnouncements(List<Card> hand) {
         var announcements = findSquares(hand);
         announcements.addAll(findSuits(hand));
         return new ArrayList<>(announcements);
     }
 
-    public static boolean findStoeck(List<Card> hand, int atout) {
-        int queen = atout * 9 + Card.RANK_DAME;
-        int king = atout * 9 + Card.RANK_ROI;
+    public static boolean findStoeck(List<Card> hand) {
+        int queen = Card.atout * 9 + Card.RANK_DAME;
+        int king = Card.atout * 9 + Card.RANK_ROI;
         var numbers = hand.stream().map(Card::getNumber).collect(Collectors.toList());
         return numbers.contains(queen) && numbers.contains(king);
     }
 
-    private static Collection<Anouncement> findSquares(List<Card> hand) {
+    private static Collection<Announcement> findSquares(List<Card> hand) {
         int[] rankCount = {0, 0, 0, 0, 0, 0, 0, 0, 0};
         hand.forEach(c -> rankCount[c.getRank()]++);
-        var announcements = new ArrayList<Anouncement>();
+        var announcements = new ArrayList<Announcement>();
         for (int rank = Card.RANK_NELL; rank <= Card.RANK_AS; rank++) {
             if (rankCount[rank] == 4) {
                 int type = SQUARE;
@@ -97,14 +115,14 @@ public class Anouncement {
                 } else if (rank == Card.RANK_BOURG) {
                     type = BOURG_SQUARE;
                 }
-                announcements.add(new Anouncement(type, new Card(rank, Card.COLOR_SPADE)));
+                announcements.add(new Announcement(type, new Card(rank, Card.COLOR_SPADE)));
             }
         }
         return announcements;
     }
 
-    private static Collection<Anouncement> findSuits(List<Card> hand) {
-        var announcements = new ArrayList<Anouncement>();
+    private static Collection<Announcement> findSuits(List<Card> hand) {
+        var announcements = new ArrayList<Announcement>();
         for (int i = 0; i < hand.size() - 2; i++) {
             var firstCard = hand.get(i);
             int color = firstCard.getColor();
@@ -119,11 +137,36 @@ public class Anouncement {
                 if (nbrCards > 5) {
                     nbrCards = 5;
                 }
-                announcements.add(new Anouncement(nbrCards - 2, hand.get(i + nbrCards - 1)));
+                announcements.add(new Announcement(nbrCards - 2, hand.get(i + nbrCards - 1)));
                 System.out.println("Found suit: " + announcements.get(announcements.size() - 1));
                 i = j - 1;
             }
         }
         return announcements;
+    }
+
+    @Override
+    public int compareTo(Announcement anouncement) {
+        if (this.type < anouncement.getType()) {
+            return -1;
+        }
+        if (this.type > anouncement.getType()) {
+            return 1;
+        }
+        // same type
+        if (this.card.getRank() < anouncement.getCard().getRank()) {
+            return -1;
+        }
+        if (this.card.getRank() > anouncement.getCard().getRank()) {
+            return 1;
+        }
+        // same rank
+        if (anouncement.getCard().getColor() == Card.atout) {
+            return -1;
+        }
+        if (this.getCard().getColor() == Card.atout) {
+            return 1;
+        }
+        return 0;
     }
 }

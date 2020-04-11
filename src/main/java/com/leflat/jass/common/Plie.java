@@ -1,87 +1,117 @@
 package com.leflat.jass.common;
 
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class Plie {
-    public int highest;   // la plus haute carte de la plie (celle qui tient la plie)
-    public int color;     // la couleur demandée
-    public int score;     // la valeur de la plie
-    public boolean cut;     // 0 : pas coupé, 1 : coupé
-    public BasePlayer owner = null;     // iD de celui qui tient la plie
+    private Card highest;          // la plus haute carte de la plie (celle qui tient la plie)
+    private boolean cut = false;
+    private BasePlayer owner;      // celui qui tient la plie
+    private ArrayList<Card> cards = new ArrayList<>();
 
-    public Plie(Card card, int atout, BasePlayer owner) {
-        color = card.getColor();
-        highest = card.getRank();
-        score = card.getValue(atout);
-        this.owner = owner;
-        cut = false;
+    public Plie() {
     }
 
-    public Plie(int color, int highestRank, boolean cut) {
-        this.color = color;
-        this.highest = highestRank;
-        this.cut = cut;
+    public Plie(Card card, BasePlayer player) {
+        cards.add(card);
+        highest = card;
+        this.owner = player;
     }
 
-    public void playCard(Card card, int atout, BasePlayer player) throws BrokenRuleException {
-        if (card.getColor() == atout) {
-            if (color != atout) { // si on coupe
-                if (cut) { // already cut
-                    switch (card.getRank()) { // surcoupe
-                        case Card.RANK_NELL:  // si on joue le nell
-                            if (highest == Card.RANK_BOURG) {
-                                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
-                            }
-                            highest = card.getRank();
-                            owner = player;
-                            break;
-                        case Card.RANK_BOURG:  // si on joue le bourg
-                            highest = card.getRank();
-                            owner = player;
-                            break;
-                        default: // sinon
-                            if ((highest == Card.RANK_BOURG) ||
-                                    (highest == Card.RANK_NELL) ||
-                                    (card.getRank() < highest)) {
-                                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
-                            }
-                            highest = card.getRank();
-                            owner = player;
-                            break;
-                    }
-                    // else souscoupe => nothing to do
-                } else {  // first to cut
-                    cut = true;
-                    highest = card.getRank();
-                    owner = player;
+    public int getColor() {
+        if (cards.isEmpty()) {
+            return -1;
+        }
+        return cards.get(0).getColor();
+    }
+
+    public int getHighest() {
+        if (highest == null) {
+            return -1;
+        }
+        return highest.getRank();
+    }
+
+    public int getScore() {
+        int score = cards.stream().mapToInt(Card::getValue).sum();
+        return Card.atout == Card.COLOR_SPADE ? 2 * score : score;
+    }
+
+    public BasePlayer getOwner() {
+        return owner;
+    }
+
+    public boolean isCut() {
+        return cut;
+    }
+
+    public int getSize() {
+        return cards.size();
+    }
+
+    public List<Card> getCards() { return cards; }
+
+    public void playCard(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
+        if (cards.isEmpty()) {
+            takePlie(card, player);
+        } else if (card.getColor() == this.getColor()) {
+            follow(card, player);
+        } else {
+            doesNotFollow(card, player, hand);
+        }
+    }
+
+    private void follow(Card card, BasePlayer player) {
+        if (!cut && card.compareTo(highest) > 0) {
+            takePlie(card, player);
+            return;
+        }
+        cards.add(card);
+    }
+
+    private void doesNotFollow(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
+        if (card.getColor() == Card.atout) {
+            cutPlie(card, player, hand);
+            return;
+        }
+        if (hand != null) {
+            boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
+            if (hasAskedColor) {
+                if (!Rules.hasBourgSec(hand)) {
+                    throw new BrokenRuleException(Rules.RULES_MUST_FOLLOW);
                 }
-            } else {        // si c'est joué atout
-                switch (card.getRank()) {
-                    case Card.RANK_NELL: // si on joue le nell
-                        if (highest != Card.RANK_BOURG) {
-                            highest = card.getRank();
-                            owner = player;
-                        }
-                        break;
-                    case Card.RANK_BOURG:  // si on joue le bourg
-                        highest = card.getRank();
-                        owner = player;
-                        break;
-                    default: // sinon
-                        if ((highest != Card.RANK_BOURG) &&
-                                (highest != Card.RANK_NELL) &&
-                                (card.getRank() > highest)) {
-                            highest = card.getRank();
-                            owner = player;
-                        }
-                        break;
-                }
-            }
-        } else if (card.getColor() == color) {
-            if ((card.getRank() > highest) && !cut) {
-                highest = card.getRank();
-                owner = player;
             }
         }
-        score += card.getValue(atout); // augmente le score de la plie
+        cards.add(card);
+    }
+
+    private void cutPlie(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {
+        if (!cut) {
+            takePlie(card, player);
+            cut = true;
+            return;
+        }
+        if (card.compareTo(highest) > 0) {
+            takePlie(card, player);
+            return;
+        }
+        if (hand != null) {
+            boolean hasNonAtoutCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
+            if (hasNonAtoutCards) {
+                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+            }
+            boolean hasHigherAtoutCards = hand.stream().anyMatch(c -> c.compareTo(highest) > 0);
+            if (hasHigherAtoutCards) {
+                throw new BrokenRuleException(Rules.RULES_CANNOT_UNDERCUT);
+            }
+        }
+        cards.add(card);
+    }
+
+    private void takePlie(Card card, BasePlayer player) {
+        highest = card;
+        owner = player;
+        cards.add(card);
     }
 }

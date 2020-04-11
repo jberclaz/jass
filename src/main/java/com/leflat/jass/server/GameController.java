@@ -7,9 +7,9 @@ import java.util.stream.Collectors;
 
 public class GameController extends Thread {
     private int gameId;
-    private List<RemotePlayer> players = new ArrayList<>();
+    private List<AbstractRemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
-    private int atout;
+    private boolean noWait = false;
 
     public GameController(int id) {
         this.gameId = id;
@@ -18,7 +18,7 @@ public class GameController extends Thread {
         }
     }
 
-    public void addPlayer(RemotePlayer newPlayer) throws PlayerLeftExpection {
+    public void addPlayer(AbstractRemotePlayer newPlayer) throws PlayerLeftExpection {
         assert players.size() < 4;
         for (var p : players) {
             p.setPlayerInfo(newPlayer);
@@ -39,10 +39,15 @@ public class GameController extends Thread {
         return gameId;
     }
 
+    public void setNoWait(boolean enable) {
+        noWait = enable;
+    }
+
     @Override
     public void run() {
         System.out.println("Starting game room " + gameId);
 
+        BasePlayer disconnectedPlayer = null;
         try {
             boolean playAnotherGame;
             do {
@@ -58,17 +63,18 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
         } catch (PlayerLeftExpection e) {
-            var disconnectedPlayer = getPlayerById(e.getPlayerId());
+            disconnectedPlayer = getPlayerById(e.getPlayerId());
             players.remove(disconnectedPlayer);
+        } catch (BrokenRuleException e) {
+            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
+        } finally {
             for (var player : players) {
                 try {
-                    player.playerLeft(disconnectedPlayer);
+                    player.playerLeft(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
                 } catch (PlayerLeftExpection ee) {
                     System.err.println("Player " + ee.getPlayerId() + " also left.");
                 }
             }
-        } catch (BrokenRuleException e) {
-            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
         }
 
         System.out.println("Game " + gameId + " ended");
@@ -76,41 +82,25 @@ public class GameController extends Thread {
 
     private void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
         int firstToPlay = drawCards();
-        int nextPlayer;
+        Plie plie = null;
         do {
-            atout = chooseAtout(firstToPlay);                     // choisit l'atout
-            nextPlayer = firstToPlay;
+            plie = playOneHand(firstToPlay);
 
-            int plieNumber = 0;
-            while ((plieNumber < 9) && (nextPlayer >= 0)) {   // fait jouer les 9 plies
-                nextPlayer = playPlie(nextPlayer);
-                plieNumber++;
+            for (var p : players) {   // envoie le score
+                var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
+                p.setScores(p.getTeam().getScore(), opponentTeam.getScore());
             }
 
-            if (nextPlayer >= 0) {    // si personne n'a gagné : on continue normalement
-                // 5 de der
-                players.get(nextPlayer).getTeam().addScore(atout == Card.COLOR_SPADE ? 10 : 5);
+            /* waits a few seconds so that the players can see the last
+             * cards and the score */
+            waitSec(2);
 
-                for (var p : players) {   // envoie le score
-                    var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
-                    p.setScores(p.getTeam().getScore(), opponentTeam.getScore());
-                }
-
-                /* waits a few seconds so that the players can see the last
-                 * cards and the score */
-                waitSec(2);
-
+            if (plie != null) {
                 firstToPlay = (firstToPlay + 1) % 4;
                 drawCards();
-            } else { // si une équipe a gagné
-                for (var p : players) {   // envoie le score
-                    var opponentTeam = teams[(p.getTeam().getId() + 1) % 2];
-                    p.setScores(p.getTeam().getScore(), opponentTeam.getScore());
-                }
             }
-
             // répète jusqu'à ce qu'on gagne
-        } while (!teams[0].hasWon() && !teams[1].hasWon());
+        } while (plie != null);
 
         // Sends the winner to all player
         var winners = teams[0].hasWon() ? teams[0] : teams[1];
@@ -122,107 +112,126 @@ public class GameController extends Thread {
         waitSec(4);
     }
 
-    int playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
-        var player = players.get(startingPlayer);
-        var cardPlayed = player.play(-1, -1, false);
-        var currentPlie = new Plie(cardPlayed, atout, player);
+    Plie playOneHand(int firstToPlay) throws PlayerLeftExpection, BrokenRuleException {
+        int nextPlayer = firstToPlay;
+        Plie plie = null;
 
-        for (int i = 1; i < 4; i++) {           // envoie la carte jouée aux autres
-            players.get((startingPlayer + i) % 4).setPlayedCard(player, cardPlayed);
+        Arrays.stream(teams).forEach(Team::resetPlies);
+        Card.atout = chooseAtout(firstToPlay);
+
+        for (int i = 0; i < 9; i++) {
+            plie = playPlie(nextPlayer);
+            if (plie == null) {
+                break;
+            }
+            nextPlayer = getPlayerPosition(plie.getOwner());
+            plie.getOwner().getTeam().addPlie();
         }
 
-        player.getAnoucement();
+        if (plie != null) {    // si personne n'a gagné : on continue normalement
+            // 5 de der
+            players.get(nextPlayer).getTeam().addScore(Card.atout == Card.COLOR_SPADE ? 10 : 5);
+        }
 
-        for (int i = 1; i < 4; i++) {     // demande de jouer
-            player = players.get((startingPlayer + i) % 4);
-            // TODO: replace arguments with currentPlie
-            cardPlayed = player.play(currentPlie.color, currentPlie.highest, currentPlie.cut);
+        for (var team : teams) {
+            if (team.getNumberOfPlies() == 9) {
+                // match
+                team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
+            }
+        }
 
-            player.getAnoucement();
+        return plie;
+    }
+
+    Plie playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
+        var plie = new Plie();
+
+        for (int i = 0; i < 4; i++) {     // demande de jouer
+            var player = players.get((startingPlayer + i) % 4);
+            var card = player.play();
 
             for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
-                players.get((startingPlayer + i + j) % 4).setPlayedCard(player, cardPlayed);
+                players.get((startingPlayer + i + j) % 4).setPlayedCard(player, card);
             }
 
-            currentPlie.playCard(cardPlayed, atout, player);
+            plie.playCard(card, player, player.getHand());
+            player.removeCard(card);
         }
 
         /* now everybody has played ... */
 
-        /* waits a few seconds so that the players can see all the cards */
-        waitSec(1.5f);
-
-        // communique qui a pris la plie
-        for (var p : players) {
-            p.setPlieOwner(currentPlie.owner);
-        }
-
         // choix et comptabilisation des annonces
-        processAnoucements();
+        if (processAnoucements()) {
+            waitSec(2f);
+        }
 
         // comptabilisation des points
-        currentPlie.owner.getTeam().addScore(atout == Card.COLOR_SPADE ? currentPlie.score * 2 : currentPlie.score);
+        plie.getOwner().getTeam().addScore(plie.getScore());
+
+        /* waits a few seconds so that the players can see all the cards */
+        waitSec(2f);
 
         if (teams[0].hasWon() || teams[1].hasWon()) {
-            return -1;
+            return null;
         }
 
-        return getPlayerPosition(currentPlie.owner);
+        for (var p : players) {
+            p.collectPlie(plie.getOwner());
+        }
+
+        return plie;
     }
 
-    void processAnoucements() throws PlayerLeftExpection {
+    boolean processAnoucements() throws PlayerLeftExpection {
+        boolean validAnnoucements = false;
+        Map<Integer, List<Announcement>> annoucements = new HashMap<>();
         BasePlayer playerWithStoeck = null;
-        int highestAnouncement = -1;
-        int highestRank = Card.RANK_6;
-        Team anouncingTeam = null;  // joueur qui a la plus grosse annonce
+        Announcement highestAnnouncement = null;
+        Team announcingTeam = null;  // joueur qui a la plus grosse annonce
         for (var p : players) {
-            for (var anouncement : p.getAnouncements()) {
-                System.out.println(p + " announce : " + anouncement);
-                if (anouncement.getType() == Anouncement.STOECK) {
+            var a = p.getAnnouncements();
+            if (a.isEmpty()) {
+                continue;
+            }
+            annoucements.put(p.getId(), a);
+            for (var announcement : a) {
+                System.out.println(p + " announces : " + announcement);
+                if (announcement.getType() == Announcement.STOECK) {
                     playerWithStoeck = p;
                     continue;
                 }
-                if (anouncement.getType() > highestAnouncement) {
-                    // plus grosse annonce
-                    anouncingTeam = p.getTeam();
-                    highestAnouncement = anouncement.getType();
-                    highestRank = anouncement.getCard().getRank();
-                } else if ((anouncement.getType() == highestAnouncement) &&
-                        (anouncement.getCard().getRank() > highestRank)) {
-                    // même annonce plus haute
-                    anouncingTeam = p.getTeam();
-                    highestRank = anouncement.getCard().getRank();
-                } else if ((anouncement.getType() == highestAnouncement) &&
-                        (anouncement.getCard().getRank() == highestRank) &&
-                        (anouncement.getCard().getColor() == atout)) {
-                    // meme annonce, meme hauteur, mais atout
-                    anouncingTeam = p.getTeam();
+                if (highestAnnouncement == null || announcement.compareTo(highestAnnouncement) > 0) {
+                    highestAnnouncement = announcement;
+                    announcingTeam = p.getTeam();
                 }
             }
         }
 
-        if (anouncingTeam != null) { // there are announces
+        if (announcingTeam != null) { // there are announces
             for (var p : players) {
-                if (p.getAnoucement().isEmpty()) {
+                if (!annoucements.containsKey(p.getId())) {
                     continue;
                 }
-                if ((p.getTeam() == anouncingTeam)) {
-                    anouncingTeam.addAnnoucementScore(p.getAnouncements(), atout);
+                if ((p.getTeam() == announcingTeam)) {
+                    announcingTeam.addAnnoucementScore(annoucements.get(p.getId()));
                     for (var p2 : players) {
-                        p2.setAnouncement(p, p.getAnouncements());
+                        p2.setAnnouncements(p, annoucements.get(p.getId()));
                     }
+                    validAnnoucements = true;
                 }
-                p.clearAnouncement();
+                p.clearAnnouncements();
             }
         } else if (playerWithStoeck != null) { // no announce but stock
             for (var p : players) {
-                p.setAnouncement(playerWithStoeck, Collections.singletonList(new Anouncement(Anouncement.STOECK, null)));
+                p.setAnnouncements(playerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null)));
             }
-            int stoeckScore = atout == Card.COLOR_SPADE ? Anouncement.VALUES[Anouncement.STOECK] * 2 : Anouncement.VALUES[Anouncement.STOECK];
+            int stoeckScore = Card.atout == Card.COLOR_SPADE ? Announcement.VALUES[Announcement.STOECK] * 2 : Announcement.VALUES[Announcement.STOECK];
             // add stock points
             playerWithStoeck.getTeam().addScore(stoeckScore);
-            playerWithStoeck.clearAnouncement();
+            playerWithStoeck.clearAnnouncements();
+            validAnnoucements = true;
         }
+        return validAnnoucements;
     }
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
@@ -298,6 +307,7 @@ public class GameController extends Thread {
                 for (var p : players) {
                     p.prepareTeamDrawing(false);
                 }
+                waitSec(2);
             }
         } while (!drawingSuccessful);
     }
@@ -349,7 +359,7 @@ public class GameController extends Thread {
         }
     }
 
-    private RemotePlayer getPlayerById(int id) {
+    private AbstractRemotePlayer getPlayerById(int id) {
         for (var p : players) {
             if (p.getId() == id) {
                 return p;
@@ -376,7 +386,10 @@ public class GameController extends Thread {
         players.add(tempList.get(teams[1].getPlayer(1).getId()));
     }
 
-    private static void waitSec(float seconds) {
+    private void waitSec(float seconds) {
+        if (noWait) {
+            return;
+        }
         try {
             Thread.sleep((long) (seconds * 1000));
         } catch (InterruptedException ignored) {
