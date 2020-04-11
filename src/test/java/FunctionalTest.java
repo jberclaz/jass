@@ -1,6 +1,8 @@
 import com.leflat.jass.client.JassPlayer;
 import com.leflat.jass.server.GameController;
 import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.test.MockNetworkFactory;
+import com.leflat.jass.test.MockUiFactory;
 import org.junit.jupiter.api.Test;
 
 public class FunctionalTest {

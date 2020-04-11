@@ -161,13 +161,15 @@ public class GameController extends Thread {
         /* now everybody has played ... */
 
         // choix et comptabilisation des annonces
-        processAnoucements();
+        if (processAnoucements()) {
+            waitSec(2f);
+        }
 
         // comptabilisation des points
         plie.getOwner().getTeam().addScore(plie.getScore());
 
         /* waits a few seconds so that the players can see all the cards */
-        waitSec(1.5f);
+        waitSec(2f);
 
         if (teams[0].hasWon() || teams[1].hasWon()) {
             return null;
@@ -180,7 +182,8 @@ public class GameController extends Thread {
         return plie;
     }
 
-    void processAnoucements() throws PlayerLeftExpection {
+    boolean processAnoucements() throws PlayerLeftExpection {
+        boolean validAnnoucements = false;
         Map<Integer, List<Announcement>> annoucements = new HashMap<>();
         BasePlayer playerWithStoeck = null;
         Announcement highestAnnouncement = null;
@@ -214,6 +217,7 @@ public class GameController extends Thread {
                     for (var p2 : players) {
                         p2.setAnnouncements(p, annoucements.get(p.getId()));
                     }
+                    validAnnoucements = true;
                 }
                 p.clearAnnouncements();
             }
@@ -225,7 +229,9 @@ public class GameController extends Thread {
             // add stock points
             playerWithStoeck.getTeam().addScore(stoeckScore);
             playerWithStoeck.clearAnnouncements();
+            validAnnoucements = true;
         }
+        return validAnnoucements;
     }
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {

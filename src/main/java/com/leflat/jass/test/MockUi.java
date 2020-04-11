@@ -1,3 +1,5 @@
+package com.leflat.jass.test;
+
 import com.leflat.jass.common.*;
 
 import java.util.List;
@@ -9,9 +11,11 @@ public class MockUi implements IJassUi {
     private Random rand = new Random();
     private List<Card> hand;
     private IRemotePlayer player;
+    private float delaySeconds = 0;
 
-    public MockUi(IRemotePlayer player) {
+    public MockUi(IRemotePlayer player, float delaySeconds) {
         this.player = player;
+        this.delaySeconds = delaySeconds;
     }
 
     @Override
@@ -37,6 +41,7 @@ public class MockUi implements IJassUi {
     @Override
     public void drawCard(Lock lock, Condition condition) {
         Runnable runnable = () -> {
+            waitSec(delaySeconds);
             lock.lock();
             condition.signal();
             lock.unlock();
@@ -89,6 +94,7 @@ public class MockUi implements IJassUi {
     @Override
     public void chooseCard(Lock lock, Condition condition) {
         Runnable runnable = () -> {
+            waitSec(delaySeconds);
             lock.lock();
             condition.signal();
             lock.unlock();
@@ -151,5 +157,15 @@ public class MockUi implements IJassUi {
     @Override
     public void setAnnouncementEnabled(boolean enable) {
 
+    }
+
+    private void waitSec(float seconds) {
+        if (seconds <= 0) {
+            return;
+        }
+        try {
+            Thread.sleep((long) (seconds * 1000));
+        } catch (InterruptedException ignored) {
+        }
     }
 }

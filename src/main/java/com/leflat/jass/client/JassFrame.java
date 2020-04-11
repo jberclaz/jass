@@ -28,15 +28,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
 
     // Variables visuelles
-    private CanvasBorder leftCanvas;
-    private CanvasBorder rightCanvas;
-    private CanvasPlayer playerCanvas;
-    private CanvasTop topCanvas;
-    private CanvasCenter centerCanvas;
-    private CanvasLastPlie lastPlieCanvas;
+    private final CanvasBorder leftCanvas;
+    private final CanvasBorder rightCanvas;
+    private final CanvasPlayer playerCanvas;
+    private final CanvasTop topCanvas;
+    private final CanvasCenter centerCanvas;
+    private final CanvasLastPlie lastPlieCanvas;
 
     // Autres variables
-    private IRemotePlayer myself;
+    private final IRemotePlayer myself;
     private int drawnCardPosition = -1;
     private Card playedCard = null;
     private boolean announcementPressed = false;
@@ -281,7 +281,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     public void chooseCard(Lock lock, Condition condition) {
         this.lock = lock;
         this.condition = condition;
-        announcementPressed = false;
         playerCanvas.setMode(JassCanvas.MODE_PLAY);
     }
 
@@ -338,7 +337,9 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void setAnnouncementEnabled(boolean enable) {
-        announcementPressed = false;
+        if (enable) {
+            announcementPressed = false;
+        }
         jButtonAnounce.setEnabled(enable);
     }
 

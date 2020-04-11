@@ -1,3 +1,6 @@
+package com.leflat.jass.test;
+
+import com.leflat.jass.client.ServerDisconnectedException;
 import com.leflat.jass.common.ClientConnectionInfo;
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IClientNetwork;
@@ -31,12 +34,13 @@ public class MockClientNetwork implements IClientNetwork {
     }
 
     @Override
-    public String receiveRawMessage() {
+    public String receiveRawMessage() throws ServerDisconnectedException {
         try {
             Thread.sleep(200);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        return "100";
+        throw new ServerDisconnectedException("");
+        //return "100";
     }
 }
