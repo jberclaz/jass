@@ -23,11 +23,16 @@ public class CanvasPlayer extends JassCanvas {
     public CanvasPlayer() {
     }
 
-    public void paint(Graphics g) {
+    @Override
+    public void paintComponent(Graphics g) {
         Graphics2D g2 = (Graphics2D) g.create();
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+
+        Dimension d = getSize();
+
+        g2.clearRect(0, 0, d.width, d.height);
+
         if (!hand.isEmpty()) {
-            Dimension d = getSize();
             int cardsWidth = getCardsWidth();
             int xOffset = (d.width - cardsWidth) / 2;
             for (int i = 0; i < hand.size(); i++) {
@@ -35,9 +40,11 @@ public class CanvasPlayer extends JassCanvas {
                         xOffset + i * X_STEP, 20, this);
             }
         }
+
         g2.drawString(name, 30, 15);
         if (atout) {
-            g2.drawString("atout", name.length() * 7 + 60, 15);
+            int width = g.getFontMetrics().stringWidth(name);
+            g2.fillOval(38 + width, 7, 7, 7);
         }
     }
 
