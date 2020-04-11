@@ -54,5 +54,7 @@ public interface IJassUi {
     void canceledGame(int leavingPlayerPosition);
     
     void setAnnouncementEnabled(boolean enable);
+
+    void lostServerConnection();
 }
 

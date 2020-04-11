@@ -169,6 +169,11 @@ public class RemotePlayer extends AbstractRemotePlayer {
         network.receiveMessage();
     }
 
+    @Override
+    public void lostServerConnection() {
+
+    }
+
     private void updatePlayerInfo() throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(id));
         this.name = network.receiveMessage()[0];

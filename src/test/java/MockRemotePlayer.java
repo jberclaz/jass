@@ -134,4 +134,9 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     public void playerLeft(BasePlayer player) {
 
     }
+
+    @Override
+    public void lostServerConnection() {
+
+    }
 }

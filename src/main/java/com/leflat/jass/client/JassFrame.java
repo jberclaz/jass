@@ -128,7 +128,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             }
             int gameId = myself.connect(dc.name, dc.host, dc.gameId);
             if (gameId >= 0) {
-                jButtonConnect.setText("Déconnexion");
+                jButtonConnect.setText("Quitter");
                 setGameId(gameId);
             } else {
                 JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
@@ -290,6 +290,12 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             announcementPressed = false;
         }
         jButtonAnounce.setEnabled(enable);
+    }
+
+    @Override
+    public void lostServerConnection() {
+         JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
+         disconnect();
     }
 
     @Override

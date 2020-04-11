@@ -65,6 +65,7 @@ public class ClientNetwork implements IClientNetwork {
     public void disconnect() {
         try {
             clientSocket.close();
+            clientSocket = null;
         } catch (IOException e) {
             e.printStackTrace();
         }

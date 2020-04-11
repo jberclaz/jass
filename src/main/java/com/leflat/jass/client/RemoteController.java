@@ -38,8 +38,8 @@ public class RemoteController implements IController, Runnable {
                 handleControllerMessage(message.split(" "));
             } catch (ServerDisconnectedException e) {
                 e.printStackTrace();
+                player.lostServerConnection();
                 running = false;
-                // TODO: player.serverDisconnected
             }
         }
         System.out.println("Exiting listener ");

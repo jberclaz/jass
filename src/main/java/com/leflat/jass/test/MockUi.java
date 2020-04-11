@@ -159,6 +159,11 @@ public class MockUi implements IJassUi {
 
     }
 
+    @Override
+    public void lostServerConnection() {
+
+    }
+
     private void waitSec(float seconds) {
         if (seconds <= 0) {
             return;

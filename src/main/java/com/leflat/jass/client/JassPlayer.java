@@ -259,6 +259,12 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     }
 
     @Override
+    public void lostServerConnection() {
+        disconnect();
+        frame.lostServerConnection();
+    }
+
+    @Override
     public int connect(String name, String host, int gameId) {
         network = networkFactory.getClientNetwork();
         var connectionInfo = network.connect(host, gameId, name);
@@ -281,12 +287,12 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     @Override
     public boolean disconnect() {
         controller.terminate();
+        network.disconnect();
         try {
-            controllerThread.join();
+            controllerThread.join(500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        network.disconnect();
         controller = null;
         controllerThread = null;
         return true;

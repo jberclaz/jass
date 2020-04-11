@@ -42,4 +42,6 @@ public interface IPlayer {
     boolean getNewGame() throws PlayerLeftExpection;
 
     void playerLeft(BasePlayer player) throws PlayerLeftExpection;
+
+    void lostServerConnection();
 }
