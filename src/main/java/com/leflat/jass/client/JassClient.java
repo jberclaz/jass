@@ -18,6 +18,6 @@ public class JassClient {
             e.printStackTrace();
         }
 
-        new JassPlayer(new ClientNetworkFactory(), new OriginalUiFactory());
+        new JassPlayer(new ClientNetworkFactory(), new ModernUiFactory());
     }
 }

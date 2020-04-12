@@ -12,7 +12,7 @@ public class CardImages {
     private final static Logger LOGGER = Logger.getLogger(CardImages.class.getName());
     public static final int IMG_WIDTH = 71;
     public static final int IMG_HEIGHT = 96;
-    private static final String IMG_PATH = "pics/";
+    private static final String IMG_PATH = "pics/swiss/";
     private static final Image[] images = new Image[36];
     private static Image backImage;
     private static final Image[] colorImages = new Image[4];
