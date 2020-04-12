@@ -286,12 +286,16 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public boolean disconnect() {
-        controller.terminate();
+        if (controller != null) {
+            controller.terminate();
+        }
         network.disconnect();
-        try {
-            controllerThread.join(500);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
+        if (controllerThread != null) {
+            try {
+                controllerThread.join(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         }
         controller = null;
         controllerThread = null;

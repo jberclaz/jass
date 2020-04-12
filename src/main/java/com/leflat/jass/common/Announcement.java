@@ -57,7 +57,10 @@ public class Announcement implements Comparable<Announcement> {
             return sb.toString();
         }
         if (type >= SQUARE) {
-            sb.append(" des ").append(Card.RANK_NAMES[card.getRank()]).append("s");
+            sb.append(" des ").append(Card.RANK_NAMES[card.getRank()]);
+            if (card.getRank() != Card.RANK_10 && card.getRank() != Card.RANK_AS) {
+                sb.append("s");
+            }
         } else {
             switch (card.getRank()) {
                 case Card.RANK_DAME:

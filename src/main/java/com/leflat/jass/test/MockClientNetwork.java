@@ -34,13 +34,12 @@ public class MockClientNetwork implements IClientNetwork {
     }
 
     @Override
-    public String receiveRawMessage() throws ServerDisconnectedException {
+    public String receiveRawMessage() {
         try {
-            Thread.sleep(200);
+            Thread.sleep(500);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        throw new ServerDisconnectedException("");
-        //return "100";
+        return "100";
     }
 }
