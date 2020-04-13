@@ -104,7 +104,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         getContentPane().add(jPanel1, new AbsoluteConstraints(0, 490, 400, 40));
 
         jButtonAnounce.setAlignmentY(0.4F);
-        jButtonAnounce.setText("Annoncer");
+        jButtonAnounce.setText("Annonce");
         jButtonAnounce.setEnabled(false);
         jButtonAnounce.addActionListener(this::jButtonAnounceActionPerformed);
 
@@ -114,7 +114,6 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         jButtonConnect.addActionListener(evt -> jButtonConnectActionPerformed());
 
         getContentPane().add(jButtonConnect, new AbsoluteConstraints(410, 500, -1, -1));
-
     }//GEN-END:initComponents
 
     private void jButtonConnectActionPerformed() {
@@ -211,10 +210,19 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public int chooseAtout(boolean allowedToPass) {
-        DialogAtout da = new DialogAtout(this, true, allowedToPass);
-        da.setLocationRelativeTo(this);
-        da.setVisible(true);
-        return da.getSelectedColor();
+        Object[] options = new Object[allowedToPass ? 5 : 4];
+        for (int i=0; i<4; i++) {
+            options[i] = new ImageIcon(CardImages.getInstance().getColorImage(i));
+        }
+        if (allowedToPass) {
+            options[4] = "Passer";
+        }
+        int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir l'atout", "Choix de l'atout",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice < 0) {
+            choice = allowedToPass? 4 : 0;
+        }
+        return choice;
     }
 
     @Override
@@ -388,11 +396,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public BasePlayer choosePartner(List<BasePlayer> partners) {
-        DialogPartnerChoice dpc = new DialogPartnerChoice(this, true);
-        dpc.setLocationRelativeTo(this);
-        partners.forEach(dpc::addPlayer);
-        dpc.setVisible(true);
-        return dpc.getSelectedPlayer();
+        Object[] options = partners.stream().map(BasePlayer::toString).toArray();
+        int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir votre partenaire", "Choix du partenaire",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice == -1) {
+            choice = 0;
+        }
+        return partners.get(choice);
     }
 
     private void setStatusBar(String text) {

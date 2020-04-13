@@ -39,16 +39,25 @@ public class TestClient {
         var frame = uiFactory.getUi(player);
 
         frame.showUi(true);
+
+        int atout = frame.chooseAtout(false);
+        System.out.println("atout " + atout);
+
+
+
         var team = new Team(0);
         team.addPlayer(new ClientPlayer(0, "Hhip"));
         team.addPlayer(new ClientPlayer(1, "Mono"));
-        frame.displayGameResult(team, true);
+
         List<BasePlayer> players = new ArrayList<>();
         players.add(new ClientPlayer(0, "Berte"));
         players.add(new ClientPlayer(0, "Hhip"));
         players.add(new ClientPlayer(0, "JB"));
 
-        frame.choosePartner(players);
+        var choice = frame.choosePartner(players);
+        System.out.println("partner: " + choice);
+
+        frame.displayGameResult(team, false);
     }
 
     public static void main(String[] args) {
