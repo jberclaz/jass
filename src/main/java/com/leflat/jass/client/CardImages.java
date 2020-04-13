@@ -3,23 +3,23 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.Card;
 
 import javax.imageio.ImageIO;
-import java.awt.Image;
+import java.awt.image.BufferedImage;
 import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CardImages {
     private final static Logger LOGGER = Logger.getLogger(CardImages.class.getName());
-    public static final int IMG_WIDTH = 71;
-    public static final int IMG_HEIGHT = 96;
+    public static final int IMG_WIDTH = 193;
+    public static final int IMG_HEIGHT = 300;
     private static final String IMG_PATH = "pics/swiss/";
-    private static final Image[] images = new Image[36];
-    private static Image backImage;
-    private static final Image[] colorImages = new Image[4];
+    private static final BufferedImage[] images = new BufferedImage[36];
+    private static BufferedImage backImage;
+    private static final BufferedImage[] colorImages = new BufferedImage[4];
 
     static {
         for (int i = 0; i < 36; i++) {
-            var imagePath = CardImages.class.getClassLoader().getResource(IMG_PATH + i + ".png");
+            var imagePath = CardImages.class.getClassLoader().getResource(imagePath(i));
             if (imagePath == null) {
                 LOGGER.severe("Unable to locate card image " + i);
                 continue;
@@ -55,18 +55,22 @@ public class CardImages {
         }
     }
 
-    public static Image getImage(Card card) {
+    private static String imagePath(int number) {
+        return IMG_PATH + String.format("%02d.png", number);
+    }
+
+    public static BufferedImage getImage(Card card) {
         if (!card.isBack()) {
             return images[card.getNumber()];
         }
         return backImage;
     }
 
-    public static Image getBackImage() {
+    public static BufferedImage getBackImage() {
         return backImage;
     }
 
-    public static Image getColorImage(int color) {
+    public static BufferedImage getColorImage(int color) {
         return colorImages[color];
     }
 }
