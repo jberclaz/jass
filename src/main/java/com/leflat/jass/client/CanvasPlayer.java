@@ -27,12 +27,10 @@ public class CanvasPlayer extends JassCanvas {
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
-        Graphics2D g2 = (Graphics2D) g.create();
+        Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         Dimension d = getSize();
-
-        g2.clearRect(0, 0, d.width, d.height);
 
         if (!hand.isEmpty()) {
             int cardsWidth = getCardsWidth();

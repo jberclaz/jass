@@ -56,12 +56,10 @@ public class CanvasLastPlie extends JPanel {
 
     @Override
     public void paintComponent(Graphics g) {
-        Graphics2D g2 = (Graphics2D) g.create();
+        super.paintComponent(g);
+
+        Graphics2D g2 = (Graphics2D) g;
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
-
-        Dimension d = getSize();
-
-        g2.clearRect(0, 0, d.width, d.height);
 
         for (int i = 0; i < lastPlie.size(); i++) {
             g2.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
