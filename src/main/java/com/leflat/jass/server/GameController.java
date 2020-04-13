@@ -63,6 +63,8 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
         } catch (PlayerLeftExpection e) {
+            System.err.println("Player " + e + " left the game");
+            e.printStackTrace();
             disconnectedPlayer = getPlayerById(e.getPlayerId());
             players.remove(disconnectedPlayer);
         } catch (BrokenRuleException e) {
