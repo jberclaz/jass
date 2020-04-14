@@ -17,6 +17,9 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     private final IRemotePlayer myself;
     private ModernGamePanel gamePanel;
+    private Lock lock;
+    private Condition condition;
+    
 
     public ModernUi(IRemotePlayer player) {
         this.myself = player;
@@ -203,7 +206,17 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void mouseClicked(MouseEvent mouseEvent) {
+        var card = gamePanel.getCard(mouseEvent.getX(), mouseEvent.getY());
+        if (card == null) {
+            return;
+        }
 
+        assert lock != null;
+        assert condition != null;
+
+        lock.lock();
+        condition.signal();
+        lock.unlock();
     }
 
     @Override

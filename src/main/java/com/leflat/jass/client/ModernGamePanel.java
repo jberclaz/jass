@@ -10,19 +10,11 @@ import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.util.List;
 
-import static java.lang.Math.round;
-import static java.lang.Math.toRadians;
+import static java.lang.Math.*;
 
 public class ModernGamePanel extends JPanel {
     enum GameMode {
         TEAM_DRAWING, GAME
-    }
-
-    class RenderingArea {
-        public int width;
-        public int height;
-        public int xOffset;
-        public int yOffset;
     }
 
     private Map<PlayerPosition, BasePlayer> players = new HashMap<>();
@@ -80,30 +72,54 @@ public class ModernGamePanel extends JPanel {
     }
 
     public boolean isInsidePlayerCardsArea(int x, int y) {
-        return false;
+        return getHandArea(getRenderingDimension()).contains(x, y);
     }
 
-    private Rectangle cardArea(int number, RenderingArea area) {
-        int card_height = area.height / 7;
-        int hand_width = area.width / 3;
-        int hand_x_offset = area.xOffset + area.width / 3;
-        int hand_y_offset = area.yOffset + area.height - card_height - area.height / 10;
-        float card_x_step = (hand_width - card_width) / (float) (players.get(PlayerPosition.MYSELF).getHand().size() - 1);
+    public Card getCard(int x, int y) {
+        var handArea = getHandArea(getRenderingDimension());
+        if (!handArea.contains(x, y)) {
+            return null;
+        }
+        var hand = players.get(PlayerPosition.MYSELF).getHand();
+        var hand_size = hand.size();
+        var card_width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+        float card_x_step = (handArea.width - card_width) / (float) (hand_size - 1);
+        int cardNumber = (int) floor((x - handArea.x) / card_x_step);
+        return hand.get(max(cardNumber, hand_size - 1));
     }
 
-    private RenderingArea getRenderingDimension() {
+    private Rectangle getHandArea(Rectangle renderingArea) {
+        int card_height = renderingArea.height / 7;
+        int hand_x_offset = renderingArea.x + renderingArea.width / 3;
+        int hand_y_offset = renderingArea.y + renderingArea.height - card_height - renderingArea.height / 10;
+        int hand_width = renderingArea.width / 3;
+        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, card_height);
+    }
+
+    private Rectangle getCardArea(int number, Rectangle area) {
+        var handArea = getHandArea(area);
+        Rectangle card = new Rectangle();
+        card.width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+
+        float card_x_step = (handArea.width - card.width) / (float) (players.get(PlayerPosition.MYSELF).getHand().size() - 1);
+        card.x = handArea.x + round(number * card_x_step);
+        card.y = handArea.y;
+        return card;
+    }
+
+    private Rectangle getRenderingDimension() {
         Dimension d = getSize();
-        RenderingArea area = new RenderingArea();
+        var area = new Rectangle();
         if ((float) d.width / d.height > ASPECT_RATIO) {
             area.width = round(d.height * ASPECT_RATIO);
             area.height = d.height;
-            area.xOffset = (d.width - area.width) / 2;
-            area.yOffset = 0;
+            area.x = (d.width - area.width) / 2;
+            area.y = 0;
         } else {
             area.width = d.width;
             area.height = round(d.width / ASPECT_RATIO);
-            area.xOffset = 0;
-            area.yOffset = (d.height - area.height) / 2;
+            area.x = 0;
+            area.y = (d.height - area.height) / 2;
         }
         return area;
     }
@@ -124,11 +140,11 @@ public class ModernGamePanel extends JPanel {
 
         // draw carpet
         g2.setColor(CARPET_COLOR);
-        int carpet_width = rendering_width / 3;
-        int carpet_height = rendering_height / 3;
-        int carpet_x_offset = rendering_width / 3 + x_offset;
-        int carpet_y_offset = rendering_height / 3 + y_offset;
-        g2.fillRoundRect(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height, rendering_width / 40, rendering_width / 40);
+        int carpet_width = renderingArea.width / 3;
+        int carpet_height = renderingArea.height / 3;
+        int carpet_x_offset = renderingArea.width / 3 + renderingArea.x;
+        int carpet_y_offset = renderingArea.height / 3 + renderingArea.y;
+        g2.fillRoundRect(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height, renderingArea.width / 40, renderingArea.width / 40);
 
         if (gameMode == GameMode.TEAM_DRAWING) {
             for (int i = 0; i < 36; i++) {
@@ -176,7 +192,7 @@ public class ModernGamePanel extends JPanel {
                     var hand = entry.getValue().getHand();
                     int hand_width = carpet_width;
                     int hand_x_offset = carpet_x_offset;
-                    int hand_y_offset = y_offset + rendering_height - card_height - rendering_height / 10;
+                    int hand_y_offset = renderingArea.y + renderingArea.height - card_height - renderingArea.height / 10;
                     float card_x_step = (hand_width - card_width) / (float) (hand.size() - 1);
                     for (int i = 0; i < hand.size(); i++) {
                         g2.drawImage(CardImages.getInstance().getImage(hand.get(i)),
@@ -188,7 +204,7 @@ public class ModernGamePanel extends JPanel {
                     hand = entry.getValue().getHand();
                     hand_width = carpet_width;
                     hand_x_offset = carpet_x_offset;
-                    hand_y_offset = y_offset + rendering_height / 10;
+                    hand_y_offset = renderingArea.y + renderingArea.height / 10;
                     card_x_step = (hand_width - card_width) / (float) (hand.size() - 1);
                     for (int i = hand.size() - 1; i >= 0; i--) {
                         g2.drawImage(CardImages.getInstance().getImage(hand.get(i)),
@@ -201,7 +217,7 @@ public class ModernGamePanel extends JPanel {
                     float scale = (float) card_height / CardImages.IMG_HEIGHT;
                     int hand_height = carpet_height;
                     float card_y_step = (hand_height - card_width) / (float) (hand.size() - 1);
-                    hand_x_offset = x_offset + rendering_width / 6;
+                    hand_x_offset = renderingArea.x + renderingArea.width / 6;
                     hand_y_offset = carpet_y_offset;
                     for (int i = hand.size() - 1; i >= 0; i--) {
                         var xform = new AffineTransform();
@@ -218,7 +234,7 @@ public class ModernGamePanel extends JPanel {
                     scale = (float) card_height / CardImages.IMG_HEIGHT;
                     hand_height = carpet_height;
                     card_y_step = (hand_height - card_width) / (float) (hand.size() - 1);
-                    hand_x_offset = x_offset + rendering_width - rendering_width / 6 - card_height;
+                    hand_x_offset = renderingArea.x + renderingArea.width - renderingArea.width / 6 - card_height;
                     hand_y_offset = carpet_y_offset;
                     for (int i = 0; i < hand.size(); i++) {
                         var xform = new AffineTransform();
@@ -239,19 +255,19 @@ public class ModernGamePanel extends JPanel {
             switch (entry.getKey()) {
                 case MYSELF:
                     x = carpet_x_offset;
-                    y = carpet_y_offset + carpet_height + rendering_height / 20;
+                    y = carpet_y_offset + carpet_height + renderingArea.height / 20;
                     break;
                 case ACROSS:
                     x = carpet_x_offset;
-                    y = carpet_y_offset - rendering_height / 20;
+                    y = carpet_y_offset - renderingArea.height / 20;
                     break;
                 case LEFT:
-                    x = x_offset + rendering_width / 6;
-                    y = carpet_y_offset - rendering_height / 10;
+                    x = renderingArea.x + renderingArea.width / 6;
+                    y = carpet_y_offset - renderingArea.height / 10;
                     break;
                 case RIGHT:
-                    x = x_offset + rendering_width - rendering_width / 6 - card_height;
-                    y = carpet_y_offset - rendering_height / 10;
+                    x = renderingArea.x + renderingArea.width - renderingArea.width / 6 - card_height;
+                    y = carpet_y_offset - renderingArea.height / 10;
                     break;
                 default:
                     throw new IndexOutOfBoundsException("Unknown position " + entry.getKey());
