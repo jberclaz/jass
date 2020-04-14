@@ -4,13 +4,15 @@ import com.leflat.jass.common.*;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
-public class ModernUi extends JFrame implements IJassUi {
+public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
 
     private final IRemotePlayer myself;
@@ -44,12 +46,15 @@ public class ModernUi extends JFrame implements IJassUi {
 
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
-        return null;
+           Object[] options = {"Hasard", "Manuel"};
+        int choice = JOptionPane.showOptionDialog(this, "Comment voulez-vous choisir les équipes?", "Choix des équipes",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        return choice == 0 ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
     }
 
     @Override
     public void prepareTeamDrawing() {
-
+        gamePanel.setMode(ModernGamePanel.GameMode.TEAM_DRAWING);
     }
 
     @Override
@@ -64,7 +69,7 @@ public class ModernUi extends JFrame implements IJassUi {
 
     @Override
     public void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException {
-
+        gamePanel.drawCard(cardPosition, card, intToPlayerPosition(playerPosition));
     }
 
     @Override
@@ -86,7 +91,7 @@ public class ModernUi extends JFrame implements IJassUi {
 
     @Override
     public void removeCardFromPlayerHand(int playerPosition) {
-
+        gamePanel.removeCard(intToPlayerPosition(playerPosition));
     }
 
     @Override
@@ -194,5 +199,30 @@ public class ModernUi extends JFrame implements IJassUi {
         images.add(tk.getImage(imagePath));
 
         setIconImages(images);
+    }
+
+    @Override
+    public void mouseClicked(MouseEvent mouseEvent) {
+
+    }
+
+    @Override
+    public void mousePressed(MouseEvent mouseEvent) {
+
+    }
+
+    @Override
+    public void mouseReleased(MouseEvent mouseEvent) {
+
+    }
+
+    @Override
+    public void mouseEntered(MouseEvent mouseEvent) {
+
+    }
+
+    @Override
+    public void mouseExited(MouseEvent mouseEvent) {
+
     }
 }

@@ -18,6 +18,13 @@ public class ModernGamePanel extends JPanel {
         TEAM_DRAWING, GAME
     }
 
+    class RenderingArea {
+        public int width;
+        public int height;
+        public int xOffset;
+        public int yOffset;
+    }
+
     private Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private static final float ASPECT_RATIO = 4.0f / 3;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
@@ -55,6 +62,52 @@ public class ModernGamePanel extends JPanel {
         this.gameMode = mode;
     }
 
+    public void drawCard(int cardPosition, Card card, PlayerPosition playerPosition) {
+        drawnCards.add(cardPosition);
+        try {
+            players.get(playerPosition).setHand(Collections.singletonList(card));
+        } catch (PlayerLeftExpection playerLeftExpection) {
+            playerLeftExpection.printStackTrace();
+        }
+    }
+
+    public void removeCard(PlayerPosition playerPosition) {
+        removeCard(playerPosition, 0);
+    }
+
+    public void removeCard(PlayerPosition playerPosition, int cardPosition) {
+        players.get(playerPosition).getHand().remove(cardPosition);
+    }
+
+    public boolean isInsidePlayerCardsArea(int x, int y) {
+        return false;
+    }
+
+    private Rectangle cardArea(int number, RenderingArea area) {
+        int card_height = area.height / 7;
+        int hand_width = area.width / 3;
+        int hand_x_offset = area.xOffset + area.width / 3;
+        int hand_y_offset = area.yOffset + area.height - card_height - area.height / 10;
+        float card_x_step = (hand_width - card_width) / (float) (players.get(PlayerPosition.MYSELF).getHand().size() - 1);
+    }
+
+    private RenderingArea getRenderingDimension() {
+        Dimension d = getSize();
+        RenderingArea area = new RenderingArea();
+        if ((float) d.width / d.height > ASPECT_RATIO) {
+            area.width = round(d.height * ASPECT_RATIO);
+            area.height = d.height;
+            area.xOffset = (d.width - area.width) / 2;
+            area.yOffset = 0;
+        } else {
+            area.width = d.width;
+            area.height = round(d.width / ASPECT_RATIO);
+            area.xOffset = 0;
+            area.yOffset = (d.height - area.height) / 2;
+        }
+        return area;
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -64,21 +117,9 @@ public class ModernGamePanel extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
         g2.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
 
-        int rendering_width, rendering_height;
-        int x_offset, y_offset;
-        if ((float) d.width / d.height > ASPECT_RATIO) {
-            rendering_width = round(d.height * ASPECT_RATIO);
-            rendering_height = d.height;
-            x_offset = (d.width - rendering_width) / 2;
-            y_offset = 0;
-        } else {
-            rendering_width = d.width;
-            rendering_height = round(d.width / ASPECT_RATIO);
-            x_offset = 0;
-            y_offset = (d.height - rendering_height) / 2;
-        }
+        var renderingArea = getRenderingDimension();
 
-        int card_height = rendering_height / 7;
+        int card_height = renderingArea.height / 7;
         int card_width = round((float) card_height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
 
         // draw carpet
@@ -190,6 +231,32 @@ public class ModernGamePanel extends JPanel {
                     }
                     break;
             }
+        }
+
+        // draw names
+        for (var entry : players.entrySet()) {
+            int x, y;
+            switch (entry.getKey()) {
+                case MYSELF:
+                    x = carpet_x_offset;
+                    y = carpet_y_offset + carpet_height + rendering_height / 20;
+                    break;
+                case ACROSS:
+                    x = carpet_x_offset;
+                    y = carpet_y_offset - rendering_height / 20;
+                    break;
+                case LEFT:
+                    x = x_offset + rendering_width / 6;
+                    y = carpet_y_offset - rendering_height / 10;
+                    break;
+                case RIGHT:
+                    x = x_offset + rendering_width - rendering_width / 6 - card_height;
+                    y = carpet_y_offset - rendering_height / 10;
+                    break;
+                default:
+                    throw new IndexOutOfBoundsException("Unknown position " + entry.getKey());
+            }
+            g2.drawString(entry.getValue().getName(), x, y);
         }
     }
 
