@@ -13,10 +13,12 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.*;
 
+import javax.imageio.ImageIO;
 import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.awt.event.MouseEvent;
+import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -431,19 +433,22 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     private void loadLogos() {
-        Toolkit tk = Toolkit.getDefaultToolkit();
+        var logoNames = new String[]{"logos/logo_128.png", "logos/logo_64.png", "logos/logo_48.png", "logos/logo_32.png", "logos/logo_16.png"};
         List<Image> images = new ArrayList<>();
 
-        var imagePath = getClass().getClassLoader().getResource("logos/logo_128.png");
-        images.add(tk.getImage(imagePath));
-        imagePath = getClass().getClassLoader().getResource("logos/logo_64.png");
-        images.add(tk.getImage(imagePath));
-        imagePath = getClass().getClassLoader().getResource("logos/logo_48.png");
-        images.add(tk.getImage(imagePath));
-        imagePath = getClass().getClassLoader().getResource("logos/logo_32.png");
-        images.add(tk.getImage(imagePath));
-        imagePath = getClass().getClassLoader().getResource("logos/logo_16.png");
-        images.add(tk.getImage(imagePath));
+        for (var logoName : logoNames) {
+            var imagePath = getClass().getClassLoader().getResource(logoName);
+            if (imagePath == null) {
+                System.err.println("Unable to locate logo " + logoName);
+                continue;
+            }
+            try {
+                images.add(ImageIO.read(imagePath));
+            } catch (IOException e) {
+                System.err.println("Unable to open logo " + imagePath);
+                e.printStackTrace();
+            }
+        }
 
         setIconImages(images);
     }
