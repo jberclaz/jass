@@ -269,6 +269,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         network = networkFactory.getClientNetwork();
         var connectionInfo = network.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
+            network = null;
             return connectionInfo.error;
         }
         id = connectionInfo.playerId;

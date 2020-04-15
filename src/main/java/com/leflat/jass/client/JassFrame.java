@@ -146,7 +146,17 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
                 jButtonConnect.setText("Quitter");
                 setGameId(gameId);
             } else {
-                JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                switch (gameId) {
+                case ConnectionError.SERVER_UNREACHABLE:
+                    JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                case ConnectionError.GAME_FULL:
+                    JOptionPane.showMessageDialog(null, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                case ConnectionError.UNKNOWN_GAME:
+                    JOptionPane.showMessageDialog(null, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                }
             }
         } else {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
