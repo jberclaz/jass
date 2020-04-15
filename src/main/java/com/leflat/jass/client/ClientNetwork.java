@@ -13,8 +13,11 @@ import java.net.Socket;
 import java.net.SocketTimeoutException;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ClientNetwork implements IClientNetwork {
+    private final static Logger LOGGER = Logger.getLogger(ClientNetwork.class.getName());
     private static final int PORT_NUM = 23107;
     private static final int CONNECTION_TIMEOUT_MS = 10000;
 
@@ -31,12 +34,12 @@ public class ClientNetwork implements IClientNetwork {
 
             os = new PrintWriter(clientSocket.getOutputStream(), false);
             is = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
-            System.out.println("Connection successful");
+            LOGGER.info("Connection to " + host + " successful");
         } catch (SocketTimeoutException e) {
-            System.out.println("Server does not answer");
+            LOGGER.log(Level.WARNING, "Server did not answer", e);
             return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
         } catch (IOException e) {
-            System.out.println("Unable to create socket: " + e);
+            LOGGER.log(Level.WARNING, "Unable to create socket: ", e);
             return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
         }
 
@@ -85,12 +88,12 @@ public class ClientNetwork implements IClientNetwork {
         try {
             message = is.readLine();
         } catch (IOException e) {
-            System.out.println("Error during reception");
+            LOGGER.log(Level.WARNING, "Error during reception", e);
         }
         if (message == null) {
             throw new ServerDisconnectedException("Server has left unexpectedly");
         }
-        System.out.println("Received : " + message);
+        LOGGER.info("Received : " + message);
 
         return message;
     }
@@ -98,6 +101,6 @@ public class ClientNetwork implements IClientNetwork {
     private void sendRawMessage(String message) {
         os.println(message);
         os.flush();
-        System.out.println("Envoi au serveur : " + message);
+        LOGGER.info("Sent : " + message);
     }
 }
