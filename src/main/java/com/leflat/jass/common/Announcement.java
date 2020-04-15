@@ -131,7 +131,6 @@ public class Announcement implements Comparable<Announcement> {
                     nbrCards = 5;
                 }
                 announcements.add(new Announcement(nbrCards - 2, hand.get(i + nbrCards - 1)));
-                System.out.println("Found suit: " + announcements.get(announcements.size() - 1));
                 i = j - 1;
             }
         }

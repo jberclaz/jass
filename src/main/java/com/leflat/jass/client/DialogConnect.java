@@ -13,7 +13,9 @@
 package com.leflat.jass.client;
 
 
+import javax.swing.*;
 import javax.swing.text.MaskFormatter;
+import java.awt.*;
 import java.text.ParseException;
 
 public class DialogConnect extends javax.swing.JDialog {
@@ -57,6 +59,17 @@ public class DialogConnect extends javax.swing.JDialog {
             e.printStackTrace();
         }
         jTextFieldGame = new javax.swing.JFormattedTextField(formatter);
+        jTextFieldGame.setInputVerifier(new InputVerifier() {
+            @Override
+            public boolean verify(JComponent jComponent) {
+                var field = (JFormattedTextField)jComponent;
+                String text = field.getText();
+                if (text.isBlank()) {
+                    return true;
+                }
+                return text.strip().length() == 7;
+            }
+        });
         jTextFieldHost = new javax.swing.JTextField();
         jButtonOk = new javax.swing.JButton();
         jButtonCancel = new javax.swing.JButton();
@@ -147,6 +160,7 @@ public class DialogConnect extends javax.swing.JDialog {
         getContentPane().add(jPanel1, gridBagConstraints1);
 
         jButtonOk.setText("Ok");
+        jButtonOk.setDefaultCapable(true);
         jButtonOk.addActionListener(new java.awt.event.ActionListener() {
                                         public void actionPerformed(java.awt.event.ActionEvent evt) {
                                             jButtonOkActionPerformed(evt);
@@ -187,8 +201,12 @@ public class DialogConnect extends javax.swing.JDialog {
 
     private void jButtonOkActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonOkActionPerformed
 // Add your handling code here:
+        if (!jTextFieldGame.getText().isBlank() && jTextFieldGame.getValue() == null) {
+            jLabelGame.setForeground(new Color(128, 0, 0));
+            return;
+        }
         ok = true;
-        gameId = jTextFieldGame.getText().isBlank() ? -1 : Integer.parseInt((String)jTextFieldGame.getValue());
+        gameId = jTextFieldGame.getValue() == null ? -1 : Integer.parseInt((String)jTextFieldGame.getValue());
         name = jTextFieldName.getText();
         host = jTextFieldHost.getText();
         this.dispose();
