@@ -86,7 +86,7 @@ public class CanvasCenter extends JPanel {
                 int xOffset = (d.width - 35 * X_STEP - CardImages.IMG_WIDTH) / 2;
                 for (int i = 0; i < 36; i++) {
                     if (!drawnCards.contains(i)) {
-                        g.drawImage(CardImages.getInstance().getBackImage(), xOffset + i * X_STEP, yOffset, this);
+                        g.drawImage(CardImages.getBackImage(), xOffset + i * X_STEP, yOffset, this);
                     }
                 }
                 break;
@@ -95,7 +95,7 @@ public class CanvasCenter extends JPanel {
                 int h = d.height / 2;
                 for (int i = 0; i < 4; i++) {
                     if (shownCards.containsKey(i)) {
-                        g.drawImage(CardImages.getInstance().getImage(shownCards.get(i)), w + CARD_POS_X[i], h + CARD_POS_Y[i], this);
+                        g.drawImage(CardImages.getImage(shownCards.get(i)), w + CARD_POS_X[i], h + CARD_POS_Y[i], this);
                     }
                 }
         }

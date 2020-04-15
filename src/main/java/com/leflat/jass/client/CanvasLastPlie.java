@@ -62,11 +62,12 @@ public class CanvasLastPlie extends JPanel {
         g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
 
         for (int i = 0; i < lastPlie.size(); i++) {
-            g2.drawImage(CardImages.getInstance().getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
+            g2.drawImage(CardImages.getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
         }
 
         if (atout < 4) {
-            g2.drawImage(CardImages.getInstance().getColorImage(atout), 380, 8, this);
+            int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
+            g2.drawImage(CardImages.getColorImage(atout), 340 + stringWidth, 8, this);
         }
 
         g2.drawString("Dernière plie:", 20, 20);

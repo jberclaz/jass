@@ -2,7 +2,12 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.*;
+import java.util.logging.FileHandler;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class GameController extends Thread {
@@ -10,6 +15,7 @@ public class GameController extends Thread {
     private List<AbstractRemotePlayer> players = new ArrayList<>();
     private Team[] teams = new Team[2];       // les 2 équipes
     private boolean noWait = false;
+    private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public GameController(int id) {
         this.gameId = id;
@@ -45,7 +51,7 @@ public class GameController extends Thread {
 
     @Override
     public void run() {
-        System.out.println("Starting game room " + gameId);
+        LOGGER.info("Starting game room " + gameId);
 
         BasePlayer disconnectedPlayer = null;
         try {
@@ -63,23 +69,22 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
         } catch (PlayerLeftExpection e) {
-            System.err.println("Player " + e + " left the game");
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Player " + e + " left the game", e);
             disconnectedPlayer = getPlayerById(e.getPlayerId());
             players.remove(disconnectedPlayer);
         } catch (BrokenRuleException e) {
-            System.err.println("Error: Jass rule broken: " + e.getBrokenRule());
+            LOGGER.severe("Error: Jass rule broken: " + e.getBrokenRule());
         } finally {
             for (var player : players) {
                 try {
                     player.playerLeft(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
                 } catch (PlayerLeftExpection ee) {
-                    System.err.println("Player " + ee.getPlayerId() + " also left.");
+                    LOGGER.warning("Player " + ee.getPlayerId() + " also left.");
                 }
             }
         }
 
-        System.out.println("Game " + gameId + " ended");
+        LOGGER.info("Game " + gameId + " ended");
     }
 
     private void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
@@ -197,7 +202,7 @@ public class GameController extends Thread {
             }
             annoucements.put(p.getId(), a);
             for (var announcement : a) {
-                System.out.println(p + " announces : " + announcement);
+                LOGGER.info(p + " announces : " + announcement);
                 if (announcement.getType() == Announcement.STOECK) {
                     playerWithStoeck = p;
                     continue;

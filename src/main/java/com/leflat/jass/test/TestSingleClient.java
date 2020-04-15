@@ -35,7 +35,7 @@ public class TestSingleClient {
 
         var network = new ServerNetwork(clientSocket);
         network.receiveRawMessage();
-        network.sendMessage(String.valueOf(123456));
+        network.sendMessage(String.valueOf(12345));
 
         mainPlayer = new RemotePlayer(0, new ServerNetwork(clientSocket));
 

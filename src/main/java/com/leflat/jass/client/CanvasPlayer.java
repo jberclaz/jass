@@ -36,7 +36,7 @@ public class CanvasPlayer extends JassCanvas {
             int cardsWidth = getCardsWidth();
             int xOffset = (d.width - cardsWidth) / 2;
             for (int i = 0; i < hand.size(); i++) {
-                g2.drawImage(CardImages.getInstance().getImage(hand.get(i)),
+                g2.drawImage(CardImages.getImage(hand.get(i)),
                         xOffset + i * X_STEP, 20, this);
             }
         }

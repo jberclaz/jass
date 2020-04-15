@@ -36,6 +36,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private boolean announcementPressed = false;
     private Lock lock;
     private Condition condition;
+    private String myName = null;
+    private String serverHost = null;
 
     /**
      * Creates new form ClientFrame
@@ -126,12 +128,19 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private void jButtonConnectActionPerformed() {
         //GEN-FIRST:event_jButtonConnectActionPerformed
         if (!myself.isConnected()) {
-            var dc = new DialogConnect(this, true);
+            DialogConnect dc;
+            if (myName != null && serverHost != null) {
+                dc = new DialogConnect(this, myName, serverHost);
+            } else {
+                dc = new DialogConnect(this);
+            }
             dc.setLocationRelativeTo(this);
             dc.setVisible(true);
             if (!dc.ok) {
                 return;
             }
+            myName = dc.name;
+            serverHost = dc.host;
             int gameId = myself.connect(dc.name, dc.host, dc.gameId);
             if (gameId >= 0) {
                 jButtonConnect.setText("Quitter");
@@ -219,7 +228,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     public int chooseAtout(boolean allowedToPass) {
         Object[] options = new Object[allowedToPass ? 5 : 4];
         for (int i=0; i<4; i++) {
-            options[i] = new ImageIcon(CardImages.getInstance().getColorImage(i));
+            options[i] = new ImageIcon(CardImages.getColorImage(i));
         }
         if (allowedToPass) {
             options[4] = "Passer";
@@ -456,7 +465,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     private void setGameId(int gameId) {
         int lowId = gameId % 1000;
         int highId = gameId / 1000;
-        String title = gameId >= 0 ? APP_TITLE + " - Jeu " + highId + " " + lowId : APP_TITLE;
+        String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
         setTitle(title);
     }
 

@@ -32,7 +32,7 @@ public class CanvasBorder extends JassCanvas {
         int w = (d.width - CardImages.IMG_WIDTH) / 2;
         int h = (d.height - hand.size() * Y_STEP - 66) / 2 + 20;
         for (int i = 0; i < hand.size(); i++) {
-            g2.drawImage(CardImages.getInstance().getImage(hand.get(i)), w, h + i * 30, this);
+            g2.drawImage(CardImages.getImage(hand.get(i)), w, h + i * 30, this);
         }
 
         g2.drawString(name, 20, 30);
