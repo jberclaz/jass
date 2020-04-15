@@ -2,10 +2,7 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.*;
-import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -49,6 +46,8 @@ public class GameController extends Thread {
         noWait = enable;
     }
 
+    public Team[] getTeams() { return teams; }
+
     @Override
     public void run() {
         LOGGER.info("Starting game room " + gameId);
@@ -87,7 +86,7 @@ public class GameController extends Thread {
         LOGGER.info("Game " + gameId + " ended");
     }
 
-    private void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
+    void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
         int firstToPlay = drawCards();
         Plie plie;
         do {
@@ -168,7 +167,7 @@ public class GameController extends Thread {
         /* now everybody has played ... */
 
         // choix et comptabilisation des annonces
-        if (processAnoucements()) {
+        if (processAnnouncements()) {
             waitSec(2f);
         }
 
@@ -189,7 +188,7 @@ public class GameController extends Thread {
         return plie;
     }
 
-    boolean processAnoucements() throws PlayerLeftExpection {
+    boolean processAnnouncements() throws PlayerLeftExpection {
         boolean validAnnoucements = false;
         Map<Integer, List<Announcement>> annoucements = new HashMap<>();
         BasePlayer playerWithStoeck = null;
@@ -268,7 +267,7 @@ public class GameController extends Thread {
         return playerWithDiamondSeven;
     }
 
-    private void chooseTeam() throws PlayerLeftExpection {
+    void chooseTeam() throws PlayerLeftExpection {
         Arrays.stream(teams).forEach(Team::reset);
 
         var teamChoiceMethod = players.get(0).chooseTeamSelectionMethod();
@@ -286,7 +285,7 @@ public class GameController extends Thread {
         }
     }
 
-    private void chooseTeamsRandomly() throws PlayerLeftExpection {
+    void chooseTeamsRandomly() throws PlayerLeftExpection {
         // préparation du tirage des équipes
         for (var player : players) {
             player.prepareTeamDrawing(true);
@@ -319,7 +318,7 @@ public class GameController extends Thread {
         } while (!drawingSuccessful);
     }
 
-    private boolean calculateTeam(Map<BasePlayer, Card> choosenCards) {
+    boolean calculateTeam(Map<BasePlayer, Card> choosenCards) {
         var lowest = players.get(0);
         var highest = players.get(0);
         for (int i = 1; i < 4; i++) {
@@ -355,7 +354,7 @@ public class GameController extends Thread {
         return true;
     }
 
-    private void pickTeamMates() throws PlayerLeftExpection {
+    void pickTeamMates() throws PlayerLeftExpection {
         int partnerId = players.get(0).choosePartner();    // demande de choisir le partenaire
         for (var p : players) {
             if (p.getId() == partnerId || p == players.get(0)) {
@@ -366,7 +365,7 @@ public class GameController extends Thread {
         }
     }
 
-    private AbstractRemotePlayer getPlayerById(int id) {
+    AbstractRemotePlayer getPlayerById(int id) {
         for (var p : players) {
             if (p.getId() == id) {
                 return p;
@@ -375,7 +374,7 @@ public class GameController extends Thread {
         throw new IndexOutOfBoundsException("Error: unknown player id " + id);
     }
 
-    private int getPlayerPosition(BasePlayer player) {
+    int getPlayerPosition(BasePlayer player) {
         for (int i = 0; i < players.size(); i++) {
             if (players.get(i).getId() == player.getId()) {
                 return i;
@@ -384,7 +383,7 @@ public class GameController extends Thread {
         throw new IndexOutOfBoundsException("Player " + player.getId() + " not found");
     }
 
-    private void reorderPlayers() {
+    void reorderPlayers() {
         var tempList = List.copyOf(players);
         players.clear();
         players.add(tempList.get(teams[0].getPlayer(0).getId()));
@@ -393,7 +392,7 @@ public class GameController extends Thread {
         players.add(tempList.get(teams[1].getPlayer(1).getId()));
     }
 
-    private void waitSec(float seconds) {
+    void waitSec(float seconds) {
         if (noWait) {
             return;
         }

@@ -1,7 +1,8 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.RemoteCommand;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.server.RemotePlayer;
+import com.leflat.jass.server.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 

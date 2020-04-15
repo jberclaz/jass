@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.client.ClientNetwork;
 import com.leflat.jass.client.ServerDisconnectedException;
 

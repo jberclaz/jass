@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.common.*;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
@@ -43,7 +45,7 @@ public class RulesTests {
 
     @Test
     public void test_plie_first_card() {
-        assertEquals(firstPlayer, plie.getOwner());
+        Assertions.assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_DAME, plie.getHighest());
         assertFalse(plie.isCut());
@@ -55,7 +57,7 @@ public class RulesTests {
     public void test_follow_under() throws BrokenRuleException {
         var hand = buildHand(9, 18, 27);
         plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_HEART), secondPlayer, hand);
-        assertEquals(firstPlayer, plie.getOwner());
+        Assertions.assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_DAME, plie.getHighest());
         assertFalse(plie.isCut());
@@ -67,7 +69,7 @@ public class RulesTests {
     public void test_follow_above() throws BrokenRuleException {
         var hand = buildHand(9, 17, 18, 27);
         plie.playCard(new Card(Card.RANK_AS, Card.COLOR_HEART), secondPlayer, hand);
-        assertEquals(secondPlayer, plie.getOwner());
+        Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_AS, plie.getHighest());
         assertFalse(plie.isCut());
@@ -79,7 +81,7 @@ public class RulesTests {
     public void test_cut() throws BrokenRuleException {
         var hand = buildHand(9, 17, 18, 27);
         plie.playCard(new Card(Card.RANK_6, Card.COLOR_DIAMOND), secondPlayer, hand);
-        assertEquals(secondPlayer, plie.getOwner());
+        Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_6, plie.getHighest());
         assertTrue(plie.isCut());
@@ -91,7 +93,7 @@ public class RulesTests {
     public void test_not_follow() throws BrokenRuleException {
         var hand = buildHand(4, 18, 27);
         plie.playCard(new Card(Card.RANK_10, Card.COLOR_SPADE), secondPlayer, hand);
-        assertEquals(firstPlayer, plie.getOwner());
+        Assertions.assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_DAME, plie.getHighest());
         assertFalse(plie.isCut());
@@ -112,7 +114,7 @@ public class RulesTests {
         Card.atout = Card.COLOR_HEART;
         var hand = buildHand(9, 18, 27);
         plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_HEART), secondPlayer, hand);
-        assertEquals(secondPlayer, plie.getOwner());
+        Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_NELL, plie.getHighest());
         assertFalse(plie.isCut());
@@ -125,7 +127,7 @@ public class RulesTests {
         var plie = new Plie();
         var card = new Card(0);
         plie.playCard(card, firstPlayer, new ArrayList<>());
-        assertEquals(firstPlayer, plie.getOwner());
+        Assertions.assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_SPADE, plie.getColor());
         assertEquals(Card.RANK_6, plie.getHighest());
         assertFalse(plie.isCut());
@@ -138,7 +140,7 @@ public class RulesTests {
         var hand = buildHand(9, 17, 18, 27);
         plie.playCard(new Card(Card.RANK_6, Card.COLOR_DIAMOND), firstPlayer, hand);
         plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
-        assertEquals(secondPlayer, plie.getOwner());
+        Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_8, plie.getHighest());
         assertTrue(plie.isCut());
@@ -177,7 +179,7 @@ public class RulesTests {
         var bourg = new Card(Card.RANK_BOURG, Card.COLOR_HEART);
         var hand = buildHand(0, 1, bourg.getNumber(), 25, 30);
         plie.playCard(new Card(Card.RANK_6, Card.COLOR_SPADE), secondPlayer, hand);
-        assertEquals(firstPlayer, plie.getOwner());
+        Assertions.assertEquals(firstPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_DAME, plie.getHighest());
         assertFalse(plie.isCut());

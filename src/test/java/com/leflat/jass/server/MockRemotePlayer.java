@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.AbstractRemotePlayer;
 import com.leflat.jass.server.PlayerLeftExpection;

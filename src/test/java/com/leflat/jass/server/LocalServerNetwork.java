@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.server.ServerNetwork;
 
 import java.io.*;

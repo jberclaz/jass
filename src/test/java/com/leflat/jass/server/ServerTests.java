@@ -1,11 +1,10 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.client.ClientPlayer;
 import com.leflat.jass.client.JassPlayer;
 import com.leflat.jass.client.RemoteController;
 import com.leflat.jass.client.ServerDisconnectedException;
 import com.leflat.jass.common.*;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.server.RemotePlayer;
 import org.junit.jupiter.api.Test;
 
 import java.io.IOException;
@@ -236,7 +235,7 @@ public class ServerTests {
                 assertEquals(card, remotePlayer.play());
                 remotePlayer.setPlayedCard(otherPlayer, card);
                 remotePlayer.collectPlie(otherPlayer);
-                var result =  remotePlayer.getAnnouncements();
+                var result = remotePlayer.getAnnouncements();
                 assertEquals(anouncement.size(), result.size());
                 assertEquals(anouncement.get(0), result.get(0));
                 remotePlayer.setAnnouncements(otherPlayer, anouncement);
@@ -275,6 +274,189 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, anouncement);
         verify(mockedPlayer, times(1)).getNewGame();
         verify(mockedPlayer, times(1)).playerLeft(otherPlayer);
+    }
+
+    @Test
+    void test_pick_teammeates() throws PlayerLeftExpection {
+        RemotePlayer player = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        when(player.choosePartner()).thenReturn(1);
+        when(player.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        var game = new GameController(0);
+        game.addPlayer(player);
+        game.addPlayer(player2);
+        game.pickTeamMates();
+        verify(player, times(1)).choosePartner();
+        assertEquals(0, game.getTeams()[0].getPlayer(0).getId());
+        assertEquals(1, game.getTeams()[0].getPlayer(1).getId());
+    }
+
+    @Test
+    void test_calculate_team() throws PlayerLeftExpection {
+        RemotePlayer player1 = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        RemotePlayer player3 = mock(RemotePlayer.class);
+        RemotePlayer player4 = mock(RemotePlayer.class);
+        when(player1.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        when(player3.getId()).thenReturn(2);
+        when(player4.getId()).thenReturn(3);
+        var game = new GameController(0);
+        game.addPlayer(player1);
+        game.addPlayer(player2);
+        game.addPlayer(player3);
+        game.addPlayer(player4);
+        Map<BasePlayer, Card> choosenCards = new HashMap<>();
+        choosenCards.put(player1, new Card(Card.RANK_DAME, Card.COLOR_HEART));
+        choosenCards.put(player2, new Card(Card.RANK_10, Card.COLOR_HEART));
+        choosenCards.put(player3, new Card(Card.RANK_BOURG, Card.COLOR_DIAMOND));
+        choosenCards.put(player4, new Card(Card.RANK_7, Card.COLOR_CLUB));
+        assertTrue(game.calculateTeam(choosenCards));
+        assertEquals(0, game.getTeams()[0].getPlayer(0).getId());
+        assertEquals(3, game.getTeams()[0].getPlayer(1).getId());
+        assertEquals(1, game.getTeams()[1].getPlayer(0).getId());
+        assertEquals(2, game.getTeams()[1].getPlayer(1).getId());
+
+        game.getTeams()[0].reset();
+        game.getTeams()[1].reset();
+        choosenCards.put(player1, new Card(Card.RANK_10, Card.COLOR_HEART));
+        choosenCards.put(player2, new Card(Card.RANK_7, Card.COLOR_HEART));
+        choosenCards.put(player3, new Card(Card.RANK_10, Card.COLOR_DIAMOND));
+        choosenCards.put(player4, new Card(Card.RANK_DAME, Card.COLOR_CLUB));
+        assertTrue(game.calculateTeam(choosenCards));
+        assertEquals(1, game.getTeams()[0].getPlayer(0).getId());
+        assertEquals(3, game.getTeams()[0].getPlayer(1).getId());
+        assertEquals(0, game.getTeams()[1].getPlayer(0).getId());
+        assertEquals(2, game.getTeams()[1].getPlayer(1).getId());
+
+        game.getTeams()[0].reset();
+        game.getTeams()[1].reset();
+        choosenCards.put(player1, new Card(Card.RANK_DAME, Card.COLOR_HEART));
+        choosenCards.put(player2, new Card(Card.RANK_7, Card.COLOR_HEART));
+        choosenCards.put(player3, new Card(Card.RANK_10, Card.COLOR_DIAMOND));
+        choosenCards.put(player4, new Card(Card.RANK_DAME, Card.COLOR_CLUB));
+        assertFalse(game.calculateTeam(choosenCards));
+    }
+
+    @Test
+    void test_choose_atout() throws PlayerLeftExpection {
+        RemotePlayer player1 = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        RemotePlayer player3 = mock(RemotePlayer.class);
+        RemotePlayer player4 = mock(RemotePlayer.class);
+        when(player1.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        when(player3.getId()).thenReturn(2);
+        when(player4.getId()).thenReturn(3);
+        when(player2.chooseAtout(false)).thenReturn(2);
+        when(player4.chooseAtout(true)).thenReturn(4);
+        var game = new GameController(0);
+        game.addPlayer(player1);
+        game.addPlayer(player2);
+        game.addPlayer(player3);
+        game.addPlayer(player4);
+        int atout = game.chooseAtout(3);
+        assertEquals(2, atout);
+        verify(player4, times(1)).chooseAtout(true);
+        verify(player2, times(1)).chooseAtout(false);
+    }
+
+    @Test
+    void test_process_announcements() throws PlayerLeftExpection {
+        Card.atout = Card.COLOR_SPADE;
+        RemotePlayer player1 = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        RemotePlayer player3 = mock(RemotePlayer.class);
+        RemotePlayer player4 = mock(RemotePlayer.class);
+        when(player1.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        when(player3.getId()).thenReturn(2);
+        when(player4.getId()).thenReturn(3);
+        when(player1.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player2.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player3.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player4.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player1.choosePartner()).thenReturn(1);
+
+        var game = new GameController(0);
+        game.addPlayer(player1);
+        game.addPlayer(player2);
+        game.addPlayer(player3);
+        game.addPlayer(player4);
+
+        game.pickTeamMates();
+        assertFalse(game.processAnnouncements());
+        assertEquals(0, game.getTeams()[0].getScore());
+        assertEquals(0, game.getTeams()[1].getScore());
+        verify(player1, times(1)).getAnnouncements();
+        verify(player2, times(1)).getAnnouncements();
+        verify(player3, times(1)).getAnnouncements();
+        verify(player4, times(1)).getAnnouncements();
+
+        List<Announcement> an1 = new ArrayList<>();
+        an1.add(new Announcement(Announcement.STOECK, null));
+        an1.add(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_ROI, Card.COLOR_SPADE)));
+        when(player1.getAnnouncements()).thenReturn(an1);
+        when(player2.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.FIFTY, new Card(23))));
+        when(player4.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(31))));
+        when(player1.getTeam()).thenReturn(game.getTeams()[0]);
+        when(player2.getTeam()).thenReturn(game.getTeams()[0]);
+
+        assertTrue(game.processAnnouncements());
+
+        assertEquals(180, game.getTeams()[0].getScore());
+        assertEquals(0, game.getTeams()[1].getScore());
+
+        when(player1.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player2.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player3.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.STOECK, null)));
+        when(player4.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player3.getTeam()).thenReturn(game.getTeams()[1]);
+
+        assertTrue(game.processAnnouncements());
+
+        assertEquals(180, game.getTeams()[0].getScore());
+        assertEquals(40, game.getTeams()[1].getScore());
+    }
+
+    @Test
+    void test_play_plie() throws PlayerLeftExpection, BrokenRuleException {
+        Card.atout = Card.COLOR_SPADE;
+        RemotePlayer player1 = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        RemotePlayer player3 = mock(RemotePlayer.class);
+        RemotePlayer player4 = mock(RemotePlayer.class);
+        when(player1.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        when(player3.getId()).thenReturn(2);
+        when(player4.getId()).thenReturn(3);
+        when(player1.choosePartner()).thenReturn(2);
+
+        var game = new GameController(0);
+        game.setNoWait(true);
+        game.addPlayer(player1);
+        game.addPlayer(player2);
+        game.addPlayer(player3);
+        game.addPlayer(player4);
+        game.pickTeamMates();
+
+        when(player4.getTeam()).thenReturn(game.getTeams()[0]);
+
+        when(player2.play()).thenReturn(new Card(Card.RANK_10, Card.COLOR_HEART));
+        when(player3.play()).thenReturn(new Card(Card.RANK_DAME, Card.COLOR_HEART));
+        when(player4.play()).thenReturn(new Card(Card.RANK_6, Card.COLOR_SPADE));
+        when(player1.play()).thenReturn(new Card(Card.RANK_AS, Card.COLOR_HEART));
+
+        var plie = game.playPlie(1);
+
+        assertEquals(player4, plie.getOwner());
+        assertEquals(48, plie.getScore());
+
+        verify(player1, times(1)).collectPlie(player4);
+        verify(player2, times(1)).collectPlie(player4);
+        verify(player3, times(1)).collectPlie(player4);
+        verify(player4, times(1)).collectPlie(player4);
     }
 }
 

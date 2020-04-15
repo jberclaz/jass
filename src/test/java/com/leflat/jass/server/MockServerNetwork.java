@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.common.IServerNetwork;
 import com.leflat.jass.server.PlayerLeftExpection;
 

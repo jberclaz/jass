@@ -5,6 +5,8 @@ import com.leflat.jass.test.MockNetworkFactory;
 import com.leflat.jass.test.MockUiFactory;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.Assert.assertTrue;
+
 public class FunctionalTest {
     @Test
     void functional_test() throws PlayerLeftExpection {
@@ -25,6 +27,8 @@ public class FunctionalTest {
         game.addPlayer(player2);
         game.addPlayer(player3);
         game.addPlayer(player4);
+
+        assertTrue(game.isGameFull());
 
         game.setNoWait(true);
 
