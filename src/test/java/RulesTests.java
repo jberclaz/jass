@@ -185,38 +185,6 @@ public class RulesTests {
         assertEquals(2, plie.getSize());
     }
 
-    /*
-    @Test
-    public void test_can_play() {
-        var hand = buildHand(new int[]{1, 3, 10, 12, 20});
-        var card = new Card(1);
-        var plie = new Plie(-1, -1, false);
-        int atout = Card.COLOR_CLUB;
-        assertEquals(Rules.RULES_OK, Rules.canPlay(card, plie, hand, atout));
-
-        plie = new Plie(Card.COLOR_SPADE, Card.RANK_DAME, false);
-        assertEquals(Rules.RULES_OK, Rules.canPlay(card, plie, hand, atout));
-
-        atout = Card.COLOR_HEART;
-        card = new Card(10);
-        assertEquals(Rules.RULES_OK, Rules.canPlay(card, plie, hand, atout));
-
-        plie.cut = true;
-        card = new Card(12);
-        assertEquals(Rules.RULES_OK, Rules.canPlay(card, plie, hand, atout));
-
-        card = new Card(10);
-        assertEquals(Rules.RULES_CANNOT_UNDERCUT, Rules.canPlay(card, plie, hand, atout));
-
-        plie.cut = false;
-        card = new Card(20);
-        assertEquals(Rules.RULES_MUST_FOLLOW, Rules.canPlay(card, plie, hand, atout));
-
-        plie.color = Card.COLOR_CLUB;
-        assertEquals(Rules.RULES_OK, Rules.canPlay(card, plie, hand, atout));
-    }
-*/
-
     public static List<Card> buildHand(int... numbers) {
         return Arrays.stream(numbers).mapToObj(Card::new).collect(Collectors.toList());
     }

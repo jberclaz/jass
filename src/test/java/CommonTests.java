@@ -36,6 +36,9 @@ public class CommonTests {
         anouncement = new Announcement(Announcement.SQUARE, card);
         assertEquals("cent des dames", anouncement.toString());
         assertEquals(100, anouncement.getValue());
+        anouncement = new Announcement(Announcement.NELL_SQUARE, new Card(Card.RANK_NELL, Card.COLOR_HEART));
+        assertEquals("cent cinquante des nells", anouncement.toString());
+        assertEquals(150, anouncement.getValue());
     }
 
     @Test
@@ -45,7 +48,8 @@ public class CommonTests {
         assertEquals(1, annoucements.size());
         var anouncement = annoucements.get(0);
         assertEquals(anouncement.getType(), Announcement.BOURG_SQUARE);
-        assertEquals(anouncement.getCard().getNumber(), 5);
+        assertEquals(anouncement.getCard().getRank(), Card.RANK_BOURG);
+        assertEquals(200, anouncement.getValue());
     }
 
     @Test
@@ -102,73 +106,6 @@ public class CommonTests {
         assertTrue(team.hasWon());
     }
 
-    /*
-    @Test
-    public void plie_play_card_test() {
-        var player = new ClientPlayer(0);
-        var atout = Card.COLOR_SPADE;
-        var plie = new Plie(Card.COLOR_HEART, Card.RANK_8, false);
-        try {
-            plie.playCard(new Card(Card.RANK_10, Card.COLOR_HEART), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_10, plie.highest);
-        assertEquals(10, plie.score);
-
-        try {
-            plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_HEART), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_10, plie.highest);
-        assertEquals(10, plie.score);
-
-        try {
-            plie.playCard(new Card(Card.RANK_AS, Card.COLOR_DIAMOND), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_10, plie.highest);
-        assertEquals(21, plie.score);
-
-        try {
-            plie.playCard(new Card(Card.RANK_DAME, Card.COLOR_SPADE), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_DAME, plie.highest);
-        assertTrue(plie.cut);
-        assertEquals(24, plie.score);
-
-        try {
-            plie.playCard(new Card(Card.RANK_AS, Card.COLOR_SPADE), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_AS, plie.highest);
-        assertEquals(35, plie.score);
-
-        try {
-            plie.playCard(new Card(Card.RANK_NELL, Card.COLOR_SPADE), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_NELL, plie.highest);
-        assertEquals(49, plie.score);
-
-        plie = new Plie(Card.COLOR_SPADE, Card.RANK_8, false);
-        try {
-            plie.playCard(new Card(Card.RANK_10, Card.COLOR_SPADE), atout, player);
-        } catch (BrokenRuleException e) {
-            e.printStackTrace();
-        }
-        assertEquals(Card.RANK_10, plie.highest);
-        assertEquals(10, plie.score);
-        assertFalse(plie.cut);
-    }
-*/
-
     @Test
     void shuffle_test() {
         var cards = Card.shuffle(10);
@@ -178,5 +115,39 @@ public class CommonTests {
             assertFalse(presence[c.getNumber()]);
             presence[c.getNumber()] = true;
         }
+    }
+
+    @Test
+    void test_announce_comparison() {
+        Card.atout = Card.COLOR_SPADE;
+        var a = new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_DIAMOND));
+        assertEquals(a, new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_DIAMOND)));
+        assertEquals(a, a);
+        assertNotEquals(a, new Card(0));
+        assertNotEquals(a, new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_CLUB)));
+        assertNotEquals(a, new Announcement(Announcement.FIFTY, new Card(Card.RANK_BOURG, Card.COLOR_DIAMOND)));
+        assertTrue(a.compareTo(new Announcement(Announcement.FIFTY, new Card(Card.RANK_ROI, Card.COLOR_CLUB))) < 0);
+        assertTrue(a.compareTo(new Announcement(Announcement.FIFTY, new Card(Card.RANK_BOURG, Card.COLOR_CLUB))) > 0);
+        assertEquals(0, a.compareTo(new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_CLUB))));
+        assertTrue(a.compareTo(new Announcement(Announcement.HUNDRED, new Card(Card.RANK_DAME, Card.COLOR_CLUB))) < 0);
+        assertTrue(a.compareTo(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_DAME, Card.COLOR_CLUB))) > 0);
+        Card.atout = Card.COLOR_CLUB;
+        assertTrue(a.compareTo(new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_CLUB))) < 0);
+        Card.atout = Card.COLOR_DIAMOND;
+        assertTrue(a.compareTo(new Announcement(Announcement.FIFTY, new Card(Card.RANK_DAME, Card.COLOR_CLUB))) > 0);
+    }
+
+    @Test
+    void test_card_comparison() {
+        var c = new Card(Card.RANK_NELL, Card.COLOR_HEART);
+        assertEquals(c, c);
+        assertNotEquals(c, 4);
+        assertEquals(c, new Card(Card.RANK_NELL, Card.COLOR_HEART));
+        assertNotEquals(c, new Card(Card.RANK_NELL, Card.COLOR_SPADE));
+        assertNotEquals(c, new Card(Card.RANK_10, Card.COLOR_HEART));
+        assertEquals(0, c.compareTo(new Card(Card.RANK_NELL, Card.COLOR_HEART)));
+        assertThrows(ClassCastException.class, () -> {
+            c.compareTo(new Card(Card.RANK_NELL, Card.COLOR_CLUB));
+        });
     }
 }

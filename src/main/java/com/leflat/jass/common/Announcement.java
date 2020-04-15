@@ -36,16 +36,6 @@ public class Announcement implements Comparable<Announcement> {
     }
 
     public int getValue() {
-        if (type == SQUARE) {
-            switch (card.getRank()) {
-                case Card.RANK_BOURG:
-                    return 200;
-                case Card.RANK_NELL:
-                    return 150;
-                default:
-                    return 100;
-            }
-        }
         return VALUES[type];
     }
 

@@ -84,7 +84,7 @@ public class GameController extends Thread {
 
     private void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
         int firstToPlay = drawCards();
-        Plie plie = null;
+        Plie plie;
         do {
             plie = playOneHand(firstToPlay);
 
