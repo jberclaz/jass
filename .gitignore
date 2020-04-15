@@ -5,3 +5,4 @@ release/
 *.zip
 .idea/
 target/
+*.log

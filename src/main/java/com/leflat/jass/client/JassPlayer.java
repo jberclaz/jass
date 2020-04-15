@@ -11,9 +11,12 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
+    private final static Logger LOGGER = Logger.getLogger(JassPlayer.class.getName());
     private IJassUi frame;
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
@@ -165,7 +168,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
                         frame.displayStatusMessage("Vous ne pouvez pas sous-couper!");
                         break;
                     default:
-                        System.err.println("Unknown rule " + e.getBrokenRule());
+                        LOGGER.severe("Unknown rule " + e.getBrokenRule());
                 }
             }
         } while (true);
@@ -185,7 +188,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         try {
             plie.playCard(card, player, null);
         } catch (BrokenRuleException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.SEVERE, "Error: broken rule", e);
             System.exit(1);
         }
         int position = playersPositions.get(player.getId());
@@ -269,6 +272,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         network = networkFactory.getClientNetwork();
         var connectionInfo = network.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
+            network = null;
             return connectionInfo.error;
         }
         id = connectionInfo.playerId;

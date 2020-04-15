@@ -4,9 +4,11 @@ import java.io.IOException;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+import java.util.logging.LogManager;
+import java.util.logging.SimpleFormatter;
+
 
 public class JassServer {
-    private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
     public static final int DEFAULT_PORT = 23107;
 
     public static void main(String[] args) {
@@ -15,13 +17,15 @@ public class JassServer {
         System.out.println("(c) 2000-2020 by FLAT(r)");
         System.out.println();
 
-        LOGGER.setLevel(Level.INFO);
-
+        Logger rootLogger = LogManager.getLogManager().getLogger("");
+        rootLogger.setLevel(Level.INFO);
         try {
-            for (var handler : LOGGER.getHandlers()) {
-                LOGGER.removeHandler(handler);
+            for (var handler : rootLogger.getHandlers()) {
+                rootLogger.removeHandler(handler);
             }
-            LOGGER.addHandler(new FileHandler("jass_server-%u.%g.log"));
+            var handler = new FileHandler("jass_server-%u.%g.log");
+            handler.setFormatter(new SimpleFormatter());
+            rootLogger.addHandler(handler);
         } catch (IOException e) {
             e.printStackTrace();
         }

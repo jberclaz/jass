@@ -6,11 +6,13 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.logging.Logger;
 
 public class ConnectionListener extends Thread {
     private ServerSocket serverSocket;
     private Map<Integer, GameController> games = new HashMap<>();
     private boolean running = false;
+    private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public ConnectionListener(int port) throws IOException {
         serverSocket = new ServerSocket(port);
@@ -19,6 +21,7 @@ public class ConnectionListener extends Thread {
     @Override
     public void run() {
         System.out.println("Jass server running on port " + serverSocket.getLocalPort());
+        LOGGER.info("Jass server running on port " + serverSocket.getLocalPort());
         running = true;
         while (running) {
             try {
@@ -46,7 +49,7 @@ public class ConnectionListener extends Thread {
                 game.start();
             }
         } catch (PlayerLeftExpection ignored) {
-            System.err.println("Error: client left while attempting to connect");
+            LOGGER.warning("Error: client left while attempting to connect");
         }
     }
 
@@ -62,13 +65,13 @@ public class ConnectionListener extends Thread {
         } else {
             if (!games.containsKey(gameId)) {
                 network.sendMessage(String.valueOf(ConnectionError.UNKNOWN_GAME));
-                System.err.println("Error: unknown game id " + gameId);
+                LOGGER.warning("Error: unknown game id " + gameId);
                 return null;
             }
             game = games.get(gameId);
             if (game.isGameFull()) {
                 network.sendMessage(String.valueOf(ConnectionError.GAME_FULL));
-                System.err.println("Error: attempting to enter full game " + gameId);
+                LOGGER.warning("Error: attempting to enter full game " + gameId);
                 return null;
             }
             network.sendMessage(String.valueOf(gameId));

@@ -5,11 +5,14 @@ import com.leflat.jass.common.IServerNetwork;
 import java.io.*;
 import java.net.Socket;
 import java.util.Arrays;
+import java.util.logging.Logger;
+import java.util.logging.Level;
 
 public class ServerNetwork implements IServerNetwork {
     protected BufferedReader is;
     protected PrintWriter os;
     protected int playerId = -1;
+    private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public ServerNetwork(Socket socket) throws IOException {
         var isr = new InputStreamReader(socket.getInputStream());
@@ -31,7 +34,7 @@ public class ServerNetwork implements IServerNetwork {
         String rawMessage = String.join(" ", message);
         os.println(rawMessage);
         os.flush();
-        System.out.println("Sent : " + rawMessage);  // DEBUG
+        LOGGER.info("Sent : " + rawMessage);
     }
 
     @Override
@@ -51,12 +54,12 @@ public class ServerNetwork implements IServerNetwork {
         try {
             message = is.readLine();
         } catch (IOException e) {
-            System.out.println("Error during reception");
+            LOGGER.log(Level.SEVERE, "Error during reception", e);
         }
         if (message == null) {
             throw new PlayerLeftExpection(playerId);
         }
-        System.out.println("Received : " + message); // DEBUG
+        LOGGER.info("Received : " + message);
         return message;
     }
 }

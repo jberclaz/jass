@@ -25,8 +25,10 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Logger;
 
 public class JassFrame extends javax.swing.JFrame implements IJassUi {
+    private final static Logger LOGGER = Logger.getLogger(JassFrame.class.getName());
     private static final String APP_TITLE = "Jass by FLAT®";
 
     // Autres variables
@@ -146,7 +148,17 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
                 jButtonConnect.setText("Quitter");
                 setGameId(gameId);
             } else {
-                JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                switch (gameId) {
+                case ConnectionError.SERVER_UNREACHABLE:
+                    JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                case ConnectionError.GAME_FULL:
+                    JOptionPane.showMessageDialog(null, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                case ConnectionError.UNKNOWN_GAME:
+                    JOptionPane.showMessageDialog(null, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                    break;
+                }
             }
         } else {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
@@ -170,7 +182,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
      * Exit the Application
      */
     private void exitForm(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_exitForm
-        System.exit(0);
+        setVisible(false);
+        dispose();
     }//GEN-LAST:event_exitForm
 
 
@@ -448,13 +461,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         for (var logoName : logoNames) {
             var imagePath = getClass().getClassLoader().getResource(logoName);
             if (imagePath == null) {
-                System.err.println("Unable to locate logo " + logoName);
+                LOGGER.warning("Unable to locate logo " + logoName);
                 continue;
             }
             try {
                 images.add(ImageIO.read(imagePath));
             } catch (IOException e) {
-                System.err.println("Unable to open logo " + imagePath);
+                LOGGER.warning("Unable to open logo " + imagePath);
                 e.printStackTrace();
             }
         }

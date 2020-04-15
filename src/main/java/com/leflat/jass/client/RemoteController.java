@@ -9,9 +9,11 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class RemoteController implements IController, Runnable {
+    private final static Logger LOGGER = Logger.getLogger(RemoteController.class.getName());
     private boolean running = false;
     private IPlayer player;
     private Lock lock;
@@ -31,7 +33,7 @@ public class RemoteController implements IController, Runnable {
     public void run() {
         lock = new ReentrantLock();
         running = true;
-        System.out.println("Starting Listener...");
+        LOGGER.info("Starting Listener...");
         while (running) {
             try {
                 String message = network.receiveRawMessage();
@@ -42,7 +44,7 @@ public class RemoteController implements IController, Runnable {
                 running = false;
             }
         }
-        System.out.println("Exiting listener ");
+        LOGGER.info("Exiting listener ");
     }
 
     @Override
@@ -153,7 +155,7 @@ public class RemoteController implements IController, Runnable {
                     this.player.playerLeft(player);
                     break;
                 default:
-                    System.err.println("Unknown command " + command);
+                    LOGGER.warning("Unknown command " + command);
             }
         } catch (PlayerLeftExpection playerLeftExpection) {
             playerLeftExpection.printStackTrace();
