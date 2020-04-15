@@ -62,7 +62,7 @@ public class DialogConnect extends javax.swing.JDialog {
         jTextFieldGame.setInputVerifier(new InputVerifier() {
             @Override
             public boolean verify(JComponent jComponent) {
-                var field = (JFormattedTextField)jComponent;
+                var field = (JFormattedTextField) jComponent;
                 String text = field.getText();
                 if (text.isBlank()) {
                     return true;
@@ -79,7 +79,7 @@ public class DialogConnect extends javax.swing.JDialog {
         setTitle("Connexion");
         addWindowListener(new java.awt.event.WindowAdapter() {
                               public void windowClosing(java.awt.event.WindowEvent evt) {
-                                  closeDialog(evt);
+                                  closeDialog();
                               }
                           }
         );
@@ -161,14 +161,7 @@ public class DialogConnect extends javax.swing.JDialog {
 
         jButtonOk.setText("Ok");
         jButtonOk.setDefaultCapable(true);
-        jButtonOk.addActionListener(new java.awt.event.ActionListener() {
-                                        public void actionPerformed(java.awt.event.ActionEvent evt) {
-                                            jButtonOkActionPerformed(evt);
-                                        }
-                                    }
-        );
-
-
+        jButtonOk.addActionListener(this::jButtonOkActionPerformed);
         gridBagConstraints1 = new java.awt.GridBagConstraints();
         gridBagConstraints1.gridx = 0;
         gridBagConstraints1.gridy = 1;
@@ -177,14 +170,7 @@ public class DialogConnect extends javax.swing.JDialog {
         getContentPane().add(jButtonOk, gridBagConstraints1);
 
         jButtonCancel.setText("Annuler");
-        jButtonCancel.addActionListener(new java.awt.event.ActionListener() {
-                                            public void actionPerformed(java.awt.event.ActionEvent evt) {
-                                                jButtonCancelActionPerformed(evt);
-                                            }
-                                        }
-        );
-
-
+        jButtonCancel.addActionListener(this::jButtonCancelActionPerformed);
         gridBagConstraints1 = new java.awt.GridBagConstraints();
         gridBagConstraints1.gridx = 1;
         gridBagConstraints1.gridy = 1;
@@ -206,7 +192,7 @@ public class DialogConnect extends javax.swing.JDialog {
             return;
         }
         ok = true;
-        gameId = jTextFieldGame.getValue() == null ? -1 : Integer.parseInt((String)jTextFieldGame.getValue());
+        gameId = jTextFieldGame.getValue() == null ? -1 : Integer.parseInt((String) jTextFieldGame.getValue());
         name = jTextFieldName.getText();
         host = jTextFieldHost.getText();
         this.dispose();
@@ -215,7 +201,7 @@ public class DialogConnect extends javax.swing.JDialog {
     /**
      * Closes the dialog
      */
-    private void closeDialog(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_closeDialog
+    private void closeDialog() {//GEN-FIRST:event_closeDialog
         setVisible(false);
         dispose();
     }//GEN-LAST:event_closeDialog
