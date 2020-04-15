@@ -1,8 +1,6 @@
 package com.leflat.jass.test;
 
 import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.common.Team;
 import com.leflat.jass.server.GameController;
 import com.leflat.jass.server.PlayerLeftExpection;
 import com.leflat.jass.server.RemotePlayer;
@@ -11,13 +9,9 @@ import com.leflat.jass.server.ServerNetwork;
 import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
-import java.util.ArrayList;
-import java.util.List;
 
 public class TestSingleClient {
     private RemotePlayer mainPlayer;
-    private List<BasePlayer> players = new ArrayList<>();
-    private Team[] teams = new Team[2];
 
     public static final int PORT = 23107;
 
