@@ -33,6 +33,8 @@ public class DialogConnect extends javax.swing.JDialog {
         initComponents();
         this.setSize(360, 220);
         pack();
+        jTextFieldHost.setText(INITIAL_HOST);
+        jTextFieldName.setText(INITIAL_NAME);
     }
 
     public DialogConnect(java.awt.Frame parent, String name, String host) {
@@ -119,8 +121,6 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints2.insets = new java.awt.Insets(10, 21, 0, 0);
         jPanel1.add(jLabelServer, gridBagConstraints2);
 
-        jTextFieldName.setText(INITIAL_NAME);
-
         gridBagConstraints2 = new java.awt.GridBagConstraints();
         gridBagConstraints2.gridx = 3;
         gridBagConstraints2.gridy = 0;
@@ -139,8 +139,6 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints2.insets = new java.awt.Insets(9, 61, 8, 0);
         jPanel1.add(jTextFieldGame, gridBagConstraints2);
 
-        jTextFieldHost.setText(INITIAL_HOST);
-
         gridBagConstraints2 = new java.awt.GridBagConstraints();
         gridBagConstraints2.gridx = 3;
         gridBagConstraints2.gridy = 4;
@@ -149,7 +147,6 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints2.ipadx = 77;
         gridBagConstraints2.insets = new java.awt.Insets(9, 61, 8, 0);
         jPanel1.add(jTextFieldHost, gridBagConstraints2);
-
 
         gridBagConstraints1 = new java.awt.GridBagConstraints();
         gridBagConstraints1.gridx = 0;
@@ -179,7 +176,6 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints1.fill = java.awt.GridBagConstraints.BOTH;
         gridBagConstraints1.insets = new java.awt.Insets(10, 103, 10, 0);
         getContentPane().add(jButtonCancel, gridBagConstraints1);
-
     }//GEN-END:initComponents
 
     private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed
