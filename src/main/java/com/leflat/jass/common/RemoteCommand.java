@@ -22,4 +22,5 @@ public abstract class RemoteCommand {
     public static final int SET_GAME_RESULT = 21;
     public static final int GET_NEW_GAME = 22;
     public static final int PLAYER_LEFT = 23;
+    public static final int SET_MATCH = 24;
 }

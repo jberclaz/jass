@@ -268,6 +268,12 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     }
 
     @Override
+    public void setMatch(Team team) {
+        boolean ourMatch = id == team.getPlayer(0).getId() || id == team.getPlayer(1).getId();
+        frame.displayMatch(team, ourMatch);
+    }
+
+    @Override
     public int connect(String name, String host, int gameId) {
         network = networkFactory.getClientNetwork();
         var connectionInfo = network.connect(host, gameId, name);

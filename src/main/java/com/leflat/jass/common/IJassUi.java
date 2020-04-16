@@ -56,5 +56,7 @@ public interface IJassUi {
     void setAnnouncementEnabled(boolean enable);
 
     void lostServerConnection();
+
+    void displayMatch(Team team, boolean us);
 }
 

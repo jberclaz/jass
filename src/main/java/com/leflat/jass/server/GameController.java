@@ -110,9 +110,7 @@ public class GameController extends Thread {
 
         // Sends the winner to all player
         var winners = teams[0].hasWon() ? teams[0] : teams[1];
-        for (var p : players) {
-            p.setGameResult(winners);
-        }
+        sendResultAsync(winners);
 
         /* waits a few seconds so that the players can see all the cards */
         waitSec(4);
@@ -143,6 +141,7 @@ public class GameController extends Thread {
             if (team.getNumberOfPlies() == 9) {
                 // match
                 team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
+                sendMatchAsync(team);
             }
         }
 
@@ -399,6 +398,60 @@ public class GameController extends Thread {
         try {
             Thread.sleep((long) (seconds * 1000));
         } catch (InterruptedException ignored) {
+        }
+    }
+
+    void sendMatchAsync(Team team) throws PlayerLeftExpection {
+        List<PlayerLeftExpection> exceptions = new ArrayList<>();
+        List<Thread> threads = new ArrayList<>();
+        for (var p : players) {
+            var thread = new Thread(() -> {
+                try {
+                    p.setMatch(team);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    exceptions.add(playerLeftExpection);
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+
+        for (var thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        for (var exception : exceptions) {
+            throw exception;
+        }
+    }
+
+    void sendResultAsync(Team team) throws PlayerLeftExpection {
+        List<PlayerLeftExpection> exceptions = new ArrayList<>();
+        List<Thread> threads = new ArrayList<>();
+        for (var p : players) {
+            var thread = new Thread(() -> {
+                try {
+                    p.setGameResult(team);
+                } catch (PlayerLeftExpection playerLeftExpection) {
+                    exceptions.add(playerLeftExpection);
+                }
+            });
+            threads.add(thread);
+            thread.start();
+        }
+
+        for (var thread : threads) {
+            try {
+                thread.join();
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
+        for (var exception : exceptions) {
+            throw exception;
         }
     }
 }

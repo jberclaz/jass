@@ -174,6 +174,15 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     }
 
+    @Override
+    public void setMatch(Team team) throws PlayerLeftExpection {
+        network.sendMessage(String.valueOf(RemoteCommand.SET_MATCH),
+                String.valueOf(team.getId()),
+                String.valueOf(team.getPlayer(0).getId()),
+                String.valueOf(team.getPlayer(1).getId()));
+        network.receiveMessage();
+    }
+
     private void updatePlayerInfo() throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(id));
         this.name = network.receiveMessage()[0];

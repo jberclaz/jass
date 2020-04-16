@@ -43,8 +43,6 @@ public class TestClient {
         int atout = frame.chooseAtout(false);
         System.out.println("atout " + atout);
 
-
-
         var team = new Team(0);
         team.addPlayer(new ClientPlayer(0, "Hhip"));
         team.addPlayer(new ClientPlayer(1, "Mono"));
@@ -56,6 +54,8 @@ public class TestClient {
 
         var choice = frame.choosePartner(players);
         System.out.println("partner: " + choice);
+
+        frame.displayMatch(team, false);
 
         frame.displayGameResult(team, false);
     }

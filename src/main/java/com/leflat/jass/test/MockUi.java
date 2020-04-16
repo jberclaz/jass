@@ -164,6 +164,11 @@ public class MockUi implements IJassUi {
 
     }
 
+    @Override
+    public void displayMatch(Team team, boolean us) {
+
+    }
+
     private void waitSec(float seconds) {
         if (seconds <= 0) {
             return;

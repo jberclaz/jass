@@ -44,4 +44,6 @@ public interface IPlayer {
     void playerLeft(BasePlayer player) throws PlayerLeftExpection;
 
     void lostServerConnection();
+
+    void setMatch(Team team) throws PlayerLeftExpection;
 }

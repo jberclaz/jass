@@ -141,4 +141,9 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     public void lostServerConnection() {
 
     }
+
+    @Override
+    public void setMatch(Team team) throws PlayerLeftExpection {
+
+    }
 }

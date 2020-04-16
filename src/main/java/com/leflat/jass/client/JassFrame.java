@@ -337,6 +337,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
+    public void displayMatch(Team team, boolean us) {
+        String message = us ? "Vous avez fait match!" :
+                "L'équipe de " + team.getPlayer(0).getName() + " & " + team.getPlayer(1).getName() + " a fait match.";
+        JOptionPane.showMessageDialog(this, message, "Match", JOptionPane.INFORMATION_MESSAGE);
+    }
+
+    @Override
     public boolean hasPlayerAnnounced() {
         return announcementPressed;
     }
