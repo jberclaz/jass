@@ -3,6 +3,7 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.Card;
 
 import javax.swing.*;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -26,12 +27,12 @@ public abstract class JassCanvas extends JPanel {
 
     public void setSelectAtout(boolean selectAtout) {
         this.selectAtout = selectAtout;
-        repaint();
+        repaint(getNameArea());
     }
 
     public void setName(String name) {
         this.name = name;
-        repaint();
+        repaint(getNameArea());
     }
 
     public void setHand(List<Card> hand) {
@@ -56,4 +57,6 @@ public abstract class JassCanvas extends JPanel {
     }
 
     public String getName() { return name; }
+
+    public abstract Rectangle getNameArea();
 }

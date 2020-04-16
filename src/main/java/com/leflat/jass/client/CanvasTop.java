@@ -16,9 +16,20 @@ import java.awt.*;
 
 public class CanvasTop extends JassCanvas {
     private static final int X_STEP = 35;
+    private static final int NAME_X = 30;
+    private static final int NAME_Y = 15;
+    private static final int DOT_SIZE = 7;
+    private static final int CARD_Y = 20;
 
     // Constructeur
     public CanvasTop() {
+    }
+
+    @Override
+    public Rectangle getNameArea() {
+        var fontMetrics = getGraphics().getFontMetrics();
+        int width = fontMetrics.stringWidth(name);
+        return new Rectangle(NAME_X, NAME_Y, width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
     }
 
     @Override
@@ -32,13 +43,13 @@ public class CanvasTop extends JassCanvas {
 
         int w = (d.width - 36 - hand.size() * X_STEP) / 2;
         for (int i = 0; i < hand.size(); i++) {
-            g2.drawImage(CardImages.getImage(hand.get(i)), w + X_STEP * i, 20, this);
+            g2.drawImage(CardImages.getImage(hand.get(i)), w + X_STEP * i, CARD_Y, this);
         }
 
-        g2.drawString(name, 30, 15);
+        g2.drawString(name, NAME_X, NAME_Y);
         if (selectAtout) {
             int width = g.getFontMetrics().stringWidth(name);
-            g2.fillOval(38 + width, 7, 7, 7);
+            g2.fillOval(NAME_X + 8 + width, 7, DOT_SIZE, DOT_SIZE);
         }
     }
 }

@@ -34,6 +34,13 @@ public class CanvasPlayer extends JassCanvas implements MouseMotionListener {
     }
 
     @Override
+    public Rectangle getNameArea() {
+        var fontMetrics = getGraphics().getFontMetrics();
+        int width = fontMetrics.stringWidth(name);
+        return new Rectangle(NAME_X, NAME_Y, width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
+    }
+
+    @Override
     public void paintComponent(Graphics g) {
         super.paintComponent(g);
 
