@@ -68,7 +68,7 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
         } catch (PlayerLeftExpection e) {
-            LOGGER.log(Level.WARNING, "Player " + e + " left the game", e);
+            LOGGER.log(Level.WARNING, "Player " + e.playerId + " left the game", e);
             disconnectedPlayer = getPlayerById(e.getPlayerId());
             players.remove(disconnectedPlayer);
         } catch (BrokenRuleException e) {

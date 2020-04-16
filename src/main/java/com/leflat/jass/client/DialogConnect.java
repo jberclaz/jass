@@ -19,6 +19,8 @@ import java.awt.*;
 import java.text.ParseException;
 
 public class DialogConnect extends javax.swing.JDialog {
+    private static final String INITIAL_NAME = "Joueur";
+    private static final String INITIAL_HOST = "ec2-3-22-185-150.us-east-2.compute.amazonaws.com";
     boolean ok = false;
     String name, host;
     int gameId;
@@ -117,7 +119,7 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints2.insets = new java.awt.Insets(10, 21, 0, 0);
         jPanel1.add(jLabelServer, gridBagConstraints2);
 
-        jTextFieldName.setText("Joueur");
+        jTextFieldName.setText(INITIAL_NAME);
 
         gridBagConstraints2 = new java.awt.GridBagConstraints();
         gridBagConstraints2.gridx = 3;
@@ -137,7 +139,7 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints2.insets = new java.awt.Insets(9, 61, 8, 0);
         jPanel1.add(jTextFieldGame, gridBagConstraints2);
 
-        jTextFieldHost.setText("localhost");
+        jTextFieldHost.setText(INITIAL_HOST);
 
         gridBagConstraints2 = new java.awt.GridBagConstraints();
         gridBagConstraints2.gridx = 3;
