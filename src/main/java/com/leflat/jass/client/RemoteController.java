@@ -41,8 +41,10 @@ public class RemoteController implements IController, Runnable {
                 handleControllerMessage(message.split(" "));
             } catch (ServerDisconnectedException e) {
                 LOGGER.log(Level.WARNING, "Server disconnected", e);
-                player.lostServerConnection();
-                running = false;
+                if (running) {
+                    player.lostServerConnection();
+                    running = false;
+                }
             }
         }
         LOGGER.info("Exiting listener ");

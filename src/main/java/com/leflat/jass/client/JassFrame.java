@@ -150,15 +150,15 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
                 setGameId(gameId);
             } else {
                 switch (gameId) {
-                case ConnectionError.SERVER_UNREACHABLE:
-                    JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                    break;
-                case ConnectionError.GAME_FULL:
-                    JOptionPane.showMessageDialog(null, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                    break;
-                case ConnectionError.UNKNOWN_GAME:
-                    JOptionPane.showMessageDialog(null, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                    break;
+                    case ConnectionError.SERVER_UNREACHABLE:
+                        JOptionPane.showMessageDialog(null, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
+                    case ConnectionError.GAME_FULL:
+                        JOptionPane.showMessageDialog(null, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
+                    case ConnectionError.UNKNOWN_GAME:
+                        JOptionPane.showMessageDialog(null, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
                 }
             }
         } else {
@@ -183,6 +183,13 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
      * Exit the Application
      */
     private void exitForm(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_exitForm
+        if (myself.isConnected()) {
+            int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
+            if (choice != 0) {
+                return;
+            }
+            myself.disconnect();
+        }
         setVisible(false);
         dispose();
     }//GEN-LAST:event_exitForm
@@ -241,7 +248,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     @Override
     public int chooseAtout(boolean allowedToPass) {
         Object[] options = new Object[allowedToPass ? 5 : 4];
-        for (int i=0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             options[i] = new ImageIcon(CardImages.getColorImage(i));
         }
         if (allowedToPass) {
@@ -250,7 +257,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir l'atout", "Choix de l'atout",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         if (choice < 0) {
-            choice = allowedToPass? 4 : 0;
+            choice = allowedToPass ? 4 : 0;
         }
         return choice;
     }
@@ -332,8 +339,8 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
 
     @Override
     public void lostServerConnection() {
-         JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
-         disconnect();
+        JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
+        disconnect();
     }
 
     @Override
