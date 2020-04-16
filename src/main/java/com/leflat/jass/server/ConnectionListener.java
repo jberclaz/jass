@@ -6,6 +6,7 @@ import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
 import java.util.*;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ConnectionListener extends Thread {
@@ -18,6 +19,10 @@ public class ConnectionListener extends Thread {
         serverSocket = new ServerSocket(port);
     }
 
+    public void terminate() {
+        running = false;
+    }
+
     @Override
     public void run() {
         System.out.println("Jass server running on port " + serverSocket.getLocalPort());
@@ -28,7 +33,7 @@ public class ConnectionListener extends Thread {
                 var clientSocket = serverSocket.accept();
                 handleNewConnection(clientSocket);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.SEVERE, "Error while handling connection", e);
             }
         }
     }

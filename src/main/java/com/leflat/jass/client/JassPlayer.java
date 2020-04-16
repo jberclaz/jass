@@ -44,7 +44,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             players.put(player.getId(), player);
             frame.setPlayer(player, relativePosition);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error while receiving player info", e);
         }
     }
 
@@ -72,7 +72,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             condition.await();
 
         } catch (InterruptedException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error while waiting for player", e);
         }
         lock.unlock();
 
@@ -86,7 +86,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             var relativePosition = playersPositions.get(player.getId());
             frame.setDrawnCard(relativePosition, cardPosition, card);
         } catch (IndexOutOfBoundsException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Unknown player", e);
         }
     }
 
@@ -102,7 +102,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             try {
                 frame.setPlayer(player, playersPositions.get(player.getId()));
             } catch (Exception e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Error while reordering players", e);
             }
         }
     }
@@ -153,7 +153,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             try {
                 condition.await();
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Error while waiting for player", e);
             }
             card = frame.getChosenCard();
             try {
@@ -283,7 +283,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         try {
             frame.setPlayer(new ClientPlayer(id, name), 0);
         } catch (Exception e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error while setting player info", e);
         }
         return connectionInfo.gameId;
     }
@@ -298,7 +298,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             try {
                 controllerThread.join(500);
             } catch (InterruptedException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Error while waiting for controller thread to die", e);
             }
         }
         controller = null;

@@ -9,6 +9,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
@@ -39,7 +40,7 @@ public class RemoteController implements IController, Runnable {
                 String message = network.receiveRawMessage();
                 handleControllerMessage(message.split(" "));
             } catch (ServerDisconnectedException e) {
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Server disconnected", e);
                 player.lostServerConnection();
                 running = false;
             }
@@ -158,7 +159,7 @@ public class RemoteController implements IController, Runnable {
                     LOGGER.warning("Unknown command " + command);
             }
         } catch (PlayerLeftExpection playerLeftExpection) {
-            playerLeftExpection.printStackTrace();
+            LOGGER.log(Level.WARNING, "Lost connection to server", playerLeftExpection);
             return;
         }
         network.sendMessage(answer);

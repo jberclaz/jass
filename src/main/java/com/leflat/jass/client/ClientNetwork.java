@@ -54,7 +54,7 @@ public class ClientNetwork implements IClientNetwork {
             sendMessage(Collections.singletonList(name));
             return new ClientConnectionInfo(playerId, receivedGameId, ConnectionError.CONNECTION_SUCCESSFUL);
         } catch (ServerDisconnectedException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Server disconnected during connection", e);
         }
         return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);
     }
@@ -70,7 +70,7 @@ public class ClientNetwork implements IClientNetwork {
             clientSocket.close();
             clientSocket = null;
         } catch (IOException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Error during disconnection", e);
         }
     }
 

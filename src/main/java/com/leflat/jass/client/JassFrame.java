@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class JassFrame extends javax.swing.JFrame implements IJassUi {
@@ -78,7 +79,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
         } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
-            e.printStackTrace();
+            LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
         }
 
         rightPanel = new CanvasBorder();
@@ -467,8 +468,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             try {
                 images.add(ImageIO.read(imagePath));
             } catch (IOException e) {
-                LOGGER.warning("Unable to open logo " + imagePath);
-                e.printStackTrace();
+                LOGGER.log(Level.WARNING, "Unable to open logo " + imagePath, e);
             }
         }
 

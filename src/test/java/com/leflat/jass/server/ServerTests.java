@@ -1,9 +1,6 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.client.ClientPlayer;
-import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.client.RemoteController;
-import com.leflat.jass.client.ServerDisconnectedException;
+import com.leflat.jass.client.*;
 import com.leflat.jass.common.*;
 import org.junit.jupiter.api.Test;
 
@@ -457,6 +454,28 @@ public class ServerTests {
         verify(player2, times(1)).collectPlie(player4);
         verify(player3, times(1)).collectPlie(player4);
         verify(player4, times(1)).collectPlie(player4);
+    }
+
+    @Test
+    void test_connection_listener() throws IOException {
+        var listener = new ConnectionListener(23107);
+        var network = new ClientNetwork();
+
+        listener.start();
+
+        var info = network.connect("localhost", -1, "GC");
+        assertEquals(ConnectionError.CONNECTION_SUCCESSFUL, info.error);
+        assertEquals(0, info.playerId);
+
+        info = network.connect("localhost", 1234, "Pierre");
+        assertEquals(ConnectionError.UNKNOWN_GAME, info.error);
+
+        listener.terminate();
+        try {
+            listener.join(200);
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
     }
 }
 
