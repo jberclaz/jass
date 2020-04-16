@@ -120,7 +120,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         jButtonAnounce.addActionListener(this::jButtonAnounceActionPerformed);
 
         jButtonConnect.setText("Connexion");
-        jButtonConnect.addActionListener(evt -> jButtonConnectActionPerformed());
+        jButtonConnect.addActionListener(this::jButtonConnectActionPerformed);
 
         var panelButtons = new JPanel();
         panelButtons.add(jButtonConnect, new AbsoluteConstraints(10, 10, -1, -1));
@@ -128,7 +128,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         getContentPane().add(panelButtons, new AbsoluteConstraints(400, 490, 230, 40));
     }//GEN-END:initComponents
 
-    private void jButtonConnectActionPerformed() {
+    private void jButtonConnectActionPerformed(java.awt.event.ActionEvent evt) {
         //GEN-FIRST:event_jButtonConnectActionPerformed
         if (!myself.isConnected()) {
             DialogConnect dc;
@@ -225,7 +225,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     }
 
     void centerCanvas_mouseClicked(MouseEvent e) {
-        drawnCardPosition = centerPanel.getCard(e.getX(), e.getY());
+        drawnCardPosition = centerPanel.getCardIndex(e.getX(), e.getY());
         if (drawnCardPosition < 0) {
             return;
         }
@@ -267,7 +267,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
         lastPliePanel.setAtout(atout);
         for (int i = 0; i < 4; i++) {
             var canvas = getPlayerCanvas(i);
-            canvas.setAtout(i == positionOfPlayerToChooseAtout);
+            canvas.setSelectAtout(i == positionOfPlayerToChooseAtout);
         }
     }
 
@@ -505,7 +505,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
             var canvas = getPlayerCanvas(i);
             canvas.clearHand();
             canvas.setName("");
-            canvas.setAtout(false);
+            canvas.setSelectAtout(false);
             canvas.setMode(JassCanvas.MODE_STATIC);
         }
         centerPanel.resetCards();

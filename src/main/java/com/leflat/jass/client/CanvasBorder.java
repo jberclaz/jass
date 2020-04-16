@@ -36,7 +36,7 @@ public class CanvasBorder extends JassCanvas {
         }
 
         g2.drawString(name, 20, 30);
-        if (atout) {
+        if (selectAtout) {
             g2.fillOval(20, 37, 7, 7);
         }
     }

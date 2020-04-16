@@ -12,7 +12,7 @@ public abstract class JassCanvas extends JPanel {
 
     protected int mode;   // 0 : rien, 1 : jouer
     protected String name = "";
-    protected boolean atout = false;
+    protected boolean selectAtout = false;
     protected List<Card> hand = new ArrayList<>();
 
     protected JassCanvas() {
@@ -24,13 +24,14 @@ public abstract class JassCanvas extends JPanel {
         this.mode = mode;
     }
 
-    public void setAtout(boolean atout) {
-        this.atout = atout;
+    public void setSelectAtout(boolean selectAtout) {
+        this.selectAtout = selectAtout;
         repaint();
     }
 
     public void setName(String name) {
         this.name = name;
+        repaint();
     }
 
     public void setHand(List<Card> hand) {

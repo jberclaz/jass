@@ -36,7 +36,7 @@ public class CanvasTop extends JassCanvas {
         }
 
         g2.drawString(name, 30, 15);
-        if (atout) {
+        if (selectAtout) {
             int width = g.getFontMetrics().stringWidth(name);
             g2.fillOval(38 + width, 7, 7, 7);
         }

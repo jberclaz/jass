@@ -31,10 +31,9 @@ public class CanvasCenter extends JPanel {
     public static final int MODE_PICK_CARD = 2;
     public static final int MODE_GAME = 3;
 
-
-    private int mode;        // 0 : rien, 1 : tirer les équipes
-    // 2 : tirer les équipes et choisir une carte
-    // 3 : jouer
+    private int mode;  /* 0 : rien, 1 : tirer les équipes
+     * 2 : tirer les équipes et choisir une carte
+     * 3 : jouer */
     private List<Integer> drawnCards = new ArrayList<>();
     private Map<Integer, Card> shownCards = new HashMap<>();
 
@@ -48,9 +47,9 @@ public class CanvasCenter extends JPanel {
         repaint();
     }
 
-    public void drawCard(int i) {
-        drawnCards.add(i);
-        repaint();
+    public void drawCard(int index) {
+        drawnCards.add(index);
+        repaint(getCardArea(index));
     }
 
     public void resetCards() {
@@ -61,7 +60,7 @@ public class CanvasCenter extends JPanel {
 
     public void showCard(Card card, int player) {
         shownCards.put(player, card);
-        repaint();
+        repaint(getPlayedCardArea(player));
     }
 
     public Collection<Card> getShownCards() {
@@ -101,7 +100,21 @@ public class CanvasCenter extends JPanel {
         }
     }
 
-    public int getCard(int x, int y) {
+    private Rectangle getCardArea(int index) {
+        Dimension d = getSize();
+        int yOffset = (d.height - CardImages.IMG_HEIGHT) / 2;
+        int xOffset = (d.width - 35 * X_STEP - CardImages.IMG_WIDTH) / 2;
+        return new Rectangle(xOffset + index * X_STEP, yOffset, CardImages.IMG_WIDTH, CardImages.IMG_HEIGHT);
+    }
+
+    private Rectangle getPlayedCardArea(int index) {
+        Dimension d = getSize();
+        int w = d.width / 2;
+        int h = d.height / 2;
+        return new Rectangle(w + CARD_POS_X[index], h + CARD_POS_Y[index],CardImages.IMG_WIDTH, CardImages.IMG_HEIGHT);
+    }
+
+    public int getCardIndex(int x, int y) {
         if (mode != MODE_PICK_CARD) {
             return -1;
         }
@@ -111,8 +124,8 @@ public class CanvasCenter extends JPanel {
         if (y < yOffset || y > yOffset + CardImages.IMG_HEIGHT) {
             return -1;
         }
-        int highCardNbr = (int)floor((x - xOffset) / (float)X_STEP);
-        int lowCardNbr = (int)floor((x - xOffset - CardImages.IMG_WIDTH) / (float)X_STEP);
+        int highCardNbr = (int) floor((x - xOffset) / (float) X_STEP);
+        int lowCardNbr = (int) floor((x - xOffset - CardImages.IMG_WIDTH) / (float) X_STEP);
         if (highCardNbr < 0 || lowCardNbr > 35) {
             return -1;
         }
