@@ -1,12 +1,13 @@
 package com.leflat.jass.server;
 
+import com.leflat.jass.common.Announcement;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.RemoteCommand;
-import com.leflat.jass.server.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Arrays;
+import java.util.Collections;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
@@ -148,5 +149,18 @@ public class RemotePlayerTests {
         assertEquals(RemoteCommand.SET_PLAYED_CARD, Integer.parseInt(network.sendParameters.get(0).get(0)));
         assertEquals(3, Integer.parseInt(network.sendParameters.get(0).get(1)));
         assertEquals(13, Integer.parseInt(network.sendParameters.get(0).get(2)));
+    }
+
+    @Test
+    public void test_stoeck() throws PlayerLeftExpection {
+        Card.atout = Card.COLOR_SPADE;
+        player.setAnnouncements(new TestPlayer(2), Collections.singletonList(new Announcement(Announcement.STOECK, null)));
+        assertEquals(1, network.sendParameters.size());
+        assertEquals(5, network.sendParameters.get(0).size());
+        assertEquals(RemoteCommand.SET_ANOUNCEMENTS, Integer.parseInt(network.sendParameters.get(0).get(0)));
+        assertEquals(2, Integer.parseInt(network.sendParameters.get(0).get(1)));
+        assertEquals(1, Integer.parseInt(network.sendParameters.get(0).get(2)));
+        assertEquals(Announcement.STOECK, Integer.parseInt(network.sendParameters.get(0).get(3)));
+        assertEquals(Card.RANK_ROI, Integer.parseInt(network.sendParameters.get(0).get(4)));
     }
 }

@@ -80,6 +80,10 @@ public class Announcement implements Comparable<Announcement> {
 
         Announcement a = (Announcement) o;
 
+        if (a.getType() == STOECK && this.type == STOECK) {
+            return true;
+        }
+
         return a.getType() == this.type && a.getCard().equals(this.card);
     }
 

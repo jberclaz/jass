@@ -139,9 +139,15 @@ public class RemotePlayer extends AbstractRemotePlayer {
         message.add(String.valueOf(RemoteCommand.SET_ANOUNCEMENTS));
         message.add(String.valueOf(player.getId()));
         message.add(String.valueOf(announcements.size()));
-        for (var anoucement : announcements) {
-            message.add(String.valueOf(anoucement.getType()));
-            message.add(String.valueOf(anoucement.getCard().getNumber()));
+        for (var announcement : announcements) {
+            message.add(String.valueOf(announcement.getType()));
+            if (announcement.getType() == Announcement.STOECK) {
+                var card = new Card(Card.RANK_ROI, Card.atout);
+                message.add(String.valueOf(card.getNumber()));
+            }
+            else {
+                message.add(String.valueOf(announcement.getCard().getNumber()));
+            }
         }
         network.sendMessage(message.toArray(new String[0]));
         network.receiveMessage();

@@ -198,6 +198,7 @@ public class ServerTests {
         var card = new Card(31);
         var order = new Integer[]{3, 1, 0, 2};
         var anouncement = Collections.singletonList(new Announcement(Announcement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
+        var stoeck = Collections.singletonList(new Announcement(Announcement.STOECK, null));
         var team = new Team(0);
         team.addPlayer(otherPlayer);
         team.addPlayer(new ClientPlayer(3, "Layenne"));
@@ -236,6 +237,7 @@ public class ServerTests {
                 assertEquals(anouncement.size(), result.size());
                 assertEquals(anouncement.get(0), result.get(0));
                 remotePlayer.setAnnouncements(otherPlayer, anouncement);
+                remotePlayer.setAnnouncements(otherPlayer, stoeck);
                 remotePlayer.setGameResult(team);
                 assertTrue(remotePlayer.getNewGame());
                 remotePlayer.playerLeft(otherPlayer);
@@ -269,6 +271,7 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).collectPlie(otherPlayer);
         verify(mockedPlayer, times(1)).getAnnouncements();
         verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, anouncement);
+        verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, stoeck);
         verify(mockedPlayer, times(1)).getNewGame();
         verify(mockedPlayer, times(1)).playerLeft(otherPlayer);
     }
