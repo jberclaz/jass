@@ -1,4 +1,5 @@
 import argparse
+import os
 
 import cv2
 import numpy as np
@@ -80,6 +81,7 @@ def expand(contour, x_scale, y_scale, angle):
 def main():
     parser = argparse.ArgumentParser(description="Card extractor")
     parser.add_argument("image", help="scanned cards image")
+    parser.add_argument("--height", "-e", help="target height", default=TARGET_HEIGHT, type=int)
     args = parser.parse_args()
 
     original = cv2.imread(args.image)
@@ -143,15 +145,19 @@ def main():
         bbox = cv2.boundingRect(rotated_cnt)
         cropped = rotated[bbox[1]:(bbox[1] + bbox[3]), bbox[0]:bbox[0] + bbox[2], :]
 
+        save_idx = idx
+        while os.path.exists(f"full_{save_idx}.png"):
+            save_idx += 1
+
         try:
-            cv2.imwrite(f"full_{idx}.png", cropped)
+            cv2.imwrite(f"full_{save_idx}.png", cropped)
         except Exception:
             print(f"image {idx} failed")
             continue
 
-        scale = TARGET_HEIGHT / cropped.shape[0]
+        scale = args.height / cropped.shape[0]
         resized = cv2.resize(cropped, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
-        cv2.imwrite(f"card_{idx}.png", resized)
+        cv2.imwrite(f"card_{save_idx}.png", resized)
 
 
 if __name__ == "__main__":
