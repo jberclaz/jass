@@ -1,3 +1,5 @@
+package com.leflat.jass.server;
+
 import com.leflat.jass.common.Announcement;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.Team;
@@ -67,11 +69,11 @@ public class CommonTests {
 
     @Test
     public void find_stoeck_test() {
-        int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25};
+        var cards = RulesTests.buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25);
         Card.atout = Card.COLOR_HEART;
-        assertFalse(Announcement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
+        assertFalse(Announcement.findStoeck(cards));
         Card.atout = Card.COLOR_DIAMOND;
-        assertTrue(Announcement.findStoeck(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList())));
+        assertTrue(Announcement.findStoeck(cards));
     }
 
     @Test

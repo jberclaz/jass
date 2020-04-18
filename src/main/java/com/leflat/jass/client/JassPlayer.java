@@ -21,6 +21,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private Map<Integer, Integer> playersPositions = new HashMap<>();
     private Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
+    private Card playedCard;
 
     private IController controller = null;
     private Thread controllerThread = null;
@@ -143,7 +144,6 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     public Card play() {
         frame.displayStatusMessage("A vous de jouer...");
         frame.setAnnouncementEnabled(true);
-        Card card;
         var lock = controller.getLock();
         lock.lock();
         var condition = lock.newCondition();
@@ -155,9 +155,10 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             } catch (InterruptedException e) {
                 LOGGER.log(Level.WARNING, "Error while waiting for player", e);
             }
-            card = frame.getChosenCard();
+            var card = frame.getChosenCard();
             try {
                 plie.playCard(card, this, hand);
+                playedCard = card;
                 break;
             } catch (BrokenRuleException e) {
                 switch (e.getBrokenRule()) {
@@ -175,12 +176,12 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
         lock.unlock();
 
-        removeCard(card);
+        removeCard(playedCard);
         frame.setAnnouncementEnabled(false);
         frame.setPlayerHand(hand);
-        frame.setPlayedCard(card, 0);
+        frame.setPlayedCard(playedCard, 0);
         frame.displayStatusMessage("");
-        return card;
+        return playedCard;
     }
 
     @Override
@@ -325,7 +326,6 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         if (!hasStoeck) {
             return false;
         }
-        var playedCard = plie.getCards().get(plie.getSize() - 1);
         if (playedCard.getColor() != Card.atout ||
                 (playedCard.getRank() != Card.RANK_DAME &&
                         playedCard.getRank() != Card.RANK_ROI)) {
