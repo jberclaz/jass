@@ -46,7 +46,9 @@ public class GameController extends Thread {
         noWait = enable;
     }
 
-    public Team[] getTeams() { return teams; }
+    public Team[] getTeams() {
+        return teams;
+    }
 
     @Override
     public void run() {
@@ -119,6 +121,7 @@ public class GameController extends Thread {
     Plie playOneHand(int firstToPlay) throws PlayerLeftExpection, BrokenRuleException {
         int nextPlayer = firstToPlay;
         Plie plie = null;
+        int[] handScores = new int[2];
 
         Arrays.stream(teams).forEach(Team::resetPlies);
         Card.atout = chooseAtout(firstToPlay);
@@ -130,20 +133,27 @@ public class GameController extends Thread {
             }
             nextPlayer = getPlayerPosition(plie.getOwner());
             plie.getOwner().getTeam().addPlie();
+            handScores[plie.getOwner().getTeam().getId()] += plie.getScore();
         }
 
         if (plie != null) {    // si personne n'a gagné : on continue normalement
             // 5 de der
-            players.get(nextPlayer).getTeam().addScore(Card.atout == Card.COLOR_SPADE ? 10 : 5);
+            var cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
+            var team = players.get(nextPlayer).getTeam();
+            team.addScore(cinqDeDer);
+            handScores[team.getId()] += cinqDeDer;
         }
 
+        Team match = null;
         for (var team : teams) {
             if (team.getNumberOfPlies() == 9) {
                 // match
                 team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
-                sendMatchAsync(team);
+                match = team;
             }
         }
+        setHandScoreAsync(handScores, match);
+        waitSec(2);
 
         return plie;
     }
@@ -401,13 +411,14 @@ public class GameController extends Thread {
         }
     }
 
-    void sendMatchAsync(Team team) throws PlayerLeftExpection {
+    void setHandScoreAsync(int[] handScore, Team match) throws PlayerLeftExpection {
         List<PlayerLeftExpection> exceptions = new ArrayList<>();
         List<Thread> threads = new ArrayList<>();
         for (var p : players) {
             var thread = new Thread(() -> {
                 try {
-                    p.setMatch(team);
+                    int ourTeam = p.getTeam().getId();
+                    p.setHandScore(handScore[ourTeam], handScore[(ourTeam + 1) % 2], match);
                 } catch (PlayerLeftExpection playerLeftExpection) {
                     exceptions.add(playerLeftExpection);
                 }

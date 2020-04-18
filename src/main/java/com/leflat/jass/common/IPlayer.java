@@ -45,5 +45,5 @@ public interface IPlayer {
 
     void lostServerConnection();
 
-    void setMatch(Team team) throws PlayerLeftExpection;
+    void setHandScore(int ourScore, int theirScore, Team match) throws PlayerLeftExpection;
 }

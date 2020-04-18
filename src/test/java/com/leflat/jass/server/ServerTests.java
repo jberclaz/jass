@@ -241,6 +241,8 @@ public class ServerTests {
                 remotePlayer.setGameResult(team);
                 assertTrue(remotePlayer.getNewGame());
                 remotePlayer.playerLeft(otherPlayer);
+                remotePlayer.setHandScore(100, 57, null);
+                remotePlayer.setHandScore(0, 257, team);
             } catch (PlayerLeftExpection playerLeftExpection) {
                 playerLeftExpection.printStackTrace();
             }
@@ -274,6 +276,9 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, stoeck);
         verify(mockedPlayer, times(1)).getNewGame();
         verify(mockedPlayer, times(1)).playerLeft(otherPlayer);
+        verify(mockedPlayer, times(1)).setHandScore(100, 57, null);
+        verify(mockedPlayer, times(1)).setHandScore(0, 257, team);
+        verify(mockedPlayer, times(1)).setGameResult(team);
     }
 
     @Test

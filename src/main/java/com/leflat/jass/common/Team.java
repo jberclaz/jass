@@ -67,5 +67,22 @@ public class Team {
         numberOfPlies = 0;
     }
 
-    public int getNumberOfPlies() { return numberOfPlies; }
+    public int getNumberOfPlies() {
+        return numberOfPlies;
+    }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+
+        if (!(obj instanceof Team)) {
+            return false;
+        }
+
+        Team t = (Team) obj;
+
+        return t.id == this.id;
+    }
 }

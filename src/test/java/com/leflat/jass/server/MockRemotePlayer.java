@@ -1,8 +1,6 @@
 package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
-import com.leflat.jass.server.AbstractRemotePlayer;
-import com.leflat.jass.server.PlayerLeftExpection;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -143,7 +141,8 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setMatch(Team team) throws PlayerLeftExpection {
+    public void setHandScore(int ourScore, int theirScore, Team match) {
 
     }
+
 }

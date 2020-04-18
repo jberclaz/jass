@@ -13,7 +13,7 @@ public class JassServer {
 
     public static void main(String[] args) {
         System.out.println("FLAT Jass System Server");
-        System.out.println("Version 1.2");
+        System.out.println("Version 2.0");
         System.out.println("(c) 2000-2020 by FLAT(r)");
         System.out.println();
 

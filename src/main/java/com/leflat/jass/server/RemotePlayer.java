@@ -181,11 +181,16 @@ public class RemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setMatch(Team team) throws PlayerLeftExpection {
-        network.sendMessage(String.valueOf(RemoteCommand.SET_MATCH),
-                String.valueOf(team.getId()),
-                String.valueOf(team.getPlayer(0).getId()),
-                String.valueOf(team.getPlayer(1).getId()));
+    public void setHandScore(int ourScore, int theirScore, Team match) throws PlayerLeftExpection {
+         var message = new ArrayList<String>();
+        message.add(String.valueOf(RemoteCommand.SET_HAND_SCORE));
+        message.add(String.valueOf(ourScore));
+        message.add(String.valueOf(theirScore));
+        if (match != null) {
+            message.add(String.valueOf(match.getPlayer(0).getId()));
+            message.add(String.valueOf(match.getPlayer(1).getId()));
+        }
+        network.sendMessage(message.toArray(new String[0]));
         network.receiveMessage();
     }
 

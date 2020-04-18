@@ -157,11 +157,17 @@ public class RemoteController implements IController, Runnable {
                     player = new ClientPlayer(Integer.parseInt(message[1]));
                     this.player.playerLeft(player);
                     break;
-                case RemoteCommand.SET_MATCH:
-                    var matchTeam = new Team(Integer.parseInt(message[1]));
-                    matchTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[2])));
-                    matchTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[3])));
-                    this.player.setMatch(matchTeam);
+                case RemoteCommand.SET_HAND_SCORE:
+                    ourScore = Integer.parseInt(message[1]);
+                    opponentScore = Integer.parseInt(message[2]);
+                    Team matchTeam = null;
+                    if (message.length == 5) {
+                        matchTeam = new Team(0);
+                        matchTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[3])));
+                        matchTeam.addPlayer(new ClientPlayer(Integer.parseInt(message[4])));
+                    }
+                    this.player.setHandScore(ourScore, opponentScore, matchTeam);
+                    break;
                 default:
                     LOGGER.warning("Unknown command " + command);
             }
