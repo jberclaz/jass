@@ -384,6 +384,7 @@ public class ServerTests {
         when(player4.getAnnouncements()).thenReturn(Collections.emptyList());
         when(player1.choosePartner()).thenReturn(1);
 
+        // test that nothing happens when no announcement
         var game = new GameController(0);
         game.addPlayer(player1);
         game.addPlayer(player2);
@@ -399,6 +400,7 @@ public class ServerTests {
         verify(player3, times(1)).getAnnouncements();
         verify(player4, times(1)).getAnnouncements();
 
+        // test that the strongest announcements get accounted for
         List<Announcement> an1 = new ArrayList<>();
         an1.add(new Announcement(Announcement.STOECK, null));
         an1.add(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_ROI, Card.COLOR_SPADE)));
@@ -407,22 +409,35 @@ public class ServerTests {
         when(player4.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(31))));
         when(player1.getTeam()).thenReturn(game.getTeams()[0]);
         when(player2.getTeam()).thenReturn(game.getTeams()[0]);
+        when(player3.getTeam()).thenReturn(game.getTeams()[1]);
+        when(player4.getTeam()).thenReturn(game.getTeams()[1]);
 
         assertTrue(game.processAnnouncements());
 
         assertEquals(180, game.getTeams()[0].getScore());
         assertEquals(0, game.getTeams()[1].getScore());
 
+        // test that stoeck works
         when(player1.getAnnouncements()).thenReturn(Collections.emptyList());
         when(player2.getAnnouncements()).thenReturn(Collections.emptyList());
         when(player3.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.STOECK, null)));
         when(player4.getAnnouncements()).thenReturn(Collections.emptyList());
-        when(player3.getTeam()).thenReturn(game.getTeams()[1]);
 
         assertTrue(game.processAnnouncements());
 
         assertEquals(180, game.getTeams()[0].getScore());
         assertEquals(40, game.getTeams()[1].getScore());
+
+        // test announcement accounting
+        when(player1.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_10, Card.COLOR_HEART))));
+        when(player2.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_BOURG, Card.COLOR_CLUB))));
+        when(player3.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_DAME, Card.COLOR_DIAMOND))));
+        when(player4.getAnnouncements()).thenReturn(Collections.singletonList(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_ROI, Card.COLOR_HEART))));
+
+        assertTrue(game.processAnnouncements());
+
+        assertEquals(180, game.getTeams()[0].getScore());
+        assertEquals(120, game.getTeams()[1].getScore());
     }
 
     @Test
