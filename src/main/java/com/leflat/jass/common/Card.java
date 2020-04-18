@@ -15,7 +15,7 @@ import java.util.Random;
  */
 
 public class Card implements Comparable<Card> {
-    public static final int DIAMOND_SEVEN = 19;
+    public static final int DIAMOND_SEVEN = Card.COLOR_DIAMOND * 9 + 1;
     public static final int RANK_6 = 0;
     public static final int RANK_7 = 1;
     public static final int RANK_8 = 2;
@@ -28,11 +28,11 @@ public class Card implements Comparable<Card> {
 
     public static final int COLOR_SPADE = 0;
     public static final int COLOR_HEART = 1;
-    public static final int COLOR_DIAMOND = 2;
-    public static final int COLOR_CLUB = 3;
+    public static final int COLOR_CLUB = 2;
+    public static final int COLOR_DIAMOND = 3;
 
     public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
-    public static final String[] COLOR_NAMES = {"pique", "cœur", "carreau", "trèfle"};
+    public static final String[] COLOR_NAMES = {"pique", "cœur", "trèfle", "carreau"};
 
     public static final int[] VALUES = {0, 0, 0, 0, 10, 2, 3, 4, 11};
     public static final int[] VALUES_ATOUT = {0, 0, 0, 14, 10, 20, 3, 4, 11};

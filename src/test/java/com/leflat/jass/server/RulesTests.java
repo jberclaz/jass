@@ -20,7 +20,7 @@ public class RulesTests {
 
     @BeforeEach
     public void setUp() {
-        Card.atout = Card.COLOR_DIAMOND;
+        Card.atout = Card.COLOR_CLUB;
         plie = new Plie(new Card(Card.RANK_DAME, Card.COLOR_HEART), firstPlayer);
     }
 
@@ -80,7 +80,7 @@ public class RulesTests {
     @Test
     public void test_cut() throws BrokenRuleException {
         var hand = buildHand(9, 17, 18, 27);
-        plie.playCard(new Card(Card.RANK_6, Card.COLOR_DIAMOND), secondPlayer, hand);
+        plie.playCard(new Card(Card.RANK_6, Card.COLOR_CLUB), secondPlayer, hand);
         Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_6, plie.getHighest());
@@ -138,8 +138,8 @@ public class RulesTests {
     @Test
     void test_over_cut() throws BrokenRuleException {
         var hand = buildHand(9, 17, 18, 27);
-        plie.playCard(new Card(Card.RANK_6, Card.COLOR_DIAMOND), firstPlayer, hand);
-        plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+        plie.playCard(new Card(Card.RANK_6, Card.COLOR_CLUB), firstPlayer, hand);
+        plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand);
         Assertions.assertEquals(secondPlayer, plie.getOwner());
         assertEquals(Card.COLOR_HEART, plie.getColor());
         assertEquals(Card.RANK_8, plie.getHighest());
@@ -151,25 +151,25 @@ public class RulesTests {
     @Test
     void test_under_cut_break() throws BrokenRuleException {
         var hand = buildHand(9, 17, 18, 27);
-        plie.playCard(new Card(Card.RANK_10, Card.COLOR_DIAMOND), firstPlayer, hand);
+        plie.playCard(new Card(Card.RANK_10, Card.COLOR_CLUB), firstPlayer, hand);
         Assertions.assertThrows(BrokenRuleException.class, () -> {
-            plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+            plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand);
         });
     }
 
     @Test
     void test_under_cut_valid() throws BrokenRuleException {
         var hand = buildHand(18, 19, 20, 22);
-        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_DIAMOND), firstPlayer, new ArrayList<>());
-        plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_CLUB), firstPlayer, new ArrayList<>());
+        plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand);
     }
 
     @Test
     void test_under_cut_break2() throws BrokenRuleException {
         var hand = buildHand(18, 19, 20, 21);
-        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_DIAMOND), firstPlayer, new ArrayList<>());
+        plie.playCard(new Card(Card.RANK_AS, Card.COLOR_CLUB), firstPlayer, new ArrayList<>());
         Assertions.assertThrows(BrokenRuleException.class, () -> {
-            plie.playCard(new Card(Card.RANK_8, Card.COLOR_DIAMOND), secondPlayer, hand);
+            plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand);
         });
     }
 

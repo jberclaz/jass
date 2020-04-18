@@ -72,7 +72,7 @@ public class CommonTests {
         var cards = RulesTests.buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25);
         Card.atout = Card.COLOR_HEART;
         assertFalse(Announcement.findStoeck(cards));
-        Card.atout = Card.COLOR_DIAMOND;
+        Card.atout = Card.COLOR_CLUB;
         assertTrue(Announcement.findStoeck(cards));
     }
 
