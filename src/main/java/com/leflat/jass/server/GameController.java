@@ -8,9 +8,9 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class GameController extends Thread {
-    private int gameId;
-    private List<AbstractRemotePlayer> players = new ArrayList<>();
-    private Team[] teams = new Team[2];       // les 2 équipes
+    private final int gameId;
+    private final List<AbstractRemotePlayer> players = new ArrayList<>();
+    private final Team[] teams = new Team[2];       // les 2 équipes
     private boolean noWait = false;
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
@@ -62,7 +62,7 @@ public class GameController extends Thread {
 
                 playOneGame();
 
-                playAnotherGame = players.get(0).getNewGame();
+                playAnotherGame = getPlayerById(0).getNewGame();
 
                 for (Team team : teams) {
                     team.resetScore();
@@ -279,7 +279,7 @@ public class GameController extends Thread {
     void chooseTeam() throws PlayerLeftExpection {
         Arrays.stream(teams).forEach(Team::reset);
 
-        var teamChoiceMethod = players.get(0).chooseTeamSelectionMethod();
+        var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
         if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
             chooseTeamsRandomly();
         } else {       // choisir son partenaire
@@ -364,9 +364,10 @@ public class GameController extends Thread {
     }
 
     void pickTeamMates() throws PlayerLeftExpection {
-        int partnerId = players.get(0).choosePartner();    // demande de choisir le partenaire
+        var firstPlayerConnected = getPlayerById(0);
+        int partnerId = firstPlayerConnected.choosePartner();    // demande de choisir le partenaire
         for (var p : players) {
-            if (p.getId() == partnerId || p == players.get(0)) {
+            if (p.getId() == partnerId || p == firstPlayerConnected) {
                 teams[0].addPlayer(p);
             } else {
                 teams[1].addPlayer(p);
@@ -384,21 +385,15 @@ public class GameController extends Thread {
     }
 
     int getPlayerPosition(BasePlayer player) {
-        for (int i = 0; i < players.size(); i++) {
-            if (players.get(i).getId() == player.getId()) {
-                return i;
-            }
-        }
-        throw new IndexOutOfBoundsException("Player " + player.getId() + " not found");
+        return players.indexOf(player);
     }
 
     void reorderPlayers() {
-        var tempList = List.copyOf(players);
         players.clear();
-        players.add(tempList.get(teams[0].getPlayer(0).getId()));
-        players.add(tempList.get(teams[1].getPlayer(0).getId()));
-        players.add(tempList.get(teams[0].getPlayer(1).getId()));
-        players.add(tempList.get(teams[1].getPlayer(1).getId()));
+        players.add((AbstractRemotePlayer) teams[0].getPlayer(0));
+        players.add((AbstractRemotePlayer) teams[1].getPlayer(0));
+        players.add((AbstractRemotePlayer) teams[0].getPlayer(1));
+        players.add((AbstractRemotePlayer) teams[1].getPlayer(1));
     }
 
     void waitSec(float seconds) {

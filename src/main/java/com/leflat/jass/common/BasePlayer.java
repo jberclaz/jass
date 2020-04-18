@@ -57,4 +57,17 @@ public abstract class BasePlayer {
     }
 
     public String toString() { return name; }
+
+    @Override
+    public boolean equals(Object obj) {
+        if (obj == this) {
+            return true;
+        }
+        if (!(obj instanceof BasePlayer)) {
+            return false;
+        }
+        BasePlayer bp = (BasePlayer)obj;
+
+        return bp.getId() == this.id;
+    }
 }

@@ -485,5 +485,59 @@ public class ServerTests {
             e.printStackTrace();
         }
     }
+
+    @Test
+    void test_get_player_position() throws PlayerLeftExpection {
+        Card.atout = Card.COLOR_SPADE;
+        RemotePlayer player1 = mock(RemotePlayer.class);
+        RemotePlayer player2 = mock(RemotePlayer.class);
+        RemotePlayer player3 = mock(RemotePlayer.class);
+        RemotePlayer player4 = mock(RemotePlayer.class);
+        when(player1.getId()).thenReturn(0);
+        when(player2.getId()).thenReturn(1);
+        when(player3.getId()).thenReturn(2);
+        when(player4.getId()).thenReturn(3);
+        when(player1.choosePartner()).thenReturn(1).thenReturn(3).thenReturn(2);
+        when(player1.chooseTeamSelectionMethod()).thenReturn(TeamSelectionMethod.MANUAL);
+
+        var game = new GameController(0);
+        game.setNoWait(true);
+        game.addPlayer(player1);
+        game.addPlayer(player2);
+        game.addPlayer(player3);
+        game.addPlayer(player4);
+
+        assertEquals(0, game.getPlayerPosition(player1));
+        assertEquals(1, game.getPlayerPosition(player2));
+        assertEquals(2, game.getPlayerPosition(player3));
+        assertEquals(3, game.getPlayerPosition(player4));
+
+        game.pickTeamMates();
+        verify(player1, times(1)).choosePartner();
+        game.reorderPlayers();
+
+        assertEquals(0, game.getPlayerPosition(player1));
+        assertEquals(2, game.getPlayerPosition(player2));
+        assertEquals(1, game.getPlayerPosition(player3));
+        assertEquals(3, game.getPlayerPosition(player4));
+
+        game.chooseTeam();
+        verify(player1, times(1)).chooseTeamSelectionMethod();
+        verify(player1, times(2)).choosePartner();
+
+        assertEquals(0, game.getPlayerPosition(player1));
+        assertEquals(3, game.getPlayerPosition(player2));
+        assertEquals(1, game.getPlayerPosition(player3));
+        assertEquals(2, game.getPlayerPosition(player4));
+
+        game.chooseTeam();
+        verify(player1, times(2)).chooseTeamSelectionMethod();
+        verify(player1, times(3)).choosePartner();
+
+        assertEquals(0, game.getPlayerPosition(player1));
+        assertEquals(3, game.getPlayerPosition(player2));
+        assertEquals(2, game.getPlayerPosition(player3));
+        assertEquals(1, game.getPlayerPosition(player4));
+    }
 }
 

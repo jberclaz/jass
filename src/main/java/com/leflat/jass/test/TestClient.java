@@ -48,9 +48,10 @@ public class TestClient {
         team.addPlayer(new ClientPlayer(1, "Mono"));
 
         List<BasePlayer> players = new ArrayList<>();
-        players.add(new ClientPlayer(0, "Berte"));
-        players.add(new ClientPlayer(0, "Hhip"));
-        players.add(new ClientPlayer(0, "JB"));
+        players.add(new ClientPlayer(2, "Berte"));
+        players.add(new ClientPlayer(1, "Hhip"));
+        players.add(new ClientPlayer(9, "JB"));
+        players.add(new ClientPlayer(4, "Mono"));
 
         var choice = frame.choosePartner(players);
         System.out.println("partner: " + choice);

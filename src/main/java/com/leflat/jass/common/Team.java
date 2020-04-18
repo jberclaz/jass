@@ -6,8 +6,8 @@ import java.util.List;
 public class Team {
     // Variables
     private int currentScore;
-    private List<BasePlayer> players = new ArrayList<>();
-    private int id;
+    private final List<BasePlayer> players = new ArrayList<>();
+    private final int id;
     private int numberOfPlies;
     public static final int WINNING_SCORE = 1500;
 
@@ -26,6 +26,7 @@ public class Team {
     public void reset() {
         players.clear();
         resetScore();
+        numberOfPlies = 0;
     }
 
     public void addScore(int score) {
@@ -45,6 +46,7 @@ public class Team {
     }
 
     public void addPlayer(BasePlayer p) {
+        assert players.size() < 2;
         players.add(p);
         p.setTeam(this);
     }

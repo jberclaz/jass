@@ -17,16 +17,16 @@ import java.util.stream.Collectors;
 
 public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     private final static Logger LOGGER = Logger.getLogger(JassPlayer.class.getName());
-    private IJassUi frame;
-    private Map<Integer, Integer> playersPositions = new HashMap<>();
-    private Map<Integer, BasePlayer> players = new HashMap<>();
+    private final IJassUi frame;
+    private final Map<Integer, Integer> playersPositions = new HashMap<>();
+    private final Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
     private Card playedCard;
 
     private IController controller = null;
     private Thread controllerThread = null;
     private IClientNetwork network = null;
-    private IClientNetworkFactory networkFactory;
+    private final IClientNetworkFactory networkFactory;
     private boolean hasStoeck;
 
     public JassPlayer(IClientNetworkFactory networkFactory, IJassUiFactory uiFactory) {
@@ -110,7 +110,9 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public int choosePartner() {
-        var partners = players.values().stream().filter(p -> p.getId() != id).collect(Collectors.toList());
+        var partners = players.values().stream()
+                .filter(p -> p.getId() != id)
+                .collect(Collectors.toList());
         return frame.choosePartner(partners).getId();
     }
 
