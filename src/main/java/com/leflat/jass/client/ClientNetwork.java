@@ -4,13 +4,12 @@ import com.leflat.jass.common.ClientConnectionInfo;
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IClientNetwork;
 
-import java.io.BufferedReader;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.*;
 import java.net.InetSocketAddress;
 import java.net.Socket;
 import java.net.SocketTimeoutException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.List;
 import java.util.logging.Level;
@@ -51,9 +50,10 @@ public class ClientNetwork implements IClientNetwork {
                 return new ClientConnectionInfo(receivedGameId);
             }
             playerId = Integer.parseInt(receiveRawMessage());
-            sendMessage(Collections.singletonList(name));
+            var encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+            sendMessage(Collections.singletonList(encodedName));
             return new ClientConnectionInfo(playerId, receivedGameId, ConnectionError.CONNECTION_SUCCESSFUL);
-        } catch (ServerDisconnectedException e) {
+        } catch (ServerDisconnectedException | UnsupportedEncodingException e) {
             LOGGER.log(Level.WARNING, "Server disconnected during connection", e);
         }
         return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);

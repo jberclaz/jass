@@ -2,12 +2,19 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class RemotePlayer extends AbstractRemotePlayer {
-    private IServerNetwork network;
+    private final IServerNetwork network;
+    private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public RemotePlayer(int id, IServerNetwork network) throws PlayerLeftExpection {
         super(id);
@@ -18,8 +25,13 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayerInfo(BasePlayer player) throws PlayerLeftExpection {
-        network.sendMessage(String.valueOf(RemoteCommand.SET_PLAYER_INFO),
-                String.valueOf(player.getId()), player.getName());
+        try {
+            network.sendMessage(String.valueOf(RemoteCommand.SET_PLAYER_INFO),
+                    String.valueOf(player.getId()),
+                    URLEncoder.encode(player.getName(), StandardCharsets.UTF_8.toString()));
+        } catch (UnsupportedEncodingException e) {
+            LOGGER.log(Level.SEVERE, "Failed to encode name", e);
+        }
         network.receiveMessage();
     }
 
@@ -196,6 +208,11 @@ public class RemotePlayer extends AbstractRemotePlayer {
 
     private void updatePlayerInfo() throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(id));
-        this.name = network.receiveMessage()[0];
+        try {
+            this.name = URLDecoder.decode(network.receiveMessage()[0], StandardCharsets.UTF_8.toString());
+        } catch (UnsupportedEncodingException e) {
+            this.name = "Error";
+            LOGGER.log(Level.SEVERE, "Unable to decode name", e);
+        }
     }
 }

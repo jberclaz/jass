@@ -3,6 +3,9 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
 
+import java.io.UnsupportedEncodingException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -62,7 +65,12 @@ public class RemoteController implements IController, Runnable {
             switch (command) {
                 case RemoteCommand.SET_PLAYER_INFO:
                     int playerId = Integer.parseInt(message[1]);
-                    String name = message[2];
+                    String name = null;
+                    try {
+                        name = URLDecoder.decode(message[2], StandardCharsets.UTF_8.toString());
+                    } catch (UnsupportedEncodingException e) {
+                        LOGGER.log(Level.SEVERE, "Unable to decode name", e);
+                    }
                     player.setPlayerInfo(new ClientPlayer(playerId, name));
                     break;
                 case RemoteCommand.CHOOSE_TEAM_SELECTION_METHOD:

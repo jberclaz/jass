@@ -194,10 +194,11 @@ public class ServerTests {
     void test_client_server_transmission() throws IOException, PlayerLeftExpection, InterruptedException, ServerDisconnectedException {
         IPlayer mockedPlayer = mock(JassPlayer.class);
         var hand = RulesTests.buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9);
-        var otherPlayer = new ClientPlayer(2, "GC");
+        var otherPlayer = new ClientPlayer(2, null);
+        var playerWithSpace = new ClientPlayer(1, "Pat Cor");
         var card = new Card(31);
         var order = new Integer[]{3, 1, 0, 2};
-        var anouncement = Collections.singletonList(new Announcement(Announcement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
+        var announcement = Collections.singletonList(new Announcement(Announcement.HUNDRED, new Card(Card.RANK_ROI, Card.COLOR_CLUB)));
         var stoeck = Collections.singletonList(new Announcement(Announcement.STOECK, null));
         var team = new Team(0);
         team.addPlayer(otherPlayer);
@@ -208,7 +209,7 @@ public class ServerTests {
         when(mockedPlayer.drawCard()).thenReturn(23);
         when(mockedPlayer.chooseAtout(true)).thenReturn(4);
         when(mockedPlayer.play()).thenReturn(card);
-        when(mockedPlayer.getAnnouncements()).thenReturn(anouncement);
+        when(mockedPlayer.getAnnouncements()).thenReturn(announcement);
         when(mockedPlayer.getNewGame()).thenReturn(true);
 
         var serverOutput = new PipedOutputStream();
@@ -219,7 +220,7 @@ public class ServerTests {
             var serverNetwork = new LocalServerNetwork(serverInput, serverOutput, 1);
             try {
                 var remotePlayer = new RemotePlayer(1, serverNetwork);
-                remotePlayer.setPlayerInfo(otherPlayer);
+                remotePlayer.setPlayerInfo(playerWithSpace);
                 remotePlayer.setScores(10, 20);
                 assertEquals(TeamSelectionMethod.RANDOM, remotePlayer.chooseTeamSelectionMethod());
                 remotePlayer.prepareTeamDrawing(true);
@@ -234,9 +235,9 @@ public class ServerTests {
                 remotePlayer.setPlayedCard(otherPlayer, card);
                 remotePlayer.collectPlie(otherPlayer);
                 var result = remotePlayer.getAnnouncements();
-                assertEquals(anouncement.size(), result.size());
-                assertEquals(anouncement.get(0), result.get(0));
-                remotePlayer.setAnnouncements(otherPlayer, anouncement);
+                assertEquals(announcement.size(), result.size());
+                assertEquals(announcement.get(0), result.get(0));
+                remotePlayer.setAnnouncements(otherPlayer, announcement);
                 remotePlayer.setAnnouncements(otherPlayer, stoeck);
                 remotePlayer.setGameResult(team);
                 assertTrue(remotePlayer.getNewGame());
@@ -257,7 +258,7 @@ public class ServerTests {
 
         serverThread.join();
 
-        verify(mockedPlayer, times(1)).setPlayerInfo(otherPlayer);
+        verify(mockedPlayer, times(1)).setPlayerInfo(playerWithSpace);
         verify(mockedPlayer, times(1)).setScores(10, 20);
         verify(mockedPlayer, times(1)).chooseTeamSelectionMethod();
         verify(mockedPlayer, times(1)).prepareTeamDrawing(true);
@@ -272,7 +273,7 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).setPlayedCard(otherPlayer, card);
         verify(mockedPlayer, times(1)).collectPlie(otherPlayer);
         verify(mockedPlayer, times(1)).getAnnouncements();
-        verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, anouncement);
+        verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, announcement);
         verify(mockedPlayer, times(1)).setAnnouncements(otherPlayer, stoeck);
         verify(mockedPlayer, times(1)).getNewGame();
         verify(mockedPlayer, times(1)).playerLeft(otherPlayer);

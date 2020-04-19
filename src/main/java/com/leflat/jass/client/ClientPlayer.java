@@ -24,6 +24,12 @@ public class ClientPlayer extends BasePlayer {
 
         BasePlayer p = (BasePlayer) o;
 
-        return p.getId() == this.id;
+        if (p.getId() != this.id) {
+            return false;
+        }
+        if (p.getName() == null || this.name == null) {
+            return p.getName() == null && this.name == null;
+        }
+        return p.getName().compareTo(name) == 0;
     }
 }
