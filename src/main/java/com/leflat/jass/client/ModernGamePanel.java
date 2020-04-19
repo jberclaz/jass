@@ -177,6 +177,8 @@ public class ModernGamePanel extends JPanel {
         g2.setColor(CARPET_COLOR);
         var carpetArea = getCenterArea(renderingArea);
         g2.fillRoundRect(carpetArea.x, carpetArea.y, carpetArea.width, carpetArea.height, renderingArea.width / 40, renderingArea.width / 40);
+        g2.setColor(Color.BLACK);
+        float scale = (float) cardHeight / CardImages.IMG_HEIGHT;
 
         if (gameMode == GameMode.TEAM_DRAWING) {
             for (int i = 0; i < 36; i++) {
@@ -194,26 +196,34 @@ public class ModernGamePanel extends JPanel {
                     case MYSELF:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
                                 carpetArea.x + (carpetArea.width - cardWidth) / 2,
-                                carpetArea.y + (carpetArea.height - cardHeight) - cardHeight / 10,
+                                carpetArea.y + (carpetArea.height - cardHeight) - round(cardHeight / 12f),
                                 cardWidth, cardHeight, this);
                         break;
                     case ACROSS:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
                                 carpetArea.x + (carpetArea.width - cardWidth) / 2,
-                                carpetArea.y + cardHeight / 10,
+                                carpetArea.y + round(cardHeight / 12f),
                                 cardWidth, cardHeight, this);
                         break;
                     case LEFT:
-                        g2.drawImage(CardImages.getImage(entry.getValue()),
-                                carpetArea.x + cardWidth,
-                                carpetArea.y + (carpetArea.height - cardHeight) / 2,
-                                cardWidth, cardHeight, this);
+                        var xform = new AffineTransform();
+                        xform.translate(carpetArea.x + cardWidth,
+                                carpetArea.y + (carpetArea.height - cardWidth) / 2f);
+                        xform.scale(scale, scale);
+                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                        xform.rotate(toRadians(90));
+                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                        g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
                         break;
                     case RIGHT:
-                        g2.drawImage(CardImages.getImage(entry.getValue()),
-                                carpetArea.x + carpetArea.width - cardWidth * 2,
-                                carpetArea.y + (carpetArea.height - cardHeight) / 2,
-                                cardWidth, cardHeight, this);
+                        xform = new AffineTransform();
+                        xform.translate(carpetArea.x + carpetArea.width - cardWidth - cardHeight,
+                                carpetArea.y + (carpetArea.height - cardWidth) / 2f);
+                        xform.scale(scale, scale);
+                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                        xform.rotate(toRadians(-90));
+                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                        g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
                         break;
                 }
             }
@@ -224,6 +234,8 @@ public class ModernGamePanel extends JPanel {
     void paintPlayerArea(Graphics2D g2, Rectangle playerArea, int cardWidth, int cardHeight) {
         var player = players.get(PlayerPosition.MYSELF);
         var hand = player.getHand();
+
+        // cards
         int hand_width = round(playerArea.width * .8f);
         int hand_x_offset = playerArea.x + round(playerArea.width * .1f);
         int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
@@ -233,6 +245,11 @@ public class ModernGamePanel extends JPanel {
                     hand_x_offset + round(i * card_x_step), hand_y_offset,
                     cardWidth, cardHeight, this);
         }
+
+        // name
+        int nameX = playerArea.x + round(playerArea.width * 30f / 390f);
+        int nameY = playerArea.y + round(playerArea.height * 15f / 120f);
+        g2.drawString(player.getName(), nameX, nameY);
     }
 
     void paintAcrossArea(Graphics2D g2, Rectangle topArea, int cardWidth, int cardHeight) {
@@ -247,6 +264,11 @@ public class ModernGamePanel extends JPanel {
                     hand_x_offset + round(i * card_x_step), hand_y_offset,
                     cardWidth, cardHeight, this);
         }
+
+        // name
+        int nameX = topArea.x + round(topArea.width * 30f / 390f);
+        int nameY = topArea.y + round(topArea.height * 15f / 120f);
+        g2.drawString(player.getName(), nameX, nameY);
     }
 
     void paintLeftArea(Graphics2D g2, Rectangle leftArea, int cardWidth, int cardHeight) {
@@ -266,6 +288,11 @@ public class ModernGamePanel extends JPanel {
             xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
             g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
         }
+
+        // name
+        int nameX = leftArea.x + round(leftArea.width * 20f / 120f);
+        int nameY = leftArea.y + round(leftArea.height * 80f / 450f);
+        g2.drawString(player.getName(), nameX, nameY);
     }
 
     void paintRightArea(Graphics2D g2, Rectangle rightArea, int cardWidth, int cardHeight) {
@@ -285,6 +312,11 @@ public class ModernGamePanel extends JPanel {
             xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
             g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
         }
+
+        // name
+        int nameX = rightArea.x + round(rightArea.width * 20f / 120f);
+        int nameY = rightArea.y + round(rightArea.height * 80f / 450f);
+        g2.drawString(player.getName(), nameX, nameY);
     }
 
     @Override
@@ -300,52 +332,39 @@ public class ModernGamePanel extends JPanel {
         int cardHeight = round(renderingArea.height * 96f / 565f);
         int cardWidth = round((float) cardHeight * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
 
-        var carpetArea = paintCenter(g2, renderingArea, cardWidth, cardHeight);
+        var centerArea = getCenterArea(renderingArea);
+        if (g2.getClip().intersects(centerArea)) {
+            paintCenter(g2, renderingArea, cardWidth, cardHeight);
+        }
 
         // draw cards
         for (var entry : players.entrySet()) {
             switch (entry.getKey()) {
                 case MYSELF:
-                    paintPlayerArea(g2, getPlayerArea(renderingArea), cardWidth, cardHeight);
+                    var area = getPlayerArea(renderingArea);
+                    if (g2.getClip().intersects(area)) {
+                        paintPlayerArea(g2, area, cardWidth, cardHeight);
+                    }
                     break;
                 case ACROSS:
-                    paintAcrossArea(g2, getAcrossArea(renderingArea), cardWidth, cardHeight);
+                    area = getAcrossArea(renderingArea);
+                    if (g2.getClip().intersects(area)) {
+                        paintAcrossArea(g2, area, cardWidth, cardHeight);
+                    }
                     break;
                 case LEFT:
-                    paintLeftArea(g2, getLeftArea(renderingArea), cardWidth, cardHeight);
+                    area = getLeftArea(renderingArea);
+                    if (g2.getClip().intersects(area)) {
+                        paintLeftArea(g2, area, cardWidth, cardHeight);
+                    }
                     break;
                 case RIGHT:
-                    paintRightArea(g2, getRightArea(renderingArea), cardWidth, cardHeight);
+                    area = getRightArea(renderingArea);
+                    if (g2.getClip().intersects(area)) {
+                        paintRightArea(g2, area, cardWidth, cardHeight);
+                    }
                     break;
             }
-        }
-
-        // draw names
-        for (var entry : players.entrySet()) {
-            int x, y;
-            switch (entry.getKey()) {
-                case MYSELF:
-                    x = carpetArea.x;
-                    y = carpetArea.y + carpetArea.height + renderingArea.height / 20;
-                    break;
-                case ACROSS:
-                    x = carpetArea.x;
-                    y = carpetArea.y - renderingArea.height / 20;
-                    break;
-                case LEFT:
-                    x = renderingArea.x + renderingArea.width / 6;
-                    y = carpetArea.y - renderingArea.height / 10;
-                    break;
-                case RIGHT:
-                    x = renderingArea.x + renderingArea.width - renderingArea.width / 6 - cardHeight;
-                    y = carpetArea.y - renderingArea.height / 10;
-                    break;
-                default:
-                    throw new IndexOutOfBoundsException("Unknown position " + entry.getKey());
-            }
-            g2.drawString(entry.getValue().getName(), x, y);
         }
     }
-
-
 }
