@@ -65,7 +65,7 @@ public class TestClient {
 
        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
 
-       // frame.setOtherPlayersHands(8);
+        frame.setOtherPlayersHands(8);
     }
 
     public static void main(String[] args) {

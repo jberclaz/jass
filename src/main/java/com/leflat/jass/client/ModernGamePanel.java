@@ -148,10 +148,26 @@ public class ModernGamePanel extends JPanel {
         return new Rectangle(x, y, width, height);
     }
 
-    Rectangle getTopArea(Rectangle renderingArea) {
+    Rectangle getAcrossArea(Rectangle renderingArea) {
         int width = round(renderingArea.width * 390f / 630f);
         int height = round(renderingArea.height * 120f / 565f);
         int x = renderingArea.x + round(renderingArea.width * 120f / 630f);
+        int y = renderingArea.y;
+        return new Rectangle(x, y, width, height);
+    }
+
+    Rectangle getLeftArea(Rectangle renderingArea) {
+        int width = round(renderingArea.width * 120f / 630f);
+        int height = round(renderingArea.height * 450f / 565f);
+        int x = renderingArea.x;
+        int y = renderingArea.y;
+        return new Rectangle(x, y, width, height);
+    }
+
+    Rectangle getRightArea(Rectangle renderingArea) {
+        int width = round(renderingArea.width * 120f / 630f);
+        int height = round(renderingArea.height * 450f / 565f);
+        int x = renderingArea.x + round(renderingArea.width * 510f / 630f);
         int y = renderingArea.y;
         return new Rectangle(x, y, width, height);
     }
@@ -219,6 +235,58 @@ public class ModernGamePanel extends JPanel {
         }
     }
 
+    void paintAcrossArea(Graphics2D g2, Rectangle topArea, int cardWidth, int cardHeight) {
+        var player = players.get(PlayerPosition.ACROSS);
+        var hand = player.getHand();
+        var hand_width = round(topArea.width * .8f);
+        var hand_x_offset = topArea.x + round(topArea.width * .1f);
+        var hand_y_offset = topArea.y + round(topArea.height * 20f / 120f);
+        var card_x_step = (hand_width - cardWidth) / (float) (hand.size() - 1);
+        for (int i = hand.size() - 1; i >= 0; i--) {
+            g2.drawImage(CardImages.getImage(hand.get(i)),
+                    hand_x_offset + round(i * card_x_step), hand_y_offset,
+                    cardWidth, cardHeight, this);
+        }
+    }
+
+    void paintLeftArea(Graphics2D g2, Rectangle leftArea, int cardWidth, int cardHeight) {
+        var player = players.get(PlayerPosition.LEFT);
+        var hand = player.getHand();
+        float scale = (float) cardHeight / CardImages.IMG_HEIGHT;
+        int hand_height = round(leftArea.height * 0.5f);
+        float card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
+        var hand_x_offset = leftArea.x + (leftArea.width - cardHeight) / 2;
+        var hand_y_offset = leftArea.y + (leftArea.height - hand_height) / 2;
+        for (int i = hand.size() - 1; i >= 0; i--) {
+            var xform = new AffineTransform();
+            xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
+            xform.scale(scale, scale);
+            xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+            xform.rotate(toRadians(90));
+            xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+            g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
+        }
+    }
+
+    void paintRightArea(Graphics2D g2, Rectangle rightArea, int cardWidth, int cardHeight) {
+        var player = players.get(PlayerPosition.RIGHT);
+        var hand = player.getHand();
+        var scale = (float) cardHeight / CardImages.IMG_HEIGHT;
+        var hand_height = round(rightArea.height * 0.5f);
+        var card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
+        var hand_x_offset = rightArea.x + (rightArea.width - cardHeight) / 2;
+        var hand_y_offset = rightArea.y + (rightArea.height - hand_height) / 2;
+        for (int i = 0; i < hand.size(); i++) {
+            var xform = new AffineTransform();
+            xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
+            xform.scale(scale, scale);
+            xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+            xform.rotate(toRadians(90));
+            xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+            g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -241,50 +309,13 @@ public class ModernGamePanel extends JPanel {
                     paintPlayerArea(g2, getPlayerArea(renderingArea), cardWidth, cardHeight);
                     break;
                 case ACROSS:
-                    var hand = entry.getValue().getHand();
-                    var hand_width = carpetArea.width;
-                    var hand_x_offset = carpetArea.x;
-                    var hand_y_offset = renderingArea.y + renderingArea.height / 10;
-                    var card_x_step = (hand_width - cardWidth) / (float) (hand.size() - 1);
-                    for (int i = hand.size() - 1; i >= 0; i--) {
-                        g2.drawImage(CardImages.getImage(hand.get(i)),
-                                hand_x_offset + round(i * card_x_step), hand_y_offset,
-                                cardWidth, cardHeight, this);
-                    }
+                    paintAcrossArea(g2, getAcrossArea(renderingArea), cardWidth, cardHeight);
                     break;
                 case LEFT:
-                    hand = entry.getValue().getHand();
-                    float scale = (float) cardHeight / CardImages.IMG_HEIGHT;
-                    int hand_height = carpetArea.height;
-                    float card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
-                    hand_x_offset = renderingArea.x + renderingArea.width / 6;
-                    hand_y_offset = carpetArea.y;
-                    for (int i = hand.size() - 1; i >= 0; i--) {
-                        var xform = new AffineTransform();
-                        xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
-                        xform.scale(scale, scale);
-                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
-                        xform.rotate(toRadians(90));
-                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-                        g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
-                    }
+                    paintLeftArea(g2, getLeftArea(renderingArea), cardWidth, cardHeight);
                     break;
                 case RIGHT:
-                    hand = entry.getValue().getHand();
-                    scale = (float) cardHeight / CardImages.IMG_HEIGHT;
-                    hand_height = carpetArea.height;
-                    card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
-                    hand_x_offset = renderingArea.x + renderingArea.width - renderingArea.width / 6 - cardHeight;
-                    hand_y_offset = carpetArea.y;
-                    for (int i = 0; i < hand.size(); i++) {
-                        var xform = new AffineTransform();
-                        xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
-                        xform.scale(scale, scale);
-                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
-                        xform.rotate(toRadians(90));
-                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-                        g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
-                    }
+                    paintRightArea(g2, getRightArea(renderingArea), cardWidth, cardHeight);
                     break;
             }
         }
