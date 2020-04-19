@@ -30,10 +30,11 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private void initComponents() {
         gamePanel = new ModernGamePanel();
         getContentPane().add(gamePanel);
-        setSize(800, 600);
+        setSize(630, 565);
         setResizable(true);
         setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
+        setMinimumSize(new Dimension(630, 565));
     }
 
     @Override
@@ -169,6 +170,11 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void lostServerConnection() {
+
+    }
+
+    @Override
+    public void displayMatch(Team team, boolean us) {
 
     }
 

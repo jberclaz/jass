@@ -30,7 +30,7 @@ public class CardImages {
                 LOGGER.log(Level.SEVERE, "Unable to open image " + imagePath, e);
             }
         }
-        var backImagePath = CardImages.class.getClassLoader().getResource(IMG_PATH + "dos.png");
+        var backImagePath = CardImages.class.getClassLoader().getResource(IMG_PATH + "back.png");
         if (backImagePath != null) {
             try {
                 backImage = ImageIO.read(backImagePath);
