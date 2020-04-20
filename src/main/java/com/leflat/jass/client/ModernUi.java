@@ -11,9 +11,12 @@ import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
+    private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
 
     private final IRemotePlayer myself;
     private ModernGamePanel gamePanel;
@@ -28,6 +31,11 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     private void initComponents() {
+        try {
+            UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
+            LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
+        }
         gamePanel = new ModernGamePanel();
         getContentPane().add(gamePanel);
         setSize(630, 565);
@@ -130,7 +138,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void collectPlie(int playerPosition) {
-
+        gamePanel.collectPlie();
     }
 
     @Override

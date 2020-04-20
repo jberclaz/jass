@@ -63,16 +63,27 @@ public class TestClient {
             e.printStackTrace();
         }
 
-       frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
+        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         frame.setOtherPlayersHands(9);
+
+        waitSec(2);
+
+        frame.collectPlie(3);
+    }
+
+    void waitSec(float seconds) {
+        try {
+            Thread.sleep((long) (seconds * 1000));
+        } catch (InterruptedException ignored) {
+        }
     }
 
     public static void main(String[] args) {
         new TestClient();
     }
 
-      public static List<Card> buildHand(int... numbers) {
+    public static List<Card> buildHand(int... numbers) {
         return Arrays.stream(numbers).mapToObj(Card::new).collect(Collectors.toList());
     }
 }
