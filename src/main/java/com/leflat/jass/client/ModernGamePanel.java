@@ -192,13 +192,16 @@ public class ModernGamePanel extends JPanel {
     }
 
     void paintInfo(Graphics2D g2, Rectangle infoArea, int cardWidth, int cardHeight) {
+        float x_step = 30f * infoArea.width / 630f;
+        float x_offset = infoArea.x + 120f * infoArea.width / 630f;
+        int y_offset = infoArea.y + round(5f * infoArea.height / 40f);
         for (int i = 0; i < lastPlie.size(); i++) {
-            float x_step = 30f * infoArea.width / 630f;
-            float x_offset = infoArea.x + 120f * infoArea.width / 630f;
-            int y_offset = infoArea.y + round(5f * infoArea.height / 40f);
+            int card_x = round(x_offset + x_step * i);
             g2.drawImage(CardImages.getImage(lastPlie.get(i)),
-                    round(x_offset + x_step * i), y_offset,
-                    cardWidth, round(35f / 40f * infoArea.height),
+                    card_x, y_offset,
+                    card_x + cardWidth, y_offset + round(35f / 40f * infoArea.height),
+                    0, 0,
+                    CardImages.IMG_WIDTH, round(35f / 96f * CardImages.IMG_HEIGHT),
                     this);
         }
     }
