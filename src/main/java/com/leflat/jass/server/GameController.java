@@ -58,6 +58,10 @@ public class GameController extends Thread {
         try {
             boolean playAnotherGame;
             do {
+                for (var p : players) {
+                    p.setScores(0, 0);
+                }
+
                 chooseTeam();     // détermine les équipes
 
                 playOneGame();
