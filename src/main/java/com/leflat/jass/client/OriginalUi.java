@@ -28,8 +28,8 @@ import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class JassFrame extends javax.swing.JFrame implements IJassUi {
-    private final static Logger LOGGER = Logger.getLogger(JassFrame.class.getName());
+public class OriginalUi extends javax.swing.JFrame implements IJassUi {
+    private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private static final String APP_TITLE = "Jass by FLAT®";
 
     // Autres variables
@@ -45,7 +45,7 @@ public class JassFrame extends javax.swing.JFrame implements IJassUi {
     /**
      * Creates new form ClientFrame
      */
-    public JassFrame(IRemotePlayer player) {
+    public OriginalUi(IRemotePlayer player) {
         this.myself = player;
 
         initComponents();

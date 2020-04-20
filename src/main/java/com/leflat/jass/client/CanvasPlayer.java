@@ -19,6 +19,7 @@ import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionListener;
 import java.util.List;
 
+import static java.lang.Integer.max;
 import static java.lang.Math.min;
 
 public class CanvasPlayer extends JassCanvas implements MouseMotionListener {
@@ -37,7 +38,8 @@ public class CanvasPlayer extends JassCanvas implements MouseMotionListener {
     public Rectangle getNameArea() {
         var fontMetrics = getGraphics().getFontMetrics();
         int width = fontMetrics.stringWidth(name);
-        return new Rectangle(NAME_X, NAME_Y, width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
+        return new Rectangle(NAME_X, max(0, NAME_Y - fontMetrics.getHeight()),
+                width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
     }
 
     @Override

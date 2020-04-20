@@ -58,6 +58,10 @@ public class GameController extends Thread {
         try {
             boolean playAnotherGame;
             do {
+                for (var p : players) {
+                    p.setScores(0, 0);
+                }
+
                 chooseTeam();     // détermine les équipes
 
                 playOneGame();
@@ -139,21 +143,22 @@ public class GameController extends Thread {
         if (plie != null) {    // si personne n'a gagné : on continue normalement
             // 5 de der
             var cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-            var team = players.get(nextPlayer).getTeam();
-            team.addScore(cinqDeDer);
-            handScores[team.getId()] += cinqDeDer;
-        }
+            var finalTeam = players.get(nextPlayer).getTeam();
+            finalTeam.addScore(cinqDeDer);
+            handScores[finalTeam.getId()] += cinqDeDer;
 
-        Team match = null;
-        for (var team : teams) {
-            if (team.getNumberOfPlies() == 9) {
-                // match
-                team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
-                match = team;
+            Team match = null;
+            for (var team : teams) {
+                if (team.getNumberOfPlies() == 9) {
+                    // match
+                    team.addScore(Card.atout == Card.COLOR_SPADE ? 200 : 100);
+                    match = team;
+                }
             }
+
+            setHandScoreAsync(handScores, match);
+            waitSec(2);
         }
-        setHandScoreAsync(handScores, match);
-        waitSec(2);
 
         return plie;
     }

@@ -14,6 +14,8 @@ package com.leflat.jass.client;
 
 import java.awt.*;
 
+import static java.lang.Integer.max;
+
 public class CanvasTop extends JassCanvas {
     private static final int X_STEP = 35;
     private static final int NAME_X = 30;
@@ -29,7 +31,8 @@ public class CanvasTop extends JassCanvas {
     public Rectangle getNameArea() {
         var fontMetrics = getGraphics().getFontMetrics();
         int width = fontMetrics.stringWidth(name);
-        return new Rectangle(NAME_X, NAME_Y, width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
+        return new Rectangle(NAME_X, max(0, NAME_Y - fontMetrics.getHeight()),
+                width + 8 + DOT_SIZE * 2, fontMetrics.getHeight());
     }
 
     @Override

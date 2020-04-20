@@ -274,6 +274,12 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     public void setHandScore(int ourScore, int theirScore, Team match) {
         if (match != null) {
             boolean us = id == match.getPlayer(0).getId() || id == match.getPlayer(1).getId();
+            if (!us) {
+                var p0 = match.getPlayer(0);
+                p0.setName(players.get(p0.getId()).getName());
+                var p1 = match.getPlayer(1);
+                p1.setName(players.get(p1.getId()).getName());
+            }
             frame.displayMatch(match, us);
         } else {
             frame.displayStatusMessage(String.format("Résultat de la manche: nous %d, eux %d", ourScore, theirScore));
