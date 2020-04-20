@@ -38,7 +38,34 @@ public class TestClient {
         var player = new TestPlayer();
         var frame = uiFactory.getUi(player);
 
+        List<BasePlayer> players = new ArrayList<>();
+        players.add(new ClientPlayer(2, "Berte"));
+        players.add(new ClientPlayer(1, "Hhip"));
+        players.add(new ClientPlayer(9, "JB"));
+        players.add(new ClientPlayer(4, "Mono"));
+
         frame.showUi(true);
+
+        try {
+            frame.setPlayer(players.get(0), 0);
+            frame.setPlayer(players.get(1), 1);
+            frame.setPlayer(players.get(2), 2);
+            frame.setPlayer(players.get(3), 3);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        frame.setAtout(1, 0);
+        waitSec(1);
+
+        frame.setAtout(1, 1);
+        waitSec(1);
+
+        frame.setAtout(1, 2);
+        waitSec(1);
+
+        frame.setAtout(1, 3);
+        waitSec(1);
 
         int atout = frame.chooseAtout(false);
         System.out.println("atout " + atout);
@@ -46,13 +73,6 @@ public class TestClient {
         var team = new Team(0);
         team.addPlayer(new ClientPlayer(0, "Hhip"));
         team.addPlayer(new ClientPlayer(1, "Mono"));
-
-        List<BasePlayer> players = new ArrayList<>();
-        players.add(new ClientPlayer(2, "Berte"));
-        players.add(new ClientPlayer(1, "Hhip"));
-        players.add(new ClientPlayer(9, "JB"));
-        players.add(new ClientPlayer(4, "Mono"));
-
         var choice = frame.choosePartner(players);
         System.out.println("partner: " + choice);
 
@@ -62,6 +82,15 @@ public class TestClient {
     }
 
     public static void main(String[] args) {
-        new TestClient();
+
+            new TestClient();
+
+    }
+
+      static void waitSec(float seconds) {
+        try {
+            Thread.sleep((long) (seconds * 1000));
+        } catch (InterruptedException ignored) {
+        }
     }
 }

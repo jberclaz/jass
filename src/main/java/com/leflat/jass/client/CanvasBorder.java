@@ -27,7 +27,8 @@ public class CanvasBorder extends JassCanvas {
     public Rectangle getNameArea() {
         var fontMetrics = getGraphics().getFontMetrics();
         int width = fontMetrics.stringWidth(name);
-        return new Rectangle(NAME_X, NAME_Y, width, 7 + 2 * DOT_SIZE);
+        return new Rectangle(NAME_X, NAME_Y - fontMetrics.getHeight(),
+                width, fontMetrics.getHeight() + 7 + 2 * DOT_SIZE);
     }
 
     @Override
