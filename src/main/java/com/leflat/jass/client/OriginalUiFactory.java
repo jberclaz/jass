@@ -7,6 +7,6 @@ import com.leflat.jass.common.IRemotePlayer;
 public class OriginalUiFactory implements IJassUiFactory {
     @Override
     public IJassUi getUi(IRemotePlayer remotePlayer) {
-        return new JassFrame(remotePlayer);
+        return new OriginalUi(remotePlayer);
     }
 }
