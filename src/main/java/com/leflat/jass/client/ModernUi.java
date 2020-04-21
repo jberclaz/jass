@@ -4,11 +4,11 @@ import com.leflat.jass.common.*;
 
 import javax.swing.*;
 import java.awt.*;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseListener;
+import java.awt.event.*;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 import java.util.logging.Level;
@@ -22,12 +22,19 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private ModernGamePanel gamePanel;
     private Lock lock;
     private Condition condition;
-    
+    private String myName;
+    private String serverHost;
+    private int drawnCardNumber;
+    private Card playedCard;
+
 
     public ModernUi(IRemotePlayer player) {
         this.myself = player;
         initComponents();
         loadLogos();
+        Locale locale = new Locale("fr", "CH");
+        JOptionPane.setDefaultLocale(locale);
+        addMouseListener(this);
     }
 
     private void initComponents() {
@@ -43,6 +50,12 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
         setMinimumSize(new Dimension(630, 565));
+        addWindowListener(new WindowAdapter() {
+            @Override
+            public void windowClosing(WindowEvent e) {
+                exitUi(e);
+            }
+        });
     }
 
     @Override
@@ -54,11 +67,45 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     public void showUi(boolean enable) {
         setLocationRelativeTo(null);
         setVisible(enable);
+
+        connectDialog();
+    }
+
+    private void connectDialog() {
+        DialogConnect dc;
+        if (myName != null && serverHost != null) {
+            dc = new DialogConnect(this, myName, serverHost);
+        } else {
+            dc = new DialogConnect(this);
+        }
+        dc.setLocationRelativeTo(this);
+        dc.setVisible(true);
+        if (!dc.ok) {
+            this.setVisible(false);
+        }
+        myName = dc.name;
+        serverHost = dc.host;
+        int gameId = myself.connect(dc.name, dc.host, dc.gameId);
+        if (gameId >= 0) {
+            setGameId(gameId);
+        }
+    }
+
+    void exitUi(WindowEvent e) {
+        if (myself.isConnected()) {
+            int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
+            if (choice != 0) {
+                return;
+            }
+            myself.disconnect();
+        }
+        setVisible(false);
+        dispose();
     }
 
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
-           Object[] options = {"Hasard", "Manuel"};
+        Object[] options = {"Hasard", "Manuel"};
         int choice = JOptionPane.showOptionDialog(this, "Comment voulez-vous choisir les équipes?", "Choix des équipes",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         return choice == 0 ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
@@ -71,22 +118,31 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void drawCard(Lock lock, Condition condition) {
-
+        gamePanel.setInteractive(true);
+        this.lock = lock;
+        this.condition = condition;
     }
 
     @Override
     public int getDrawnCardPosition() {
-        return 0;
+        return drawnCardNumber;
     }
 
     @Override
     public void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException {
         gamePanel.drawCard(cardPosition, card, intToPlayerPosition(playerPosition));
+        gamePanel.setHand(intToPlayerPosition(playerPosition), Collections.singletonList(card));
     }
 
     @Override
     public BasePlayer choosePartner(List<BasePlayer> players) {
-        return null;
+        Object[] options = players.stream().map(BasePlayer::toString).toArray();
+        int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir votre partenaire", "Choix du partenaire",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice == -1) {
+            choice = 0;
+        }
+        return players.get(choice);
     }
 
     @Override
@@ -108,22 +164,36 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public int chooseAtout(boolean allowedToPass) {
-        return 0;
+        Object[] options = new Object[allowedToPass ? 5 : 4];
+        for (int i = 0; i < 4; i++) {
+            options[i] = new ImageIcon(CardImages.getColorImage(i));
+        }
+        if (allowedToPass) {
+            options[4] = "Passer";
+        }
+        int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir l'atout", "Choix de l'atout",
+                JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
+        if (choice < 0) {
+            choice = allowedToPass ? 4 : 0;
+        }
+        return choice;
     }
 
     @Override
     public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
-
+        gamePanel.setAtoutColor(atout);
     }
 
     @Override
     public void chooseCard(Lock lock, Condition condition) {
-
+        this.lock = lock;
+        this.condition = condition;
+        gamePanel.setInteractive(true);
     }
 
     @Override
     public Card getChosenCard() {
-        return null;
+        return playedCard;
     }
 
     @Override
@@ -143,7 +213,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setScore(int ourScore, int opponentScore) {
-
+        gamePanel.setScores(ourScore, opponentScore);
     }
 
     @Override
@@ -158,17 +228,21 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void displayGameResult(Team winningTeam, boolean won) {
-
+        String message = won ? "Vous avez gagné la partie. Félicitations!" :
+                "L'équipe de " + winningTeam.getPlayer(0).getName() + " & " + winningTeam.getPlayer(1).getName() + " a gagné la partie!";
+        JOptionPane.showMessageDialog(this, message, "Partie terminée", JOptionPane.INFORMATION_MESSAGE);
     }
 
     @Override
     public boolean getNewGame() {
-        return false;
+        int choice = JOptionPane.showConfirmDialog(this, "Voulez vous faire une nouvelle partie?", "Nouvelle partie", JOptionPane.YES_NO_OPTION);
+        return choice == 0;
     }
 
     @Override
     public void canceledGame(int leavingPlayerPosition) {
-
+        String message = "La partie est interrompue.";
+        JOptionPane.showMessageDialog(this, message, "Partie interrompue", JOptionPane.INFORMATION_MESSAGE);
     }
 
     @Override
@@ -183,7 +257,9 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void displayMatch(Team team, boolean us) {
-
+        String message = us ? "Vous avez fait match!" :
+                "L'équipe de " + team.getPlayer(0).getName() + " & " + team.getPlayer(1).getName() + " a fait match.";
+        JOptionPane.showMessageDialog(this, message, "Match", JOptionPane.INFORMATION_MESSAGE);
     }
 
     private PlayerPosition intToPlayerPosition(int position) {
@@ -200,7 +276,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         throw new IndexOutOfBoundsException("Unknown position " + position);
     }
 
-     private void loadLogos() {
+    private void loadLogos() {
         Toolkit tk = Toolkit.getDefaultToolkit();
         List<Image> images = new ArrayList<>();
 
@@ -223,6 +299,12 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         var card = gamePanel.getCard(mouseEvent.getX(), mouseEvent.getY());
         if (card == null) {
             return;
+        }
+        gamePanel.setInteractive(false);
+        if (gamePanel.getMode() == ModernGamePanel.GameMode.TEAM_DRAWING) {
+            drawnCardNumber = card.getNumber();
+        } else {
+            playedCard = card;
         }
 
         assert lock != null;
@@ -251,5 +333,12 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void mouseExited(MouseEvent mouseEvent) {
 
+    }
+
+    private void setGameId(int gameId) {
+        int lowId = gameId % 1000;
+        int highId = gameId / 1000;
+        String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
+        setTitle(title);
     }
 }

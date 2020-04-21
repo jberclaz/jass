@@ -70,6 +70,9 @@ public class TestClient {
         waitSec(2);
 
         frame.collectPlie(3);
+
+        frame.setAtout(Card.COLOR_HEART, 0);
+        frame.setScore(157, 257);
     }
 
     void waitSec(float seconds) {

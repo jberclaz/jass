@@ -16,23 +16,26 @@ import static java.lang.Math.*;
 
 public class ModernGamePanel extends JPanel {
     enum GameMode {
-        TEAM_DRAWING, GAME
+        TEAM_DRAWING, GAME, IDLE
     }
 
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private static final float ASPECT_RATIO = 630f / 565;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
-    private GameMode gameMode;
+    private GameMode gameMode = GameMode.IDLE;
     private final Set<Integer> drawnCards = new HashSet<>();
     private final List<Card> lastPlie = new ArrayList<>();
     private final Map<PlayerPosition, Card> playedCards = new HashMap<>();
     private final Map<PlayerPosition, Float> cardAngles = new HashMap<>();
     private final Random random = new Random();
+    private int ourScore;
+    private int theirScore;
+    private int atoutColor = -1;
+    private boolean isInteractive = false;
 
     public ModernGamePanel() {
         super();
-        gameMode = GameMode.TEAM_DRAWING;
         drawnCards.clear();
         setDoubleBuffered(true);
         try {
@@ -46,6 +49,7 @@ public class ModernGamePanel extends JPanel {
     public void setPlayer(PlayerPosition position, BasePlayer player) {
         players.put(position, player);
         cardAngles.put(position, random.nextFloat() * 10 - 5f);
+        repaintPlayerArea(position);
     }
 
     public void setHand(PlayerPosition position, List<Card> hand) {
@@ -54,10 +58,12 @@ public class ModernGamePanel extends JPanel {
         } catch (PlayerLeftExpection playerLeftExpection) {
             playerLeftExpection.printStackTrace();
         }
+        repaintPlayerArea(position);
     }
 
     public void setPlayedCard(PlayerPosition position, Card card) {
         playedCards.put(position, card);
+        repaint(getCenterArea(getRenderingDimension()));
     }
 
     public void collectPlie() {
@@ -70,6 +76,30 @@ public class ModernGamePanel extends JPanel {
 
     public void setMode(GameMode mode) {
         this.gameMode = mode;
+        repaint(getCenterArea(getRenderingDimension()));
+    }
+
+    public GameMode getMode() {
+        return gameMode;
+    }
+
+    public void setAtoutColor(int atoutColor) {
+        this.atoutColor = atoutColor;
+        var renderingArea = getRenderingDimension();
+        repaint(getInfoArea(renderingArea));
+    }
+
+    public void hideAtout() {
+        this.atoutColor = -1;
+        var renderingArea = getRenderingDimension();
+        repaint(getInfoArea(renderingArea));
+    }
+
+    public void setScores(int ourScore, int theirScore) {
+        this.ourScore= ourScore;
+        this.theirScore = theirScore;
+        var renderingArea = getRenderingDimension();
+        repaint(getInfoArea(renderingArea));
     }
 
     public void drawCard(int cardPosition, Card card, PlayerPosition playerPosition) {
@@ -79,14 +109,21 @@ public class ModernGamePanel extends JPanel {
         } catch (PlayerLeftExpection playerLeftExpection) {
             playerLeftExpection.printStackTrace();
         }
+        repaint(getCenterArea(getRenderingDimension()));
     }
 
     public void removeCard(PlayerPosition playerPosition) {
         removeCard(playerPosition, 0);
+        repaintPlayerArea(playerPosition);
     }
 
     public void removeCard(PlayerPosition playerPosition, int cardPosition) {
         players.get(playerPosition).getHand().remove(cardPosition);
+        repaintPlayerArea(playerPosition);
+    }
+
+    public void setInteractive(boolean interactive) {
+        this.isInteractive = interactive;
     }
 
     public boolean isInsidePlayerCardsArea(int x, int y) {
@@ -94,24 +131,59 @@ public class ModernGamePanel extends JPanel {
     }
 
     public Card getCard(int x, int y) {
-        var handArea = getHandArea(getRenderingDimension());
-        if (!handArea.contains(x, y)) {
+        if (!isInteractive) {
             return null;
         }
-        var hand = players.get(PlayerPosition.MYSELF).getHand();
-        var hand_size = hand.size();
-        var card_width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
-        float card_x_step = (handArea.width - card_width) / (float) (hand_size - 1);
-        int cardNumber = (int) floor((x - handArea.x) / card_x_step);
-        return hand.get(max(cardNumber, hand_size - 1));
+        var renderingArea = getRenderingDimension();
+        if (gameMode == GameMode.GAME) {
+            var handArea = getHandArea(renderingArea);
+            if (!handArea.contains(x, y)) {
+                return null;
+            }
+            var hand = players.get(PlayerPosition.MYSELF).getHand();
+            var hand_size = hand.size();
+            var card_width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+            float card_x_step = (handArea.width - card_width) / (float) (hand_size - 1);
+            int cardNumber = (int) floor((x - handArea.x) / card_x_step);
+            return hand.get(max(cardNumber, hand_size - 1));
+        }
+        else {
+            var cardArea = getTeamDrawingArea(renderingArea);
+            if (!cardArea.contains(x, y)) {
+                return null;
+            }
+            var card_width = round((float) cardArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+            float card_x_step = (cardArea.width - card_width) / 35f;
+            int cardNumber = (int) floor((x - cardArea.x) / card_x_step);
+            return new Card(cardNumber);
+        }
+    }
+
+    private void repaintPlayerArea(PlayerPosition position) {
+        var area = getRenderingDimension();
+        switch (position) {
+            case MYSELF:
+                repaint(getPlayerArea(area));
+                break;
+            case ACROSS:
+                repaint(getAcrossArea(area));
+                break;
+            case LEFT:
+                repaint(getLeftArea(area));
+                break;
+            case RIGHT:
+                repaint(getRightArea(area));
+                break;
+        }
     }
 
     private Rectangle getHandArea(Rectangle renderingArea) {
-        int card_height = renderingArea.height / 7;
-        int hand_x_offset = renderingArea.x + renderingArea.width / 3;
-        int hand_y_offset = renderingArea.y + renderingArea.height - card_height - renderingArea.height / 10;
-        int hand_width = renderingArea.width / 3;
-        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, card_height);
+        var playerArea = getPlayerArea(renderingArea);
+        int cardHeight = round(renderingArea.height * 96f / 565f);
+        int hand_width = round(playerArea.width * .8f);
+        int hand_x_offset = playerArea.x + round(playerArea.width * .1f);
+        int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
+        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, cardHeight);
     }
 
     private Rectangle getCardArea(int number, Rectangle area) {
@@ -123,6 +195,15 @@ public class ModernGamePanel extends JPanel {
         card.x = handArea.x + round(number * card_x_step);
         card.y = handArea.y;
         return card;
+    }
+
+    private Rectangle getTeamDrawingArea(Rectangle renderingArea) {
+        var centerArea = getCenterArea(renderingArea);
+        int cardHeight = round(renderingArea.height * 96f / 565f);
+        return new Rectangle(centerArea.x + round(centerArea.width / 10f),
+                centerArea.y + (centerArea.height - cardHeight) / 2,
+                round(centerArea.width * .8f),
+                cardHeight);
     }
 
     private Rectangle getRenderingDimension() {
@@ -204,6 +285,32 @@ public class ModernGamePanel extends JPanel {
                     CardImages.IMG_WIDTH, round(35f / 96f * CardImages.IMG_HEIGHT),
                     this);
         }
+        int last_plie_x = round(20f / 40 * infoArea.height);
+        g2.drawString("Dernière plie:", infoArea.x + last_plie_x,
+                infoArea.y + last_plie_x);
+        if (atoutColor >= 0) {
+            int atout_x = round(340f / 40f * infoArea.height);
+            g2.drawString("Atout:", infoArea.x + atout_x,
+                    infoArea.y + last_plie_x);
+            int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
+            int colorSize = round(15f/40f*infoArea.height);
+            g2.drawImage(CardImages.getColorImage(atoutColor),
+                    infoArea.x + atout_x + stringWidth,
+                    infoArea.y + round(8f / 40f * infoArea.height),
+                    colorSize, colorSize, this);
+        }
+        int score_label_x = round(420f / 40f * infoArea.height);
+        int our_score_y = round(13f / 40f * infoArea.height);
+        g2.drawString("Nous:", infoArea.x + score_label_x,
+                infoArea.y + our_score_y);
+        int their_score_y = round(27f / 40f *infoArea.height);
+        g2.drawString("Eux:",infoArea.x + score_label_x,
+                infoArea.y + their_score_y);
+        int score_x = round(470f / 40f * infoArea.height);
+        g2.drawString(String.valueOf(ourScore), infoArea.x + score_x,
+        infoArea.y + our_score_y);
+        g2.drawString(String.valueOf(theirScore), infoArea.x + score_x,
+                infoArea.y + their_score_y);
     }
 
     void paintCenter(Graphics2D g2, Rectangle centerArea, int cardWidth, int cardHeight) {
@@ -217,7 +324,7 @@ public class ModernGamePanel extends JPanel {
 
         if (gameMode == GameMode.TEAM_DRAWING) {
             for (int i = 0; i < 36; i++) {
-                int card_x_offset = centerArea.width / 10;
+                float card_x_offset = centerArea.width / 10f;
                 float card_x_step = (centerArea.width - 2 * card_x_offset - cardWidth) / 35.0f;
                 int card_y_offset = (centerArea.height - cardHeight) / 2 + centerArea.y;
                 if (!drawnCards.contains(i)) {
