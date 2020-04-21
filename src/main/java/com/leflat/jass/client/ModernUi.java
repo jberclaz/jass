@@ -45,11 +45,9 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         }
         gamePanel = new ModernGamePanel();
         getContentPane().add(gamePanel);
-        setSize(630, 565);
-        setResizable(true);
         setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
-        setMinimumSize(new Dimension(630, 565));
+
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
@@ -67,6 +65,11 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     public void showUi(boolean enable) {
         setLocationRelativeTo(null);
         setVisible(enable);
+
+        var insets = getInsets();
+        setSize(630, 565 + insets.top);
+        setMinimumSize(new Dimension(630, 565 + insets.top));
+        setResizable(true);
 
         connectDialog();
     }
@@ -113,6 +116,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void prepareTeamDrawing() {
+        gamePanel.clearCards();
         gamePanel.setMode(ModernGamePanel.GameMode.TEAM_DRAWING);
     }
 
@@ -131,7 +135,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException {
         gamePanel.drawCard(cardPosition, card, intToPlayerPosition(playerPosition));
-        gamePanel.setHand(intToPlayerPosition(playerPosition), Collections.singletonList(card));
     }
 
     @Override

@@ -19,9 +19,9 @@ import java.util.stream.Collectors;
 public class RemoteController implements IController, Runnable {
     private final static Logger LOGGER = Logger.getLogger(RemoteController.class.getName());
     private boolean running = false;
-    private IPlayer player;
+    private final IPlayer player;
     private Lock lock;
-    private IClientNetwork network;
+    private final IClientNetwork network;
 
     public RemoteController(IPlayer player, IClientNetwork network) {
         this.player = player;

@@ -46,6 +46,19 @@ public class ModernGamePanel extends JPanel {
 
     }
 
+    public void clearCards() {
+        for (var p : players.values()) {
+            try {
+                p.setHand(Collections.emptyList());
+            } catch (PlayerLeftExpection playerLeftExpection) {
+                playerLeftExpection.printStackTrace();
+            }
+        }
+        drawnCards.clear();
+        var renderingArea = getRenderingDimension();
+        repaint(getInfoArea(renderingArea).union(getCenterArea(renderingArea)));
+    }
+
     public void setPlayer(PlayerPosition position, BasePlayer player) {
         players.put(position, player);
         cardAngles.put(position, random.nextFloat() * 10 - 5f);
@@ -96,7 +109,7 @@ public class ModernGamePanel extends JPanel {
     }
 
     public void setScores(int ourScore, int theirScore) {
-        this.ourScore= ourScore;
+        this.ourScore = ourScore;
         this.theirScore = theirScore;
         var renderingArea = getRenderingDimension();
         repaint(getInfoArea(renderingArea));
@@ -110,6 +123,7 @@ public class ModernGamePanel extends JPanel {
             playerLeftExpection.printStackTrace();
         }
         repaint(getCenterArea(getRenderingDimension()));
+        repaintPlayerArea(playerPosition);
     }
 
     public void removeCard(PlayerPosition playerPosition) {
@@ -141,22 +155,26 @@ public class ModernGamePanel extends JPanel {
                 return null;
             }
             var hand = players.get(PlayerPosition.MYSELF).getHand();
-            var hand_size = hand.size();
             var card_width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
-            float card_x_step = (handArea.width - card_width) / (float) (hand_size - 1);
+            float card_x_step = (handArea.width - card_width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
-            return hand.get(max(cardNumber, hand_size - 1));
-        }
-        else {
+            return hand.get(min(cardNumber, hand.size() - 1));
+        } else {
             var cardArea = getTeamDrawingArea(renderingArea);
             if (!cardArea.contains(x, y)) {
                 return null;
             }
-            var card_width = round((float) cardArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
-            float card_x_step = (cardArea.width - card_width) / 35f;
-            int cardNumber = (int) floor((x - cardArea.x) / card_x_step);
-            return new Card(cardNumber);
+            var cardWidth = round((float) cardArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+            float xStep = (cardArea.width - cardWidth) / 35f;
+            int highNumber = (int) floor((x - cardArea.x) / xStep);
+            int lowNumber = (int) floor((x - cardArea.x - cardWidth) / xStep);
+            for (int number = min(highNumber, 35); number >= max(0, lowNumber); number--) {
+                if (!drawnCards.contains(number)) {
+                    return new Card(number);
+                }
+            }
         }
+        return null;
     }
 
     private void repaintPlayerArea(PlayerPosition position) {
@@ -177,13 +195,28 @@ public class ModernGamePanel extends JPanel {
         }
     }
 
+    private Dimension getCardDimension(Rectangle renderingArea) {
+        float scale = renderingArea.height / 565f;
+        float height = 96f * scale;
+        int width = round(height / CardImages.IMG_HEIGHT * CardImages.IMG_WIDTH);
+        return new Dimension(width, round(height));
+    }
+
     private Rectangle getHandArea(Rectangle renderingArea) {
+        var player = players.get(PlayerPosition.MYSELF);
+        if (player == null ) {
+            return new Rectangle(0, 0, 0, 0);
+        }
+        var hand = player.getHand();
+        if (hand.size() == 0) {
+            return new Rectangle(0, 0, 0, 0);
+        }
         var playerArea = getPlayerArea(renderingArea);
-        int cardHeight = round(renderingArea.height * 96f / 565f);
-        int hand_width = round(playerArea.width * .8f);
-        int hand_x_offset = playerArea.x + round(playerArea.width * .1f);
+        var cardDimension = getCardDimension(renderingArea);
+        int hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
+        int hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
         int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
-        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, cardHeight);
+        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, cardDimension.height);
     }
 
     private Rectangle getCardArea(int number, Rectangle area) {
@@ -199,11 +232,11 @@ public class ModernGamePanel extends JPanel {
 
     private Rectangle getTeamDrawingArea(Rectangle renderingArea) {
         var centerArea = getCenterArea(renderingArea);
-        int cardHeight = round(renderingArea.height * 96f / 565f);
+        var cardDimension = getCardDimension(renderingArea);
         return new Rectangle(centerArea.x + round(centerArea.width / 10f),
-                centerArea.y + (centerArea.height - cardHeight) / 2,
+                centerArea.y + (centerArea.height - cardDimension.height) / 2,
                 round(centerArea.width * .8f),
-                cardHeight);
+                cardDimension.height);
     }
 
     private Rectangle getRenderingDimension() {
@@ -272,7 +305,7 @@ public class ModernGamePanel extends JPanel {
         return new Rectangle(x, y, width, height);
     }
 
-    void paintInfo(Graphics2D g2, Rectangle infoArea, int cardWidth, int cardHeight) {
+    void paintInfo(Graphics2D g2, Rectangle infoArea, Dimension cardDimension) {
         float x_step = 30f * infoArea.width / 630f;
         float x_offset = infoArea.x + 120f * infoArea.width / 630f;
         int y_offset = infoArea.y + round(5f * infoArea.height / 40f);
@@ -280,7 +313,7 @@ public class ModernGamePanel extends JPanel {
             int card_x = round(x_offset + x_step * i);
             g2.drawImage(CardImages.getImage(lastPlie.get(i)),
                     card_x, y_offset,
-                    card_x + cardWidth, y_offset + round(35f / 40f * infoArea.height),
+                    card_x + cardDimension.width, y_offset + round(35f / 40f * infoArea.height),
                     0, 0,
                     CardImages.IMG_WIDTH, round(35f / 96f * CardImages.IMG_HEIGHT),
                     this);
@@ -293,7 +326,7 @@ public class ModernGamePanel extends JPanel {
             g2.drawString("Atout:", infoArea.x + atout_x,
                     infoArea.y + last_plie_x);
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
-            int colorSize = round(15f/40f*infoArea.height);
+            int colorSize = round(15f / 40f * infoArea.height);
             g2.drawImage(CardImages.getColorImage(atoutColor),
                     infoArea.x + atout_x + stringWidth,
                     infoArea.y + round(8f / 40f * infoArea.height),
@@ -303,33 +336,33 @@ public class ModernGamePanel extends JPanel {
         int our_score_y = round(13f / 40f * infoArea.height);
         g2.drawString("Nous:", infoArea.x + score_label_x,
                 infoArea.y + our_score_y);
-        int their_score_y = round(27f / 40f *infoArea.height);
-        g2.drawString("Eux:",infoArea.x + score_label_x,
+        int their_score_y = round(27f / 40f * infoArea.height);
+        g2.drawString("Eux:", infoArea.x + score_label_x,
                 infoArea.y + their_score_y);
         int score_x = round(470f / 40f * infoArea.height);
         g2.drawString(String.valueOf(ourScore), infoArea.x + score_x,
-        infoArea.y + our_score_y);
+                infoArea.y + our_score_y);
         g2.drawString(String.valueOf(theirScore), infoArea.x + score_x,
                 infoArea.y + their_score_y);
     }
 
-    void paintCenter(Graphics2D g2, Rectangle centerArea, int cardWidth, int cardHeight) {
+    void paintCenter(Graphics2D g2, Rectangle centerArea, Dimension cardDimension) {
         // draw carpet
         var color = g2.getColor();
         g2.setColor(CARPET_COLOR);
 
         g2.fillRoundRect(centerArea.x, centerArea.y, centerArea.width, centerArea.height, centerArea.width / 20, centerArea.width / 20);
         g2.setColor(color);
-        float scale = (float) cardHeight / CardImages.IMG_HEIGHT;
+        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
 
         if (gameMode == GameMode.TEAM_DRAWING) {
             for (int i = 0; i < 36; i++) {
                 float card_x_offset = centerArea.width / 10f;
-                float card_x_step = (centerArea.width - 2 * card_x_offset - cardWidth) / 35.0f;
-                int card_y_offset = (centerArea.height - cardHeight) / 2 + centerArea.y;
+                float card_x_step = (centerArea.width - 2 * card_x_offset - cardDimension.width) / 35.0f;
+                int card_y_offset = (centerArea.height - cardDimension.height) / 2 + centerArea.y;
                 if (!drawnCards.contains(i)) {
                     g2.drawImage(CardImages.getBackImage(), round(centerArea.x + card_x_offset + i * card_x_step),
-                            card_y_offset, cardWidth, cardHeight, this);
+                            card_y_offset, cardDimension.width, cardDimension.height, this);
                 }
             }
         } else {
@@ -337,20 +370,20 @@ public class ModernGamePanel extends JPanel {
                 switch (entry.getKey()) {
                     case MYSELF:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
-                                centerArea.x + (centerArea.width - cardWidth) / 2,
-                                centerArea.y + (centerArea.height - cardHeight) - round(cardHeight / 12f),
-                                cardWidth, cardHeight, this);
+                                centerArea.x + (centerArea.width - cardDimension.width) / 2,
+                                centerArea.y + (centerArea.height - cardDimension.height) - round(cardDimension.height / 12f),
+                                cardDimension.width, cardDimension.height, this);
                         break;
                     case ACROSS:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
-                                centerArea.x + (centerArea.width - cardWidth) / 2,
-                                centerArea.y + round(cardHeight / 12f),
-                                cardWidth, cardHeight, this);
+                                centerArea.x + (centerArea.width - cardDimension.width) / 2,
+                                centerArea.y + round(cardDimension.height / 12f),
+                                cardDimension.width, cardDimension.height, this);
                         break;
                     case LEFT:
                         var xform = new AffineTransform();
-                        xform.translate(centerArea.x + cardWidth,
-                                centerArea.y + (centerArea.height - cardWidth) / 2f);
+                        xform.translate(centerArea.x + cardDimension.width,
+                                centerArea.y + (centerArea.height - cardDimension.width) / 2f);
                         xform.scale(scale, scale);
                         xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
@@ -359,8 +392,8 @@ public class ModernGamePanel extends JPanel {
                         break;
                     case RIGHT:
                         xform = new AffineTransform();
-                        xform.translate(centerArea.x + centerArea.width - cardWidth - cardHeight,
-                                centerArea.y + (centerArea.height - cardWidth) / 2f);
+                        xform.translate(centerArea.x + centerArea.width - cardDimension.width - cardDimension.height,
+                                centerArea.y + (centerArea.height - cardDimension.width) / 2f);
                         xform.scale(scale, scale);
                         xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
@@ -372,19 +405,19 @@ public class ModernGamePanel extends JPanel {
         }
     }
 
-    void paintPlayerArea(Graphics2D g2, Rectangle playerArea, int cardWidth, int cardHeight) {
+    void paintPlayerArea(Graphics2D g2, Rectangle playerArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.MYSELF);
         var hand = player.getHand();
 
         // cards
-        int hand_width = round(playerArea.width * .8f);
-        int hand_x_offset = playerArea.x + round(playerArea.width * .1f);
+        int hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
+        int hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
         int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
-        float card_x_step = (hand_width - cardWidth) / (float) (hand.size() - 1);
+        float card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
             g2.drawImage(CardImages.getImage(hand.get(i)),
                     hand_x_offset + round(i * card_x_step), hand_y_offset,
-                    cardWidth, cardHeight, this);
+                    cardDimension.width, cardDimension.height, this);
         }
 
         // name
@@ -393,17 +426,17 @@ public class ModernGamePanel extends JPanel {
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintAcrossArea(Graphics2D g2, Rectangle topArea, int cardWidth, int cardHeight) {
+    void paintAcrossArea(Graphics2D g2, Rectangle topArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.ACROSS);
         var hand = player.getHand();
-        var hand_width = round(topArea.width * .8f);
-        var hand_x_offset = topArea.x + round(topArea.width * .1f);
+        var hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
+        var hand_x_offset = topArea.x + (topArea.width - hand_width) / 2;
         var hand_y_offset = topArea.y + round(topArea.height * 20f / 120f);
-        var card_x_step = (hand_width - cardWidth) / (float) (hand.size() - 1);
+        var card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = hand.size() - 1; i >= 0; i--) {
             g2.drawImage(CardImages.getImage(hand.get(i)),
                     hand_x_offset + round(i * card_x_step), hand_y_offset,
-                    cardWidth, cardHeight, this);
+                    cardDimension.width, cardDimension.height, this);
         }
 
         // name
@@ -412,13 +445,14 @@ public class ModernGamePanel extends JPanel {
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintLeftArea(Graphics2D g2, Rectangle leftArea, int cardWidth, int cardHeight) {
+    void paintLeftArea(Graphics2D g2, Rectangle leftArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.LEFT);
         var hand = player.getHand();
-        float scale = (float) cardHeight / CardImages.IMG_HEIGHT;
-        int hand_height = round(leftArea.height * 0.5f);
-        float card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
-        var hand_x_offset = leftArea.x + (leftArea.width - cardHeight) / 2;
+
+        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        int hand_height = round((hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height);
+        float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.height) / (float) (hand.size() - 1);
+        var hand_x_offset = leftArea.x + (leftArea.width - cardDimension.height) / 2;
         var hand_y_offset = leftArea.y + (leftArea.height - hand_height) / 2;
         for (int i = hand.size() - 1; i >= 0; i--) {
             var xform = new AffineTransform();
@@ -432,17 +466,18 @@ public class ModernGamePanel extends JPanel {
 
         // name
         int nameX = leftArea.x + round(leftArea.width * 20f / 120f);
-        int nameY = leftArea.y + round(leftArea.height * 90f / 450f);
+        int nameY = leftArea.y + min(round(leftArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3);
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintRightArea(Graphics2D g2, Rectangle rightArea, int cardWidth, int cardHeight) {
+    void paintRightArea(Graphics2D g2, Rectangle rightArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.RIGHT);
         var hand = player.getHand();
-        var scale = (float) cardHeight / CardImages.IMG_HEIGHT;
-        var hand_height = round(rightArea.height * 0.5f);
-        var card_y_step = (hand_height - cardWidth) / (float) (hand.size() - 1);
-        var hand_x_offset = rightArea.x + (rightArea.width - cardHeight) / 2;
+
+        var scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        var hand_height = round((hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height);
+        var card_y_step = hand.size() < 2 ? 0 :(hand_height - cardDimension.width) / (float) (hand.size() - 1);
+        var hand_x_offset = rightArea.x + (rightArea.width - cardDimension.height) / 2;
         var hand_y_offset = rightArea.y + (rightArea.height - hand_height) / 2;
         for (int i = 0; i < hand.size(); i++) {
             var xform = new AffineTransform();
@@ -456,7 +491,7 @@ public class ModernGamePanel extends JPanel {
 
         // name
         int nameX = rightArea.x + round(rightArea.width * 20f / 120f);
-        int nameY = rightArea.y + round(rightArea.height * 90f / 450f);
+        int nameY = rightArea.y + min(round(rightArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3);
         g2.drawString(player.getName(), nameX, nameY);
     }
 
@@ -470,12 +505,11 @@ public class ModernGamePanel extends JPanel {
 
         var renderingArea = getRenderingDimension();
 
-        int cardHeight = round(renderingArea.height * 96f / 565f);
-        int cardWidth = round((float) cardHeight * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+        var cardDimension = getCardDimension(renderingArea);
 
         var centerArea = getCenterArea(renderingArea);
         if (g2.getClip().intersects(centerArea)) {
-            paintCenter(g2, centerArea, cardWidth, cardHeight);
+            paintCenter(g2, centerArea, cardDimension);
         }
 
         // draw cards
@@ -484,25 +518,25 @@ public class ModernGamePanel extends JPanel {
                 case MYSELF:
                     var area = getPlayerArea(renderingArea);
                     if (g2.getClip().intersects(area)) {
-                        paintPlayerArea(g2, area, cardWidth, cardHeight);
+                        paintPlayerArea(g2, area, cardDimension);
                     }
                     break;
                 case ACROSS:
                     area = getAcrossArea(renderingArea);
                     if (g2.getClip().intersects(area)) {
-                        paintAcrossArea(g2, area, cardWidth, cardHeight);
+                        paintAcrossArea(g2, area, cardDimension);
                     }
                     break;
                 case LEFT:
                     area = getLeftArea(renderingArea);
                     if (g2.getClip().intersects(area)) {
-                        paintLeftArea(g2, area, cardWidth, cardHeight);
+                        paintLeftArea(g2, area, cardDimension);
                     }
                     break;
                 case RIGHT:
                     area = getRightArea(renderingArea);
                     if (g2.getClip().intersects(area)) {
-                        paintRightArea(g2, area, cardWidth, cardHeight);
+                        paintRightArea(g2, area, cardDimension);
                     }
                     break;
             }
@@ -510,7 +544,30 @@ public class ModernGamePanel extends JPanel {
 
         var infoArea = getInfoArea(renderingArea);
         if (g2.getClip().intersects(infoArea)) {
-            paintInfo(g2, infoArea, cardWidth, cardHeight);
+            paintInfo(g2, infoArea, cardDimension);
         }
+
+        // DEBUG
+        g2.setColor(Color.RED);
+        var ca = getCenterArea(renderingArea);
+        var pa = getPlayerArea(renderingArea);
+        var aa = getAcrossArea(renderingArea);
+        var la = getLeftArea(renderingArea);
+        var ra = getRightArea(renderingArea);
+        var ia = getInfoArea(renderingArea);
+        var ha = getHandArea(renderingArea);
+        var da = getTeamDrawingArea(renderingArea);
+        //  var cca = getCardArea(0, renderingArea);
+        g2.drawRect(ca.x, ca.y, ca.width, ca.height);
+        g2.drawRect(pa.x, pa.y, pa.width, pa.height);
+        g2.drawRect(aa.x, aa.y, aa.width, aa.height);
+        g2.drawRect(la.x, la.y, la.width, la.height);
+        g2.drawRect(ra.x, ra.y, ra.width, ra.height);
+        g2.drawRect(ia.x, ia.y, ia.width, ia.height);
+        g2.drawRect(ha.x, ha.y, ha.width, ha.height);
+        g2.drawRect(da.x, da.y, da.width, da.height);
+
+        g2.setColor(Color.GREEN);
+        g2.drawRect(renderingArea.x, renderingArea.y, renderingArea.width, renderingArea.height);
     }
 }

@@ -20,7 +20,7 @@ import java.text.ParseException;
 
 public class DialogConnect extends javax.swing.JDialog {
     private static final String INITIAL_NAME = "Joueur";
-    private static final String INITIAL_HOST = "ec2-18-216-29-52.us-east-2.compute.amazonaws.com";
+    private static final String INITIAL_HOST = "localhost";
     boolean ok = false;
     String name, host;
     int gameId;

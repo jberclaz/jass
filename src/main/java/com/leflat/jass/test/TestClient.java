@@ -46,14 +46,6 @@ public class TestClient {
         players.add(new ClientPlayer(0, "Hhip"));
         players.add(new ClientPlayer(0, "JB"));
 
-        frame.choosePartner(players);
-
-        frame.prepareGame();
-        frame.setPlayedCard(new Card(Card.RANK_ROI, Card.COLOR_HEART), 0);
-        frame.setPlayedCard(new Card(Card.RANK_ROI, Card.COLOR_DIAMOND), 1);
-        frame.setPlayedCard(new Card(Card.RANK_ROI, Card.COLOR_SPADE), 2);
-        frame.setPlayedCard(new Card(Card.RANK_ROI, Card.COLOR_CLUB), 3);
-
         try {
             frame.setPlayer(new ClientPlayer(0, "JB"), 0);
             frame.setPlayer(new ClientPlayer(1, "Berte"), 1);
@@ -63,8 +55,9 @@ public class TestClient {
             e.printStackTrace();
         }
 
-        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
+        frame.prepareGame();
 
+        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
         frame.setOtherPlayersHands(9);
 
         waitSec(2);
