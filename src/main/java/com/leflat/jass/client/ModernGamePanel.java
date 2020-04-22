@@ -9,6 +9,8 @@ import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Dimension2D;
+import java.awt.geom.Rectangle2D;
 import java.util.*;
 import java.util.List;
 import java.util.logging.Level;
@@ -35,7 +37,7 @@ public class ModernGamePanel extends JPanel {
     private int theirScore;
     private int atoutColor = -1;
     private boolean isInteractive = false;
-    private JButton buttonAnnounce = new JButton("Annoncer");
+    private final JButton buttonAnnounce = new JButton("Annoncer");
 
     public ModernGamePanel() {
         super();
@@ -85,9 +87,9 @@ public class ModernGamePanel extends JPanel {
         drawnCards.clear();
         lastPlie.clear();
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea)
-                .union(getCenterArea(renderingArea))
-                .union(getInfoArea(renderingArea)));
+        repaint(toInt(getInfoArea(renderingArea))
+                .union(toInt(getCenterArea(renderingArea)))
+                .union(toInt(getInfoArea(renderingArea))));
     }
 
     public void setPlayer(PlayerPosition position, BasePlayer player) {
@@ -111,7 +113,7 @@ public class ModernGamePanel extends JPanel {
     public void setPlayedCard(PlayerPosition position, Card card) {
         playedCards.put(position, card);
         cardAngles.put(position, random.nextFloat() * 10 - 5f);
-        repaint(getCenterArea(getRenderingDimension()));
+        repaint(toInt(getCenterArea(getRenderingDimension())));
     }
 
     public void collectPlie() {
@@ -119,12 +121,12 @@ public class ModernGamePanel extends JPanel {
         this.lastPlie.addAll(playedCards.values());
         playedCards.clear();
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea).union(getCenterArea(renderingArea)));
+        repaint(toInt(getInfoArea(renderingArea)).union(toInt(getCenterArea(renderingArea))));
     }
 
     public void setMode(GameMode mode) {
         this.gameMode = mode;
-        repaint(getCenterArea(getRenderingDimension()));
+        repaint(toInt(getCenterArea(getRenderingDimension())));
     }
 
     public GameMode getMode() {
@@ -134,20 +136,20 @@ public class ModernGamePanel extends JPanel {
     public void setAtoutColor(int atoutColor) {
         this.atoutColor = atoutColor;
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea));
+        repaint(toInt(getInfoArea(renderingArea)));
     }
 
     public void hideAtout() {
         this.atoutColor = -1;
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea));
+        repaint(toInt(getInfoArea(renderingArea)));
     }
 
     public void setScores(int ourScore, int theirScore) {
         this.ourScore = ourScore;
         this.theirScore = theirScore;
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea));
+        repaint(toInt(getInfoArea(renderingArea)));
     }
 
     public void drawCard(int cardPosition, Card card, PlayerPosition playerPosition) {
@@ -157,7 +159,7 @@ public class ModernGamePanel extends JPanel {
         } catch (PlayerLeftExpection playerLeftExpection) {
             playerLeftExpection.printStackTrace();
         }
-        repaint(getCenterArea(getRenderingDimension()));
+        repaint(toInt(getCenterArea(getRenderingDimension())));
         repaintPlayerArea(playerPosition);
     }
 
@@ -216,177 +218,174 @@ public class ModernGamePanel extends JPanel {
         var area = getRenderingDimension();
         switch (position) {
             case MYSELF:
-                repaint(getPlayerArea(area));
+                repaint(toInt(getPlayerArea(area)));
                 break;
             case ACROSS:
-                repaint(getAcrossArea(area));
+                repaint(toInt(getAcrossArea(area)));
                 break;
             case LEFT:
-                repaint(getLeftArea(area));
+                repaint(toInt(getLeftArea(area)));
                 break;
             case RIGHT:
-                repaint(getRightArea(area));
+                repaint(toInt(getRightArea(area)));
                 break;
         }
     }
 
-    private Dimension getCardDimension(Rectangle renderingArea) {
+    private Dimension getCardDimension(Rectangle2D.Float renderingArea) {
         float scale = renderingArea.height / 530f;
         float height = 96f * scale;
-        int width = round(height / CardImages.IMG_HEIGHT * CardImages.IMG_WIDTH);
-        return new Dimension(width, round(height));
+        float width = height / CardImages.IMG_HEIGHT * CardImages.IMG_WIDTH;
+        var dim = new Dimension();
+        dim.setSize(width, height);
+        return dim;
     }
 
-    private Rectangle getHandArea(Rectangle renderingArea) {
+    private Rectangle2D.Float getHandArea(Rectangle2D.Float renderingArea) {
         var player = players.get(PlayerPosition.MYSELF);
         if (player == null ) {
-            return new Rectangle(0, 0, 0, 0);
+            return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var hand = player.getHand();
         if (hand.size() == 0) {
-            return new Rectangle(0, 0, 0, 0);
+            return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var playerArea = getPlayerArea(renderingArea);
         var cardDimension = getCardDimension(renderingArea);
-        int hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
-        int hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
-        int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
-        return new Rectangle(hand_x_offset, hand_y_offset, hand_width, cardDimension.height);
+        float hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
+        float hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
+        float hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
+        return new Rectangle2D.Float(hand_x_offset, hand_y_offset, hand_width, cardDimension.height);
     }
 
-    private Rectangle getCardArea(int number, Rectangle area) {
+    private Rectangle2D.Float getCardArea(int number, Rectangle2D.Float area) {
         var handArea = getHandArea(area);
-        Rectangle card = new Rectangle();
-        card.width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
+        Rectangle2D.Float card = new Rectangle2D.Float();
+        card.width = handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT;
 
         float card_x_step = (handArea.width - card.width) / (float) (players.get(PlayerPosition.MYSELF).getHand().size() - 1);
-        card.x = handArea.x + round(number * card_x_step);
+        card.x = handArea.x + number * card_x_step;
         card.y = handArea.y;
         return card;
     }
 
-    private Rectangle getTeamDrawingArea(Rectangle renderingArea) {
+    private Rectangle2D.Float getTeamDrawingArea(Rectangle2D.Float renderingArea) {
         var centerArea = getCenterArea(renderingArea);
         var cardDimension = getCardDimension(renderingArea);
-        return new Rectangle(centerArea.x + round(centerArea.width / 10f),
+        return new Rectangle2D.Float(centerArea.x + centerArea.width / 10f,
                 centerArea.y + (centerArea.height - cardDimension.height) / 2,
-                round(centerArea.width * .8f),
+                centerArea.width * .8f,
                 cardDimension.height);
     }
 
-    private Rectangle getRenderingDimension() {
+    private Rectangle2D.Float getRenderingDimension() {
         Dimension d = getSize();
-        var area = new Rectangle();
+        var area = new Rectangle2D.Float();
         if ((float) d.width / d.height > ASPECT_RATIO) {
-            area.width = round(d.height * ASPECT_RATIO);
+            area.width = d.height * ASPECT_RATIO;
             area.height = d.height;
             area.x = (d.width - area.width) / 2;
             area.y = 0;
         } else {
             area.width = d.width;
-            area.height = round(d.width / ASPECT_RATIO);
+            area.height = d.width / ASPECT_RATIO;
             area.x = 0;
             area.y = (d.height - area.height) / 2;
         }
         return area;
     }
 
-    Rectangle getCenterArea(Rectangle renderingArea) {
-        int carpet_width = round(renderingArea.width * 390f / 630f);
-        int carpet_height = round(renderingArea.height * 210f / 530f);
-        int carpet_x_offset = renderingArea.x + round(renderingArea.width * 120f / 630f);
-        int carpet_y_offset = renderingArea.y + round(renderingArea.height * 120f / 530f);
-        return new Rectangle(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height);
+    Rectangle2D.Float getCenterArea(Rectangle2D.Float renderingArea) {
+        float carpet_width = renderingArea.width * 390f / 630f;
+        float carpet_height = renderingArea.height * 210f / 530f;
+        float carpet_x_offset = renderingArea.x + renderingArea.width * 120f / 630f;
+        float carpet_y_offset = renderingArea.y + renderingArea.height * 120f / 530f;
+        return new Rectangle2D.Float(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height);
     }
 
-    Rectangle getPlayerArea(Rectangle renderingArea) {
-        int width = round(renderingArea.width * 390f / 630f);
-        int height = round(renderingArea.height * 120f / 530f);
-        int x = renderingArea.x + round(renderingArea.width * 120f / 630f);
-        int y = renderingArea.y + round(renderingArea.height * 330f / 530f);
-        return new Rectangle(x, y, width, height);
+    Rectangle2D.Float getPlayerArea(Rectangle2D.Float renderingArea) {
+        float width = renderingArea.width * 390f / 630f;
+        float height = renderingArea.height * 120f / 530f;
+        float x = renderingArea.x + renderingArea.width * 120f / 630f;
+        float y = renderingArea.y + renderingArea.height * 330f / 530f;
+        return new Rectangle2D.Float(x, y, width, height);
     }
 
-    Rectangle getAcrossArea(Rectangle renderingArea) {
-        int width = round(renderingArea.width * 390f / 630f);
-        int height = round(renderingArea.height * 120f / 530f);
-        int x = renderingArea.x + round(renderingArea.width * 120f / 630f);
-        int y = renderingArea.y;
-        return new Rectangle(x, y, width, height);
+    Rectangle2D.Float getAcrossArea(Rectangle2D.Float renderingArea) {
+        float width = renderingArea.width * 390f / 630f;
+        float height = renderingArea.height * 120f / 530f;
+        float x = renderingArea.x + renderingArea.width * 120f / 630f;
+        float y = renderingArea.y;
+        return new Rectangle2D.Float(x, y, width, height);
     }
 
-    Rectangle getLeftArea(Rectangle renderingArea) {
-        int width = round(renderingArea.width * 120f / 630f);
-        int height = round(renderingArea.height * 450f / 530f);
-        int x = renderingArea.x;
-        int y = renderingArea.y;
-        return new Rectangle(x, y, width, height);
+    Rectangle2D.Float getLeftArea(Rectangle2D.Float renderingArea) {
+        float width = renderingArea.width * 120f / 630f;
+        float height = renderingArea.height * 450f / 530f;
+        return new Rectangle2D.Float(renderingArea.x, renderingArea.y, width, height);
     }
 
-    Rectangle getRightArea(Rectangle renderingArea) {
-        int width = round(renderingArea.width * 120f / 630f);
-        int height = round(renderingArea.height * 450f / 530f);
-        int x = renderingArea.x + round(renderingArea.width * 510f / 630f);
-        int y = renderingArea.y;
-        return new Rectangle(x, y, width, height);
+    Rectangle2D.Float getRightArea(Rectangle2D.Float renderingArea) {
+        float width = renderingArea.width * 120f / 630f;
+        float height = renderingArea.height * 450f / 530f;
+        float x = renderingArea.x + renderingArea.width * 510f / 630f;
+        return new Rectangle2D.Float(x, renderingArea.y, width, height);
     }
 
-    Rectangle getInfoArea(Rectangle renderingArea) {
-        int width = renderingArea.width;
-        int height = round(renderingArea.height * 40f / 530f);
-        int x = renderingArea.x;
-        int y = renderingArea.y + round(renderingArea.height * 450f / 530f);
-        ;
-        return new Rectangle(x, y, width, height);
+    Rectangle2D.Float getInfoArea(Rectangle2D.Float renderingArea) {
+        float width = renderingArea.width;
+        float height = renderingArea.height * 40f / 530f;
+        float y = renderingArea.y + renderingArea.height * 450f / 530f;
+        return new Rectangle2D.Float(renderingArea.x, y, width, height);
     }
 
-    void paintInfo(Graphics2D g2, Rectangle infoArea, Dimension cardDimension) {
+    void paintInfo(Graphics2D g2, Rectangle2D.Float infoArea, Dimension cardDimension) {
         float x_step = 30f * infoArea.width / 630f;
         float x_offset = infoArea.x + 120f * infoArea.width / 630f;
-        int y_offset = infoArea.y + round(5f * infoArea.height / 40f);
+        float y_offset = infoArea.y +5f * infoArea.height / 40f;
         for (int i = 0; i < lastPlie.size(); i++) {
             int card_x = round(x_offset + x_step * i);
             g2.drawImage(CardImages.getImage(lastPlie.get(i)),
-                    card_x, y_offset,
-                    card_x + cardDimension.width, y_offset + round(35f / 40f * infoArea.height),
+                    card_x, round(y_offset),
+                    card_x + cardDimension.width, round(y_offset + 35f / 40f * infoArea.height),
                     0, 0,
                     CardImages.IMG_WIDTH, round(35f / 96f * CardImages.IMG_HEIGHT),
                     this);
         }
-        int last_plie_x = round(20f / 40 * infoArea.height);
+        float last_plie_x = 20f / 40 * infoArea.height;
         g2.drawString("Dernière plie:", infoArea.x + last_plie_x,
                 infoArea.y + last_plie_x);
         if (atoutColor >= 0) {
-            int atout_x = round(340f / 40f * infoArea.height);
+            float atout_x = 340f / 40f * infoArea.height;
             g2.drawString("Atout:", infoArea.x + atout_x,
                     infoArea.y + last_plie_x);
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
             int colorSize = round(15f / 40f * infoArea.height);
             g2.drawImage(CardImages.getColorImage(atoutColor),
-                    infoArea.x + atout_x + stringWidth,
-                    infoArea.y + round(8f / 40f * infoArea.height),
+                    round(infoArea.x + atout_x + stringWidth),
+                    round(infoArea.y + 8f / 40f * infoArea.height),
                     colorSize, colorSize, this);
         }
-        int score_label_x = round(420f / 40f * infoArea.height);
-        int our_score_y = round(13f / 40f * infoArea.height);
+        float score_label_x = 420f / 40f * infoArea.height;
+        float our_score_y = 13f / 40f * infoArea.height;
         g2.drawString("Nous:", infoArea.x + score_label_x,
                 infoArea.y + our_score_y);
-        int their_score_y = round(27f / 40f * infoArea.height);
+        float their_score_y = 27f / 40f * infoArea.height;
         g2.drawString("Eux:", infoArea.x + score_label_x,
                 infoArea.y + their_score_y);
-        int score_x = round(470f / 40f * infoArea.height);
+        float score_x = 470f / 40f * infoArea.height;
         g2.drawString(String.valueOf(ourScore), infoArea.x + score_x,
                 infoArea.y + our_score_y);
         g2.drawString(String.valueOf(theirScore), infoArea.x + score_x,
                 infoArea.y + their_score_y);
     }
 
-    void paintCenter(Graphics2D g2, Rectangle centerArea, Dimension cardDimension) {
+    void paintCenter(Graphics2D g2, Rectangle2D.Float centerArea, Dimension cardDimension) {
         // draw carpet
         var color = g2.getColor();
         g2.setColor(CARPET_COLOR);
-
-        g2.fillRoundRect(centerArea.x, centerArea.y, centerArea.width, centerArea.height, centerArea.width / 20, centerArea.width / 20);
+        g2.fillRoundRect(round(centerArea.x), round(centerArea.y),
+                round(centerArea.width), round(centerArea.height), round(centerArea.width / 20), round(centerArea.width / 20));
         g2.setColor(color);
         float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
 
@@ -394,7 +393,7 @@ public class ModernGamePanel extends JPanel {
             for (int i = 0; i < 36; i++) {
                 float card_x_offset = centerArea.width / 10f;
                 float card_x_step = (centerArea.width - 2 * card_x_offset - cardDimension.width) / 35.0f;
-                int card_y_offset = (centerArea.height - cardDimension.height) / 2 + centerArea.y;
+                int card_y_offset = round((centerArea.height - cardDimension.height) / 2 + centerArea.y);
                 if (!drawnCards.contains(i)) {
                     g2.drawImage(CardImages.getBackImage(), round(centerArea.x + card_x_offset + i * card_x_step),
                             card_y_offset, cardDimension.width, cardDimension.height, this);
@@ -405,14 +404,14 @@ public class ModernGamePanel extends JPanel {
                 switch (entry.getKey()) {
                     case MYSELF:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
-                                centerArea.x + (centerArea.width - cardDimension.width) / 2,
-                                centerArea.y + (centerArea.height - cardDimension.height) - round(cardDimension.height / 12f),
+                                round(centerArea.x + (centerArea.width - cardDimension.width) / 2),
+                                round(centerArea.y + centerArea.height - cardDimension.height - cardDimension.height / 12f),
                                 cardDimension.width, cardDimension.height, this);
                         break;
                     case ACROSS:
                         g2.drawImage(CardImages.getImage(entry.getValue()),
-                                centerArea.x + (centerArea.width - cardDimension.width) / 2,
-                                centerArea.y + round(cardDimension.height / 12f),
+                                round(centerArea.x + (centerArea.width - cardDimension.width) / 2),
+                                round(centerArea.y + cardDimension.height / 12f),
                                 cardDimension.width, cardDimension.height, this);
                         break;
                     case LEFT:
@@ -440,52 +439,52 @@ public class ModernGamePanel extends JPanel {
         }
     }
 
-    void paintPlayerArea(Graphics2D g2, Rectangle playerArea, Dimension cardDimension) {
+    void paintPlayerArea(Graphics2D g2, Rectangle2D.Float playerArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.MYSELF);
         var hand = player.getHand();
 
         // cards
-        int hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
-        int hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
-        int hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
+        float hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
+        float hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
+        int hand_y_offset = round(playerArea.y + playerArea.height * 20f / 120f);
         float card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
             g2.drawImage(CardImages.getImage(hand.get(i)),
-                    hand_x_offset + round(i * card_x_step), hand_y_offset,
+                    round(hand_x_offset + i * card_x_step), hand_y_offset,
                     cardDimension.width, cardDimension.height, this);
         }
 
         // name
-        int nameX = playerArea.x + round(playerArea.width * 30f / 390f);
-        int nameY = playerArea.y + round(playerArea.height * 15f / 120f);
+        float nameX = playerArea.x + playerArea.width * 30f / 390f;
+        float nameY = playerArea.y + playerArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintAcrossArea(Graphics2D g2, Rectangle topArea, Dimension cardDimension) {
+    void paintAcrossArea(Graphics2D g2, Rectangle2D.Float topArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.ACROSS);
         var hand = player.getHand();
-        var hand_width = round((hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width);
+        var hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
         var hand_x_offset = topArea.x + (topArea.width - hand_width) / 2;
-        var hand_y_offset = topArea.y + round(topArea.height * 20f / 120f);
+        var hand_y_offset = round(topArea.y + topArea.height * 20f / 120f);
         var card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = hand.size() - 1; i >= 0; i--) {
             g2.drawImage(CardImages.getImage(hand.get(i)),
-                    hand_x_offset + round(i * card_x_step), hand_y_offset,
+                    round(hand_x_offset + i * card_x_step), hand_y_offset,
                     cardDimension.width, cardDimension.height, this);
         }
 
         // name
-        int nameX = topArea.x + round(topArea.width * 30f / 390f);
-        int nameY = topArea.y + round(topArea.height * 15f / 120f);
+        float nameX = topArea.x + topArea.width * 30f / 390f;
+        float nameY = topArea.y + topArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintLeftArea(Graphics2D g2, Rectangle leftArea, Dimension cardDimension) {
+    void paintLeftArea(Graphics2D g2, Rectangle2D.Float leftArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.LEFT);
         var hand = player.getHand();
 
         float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        int hand_height = round((hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height);
+        float hand_height = (hand.size()-1) * cardDimension.width / 2.1f + (float)cardDimension.getHeight();
         float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.height) / (float) (hand.size() - 1);
         var hand_x_offset = leftArea.x + (leftArea.width - cardDimension.height) / 2;
         var hand_y_offset = leftArea.y + (leftArea.height - hand_height) / 2;
@@ -500,17 +499,17 @@ public class ModernGamePanel extends JPanel {
         }
 
         // name
-        int nameX = leftArea.x + round(leftArea.width * 20f / 120f);
-        int nameY = leftArea.y + min(round(leftArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3);
+        float nameX = leftArea.x + leftArea.width * 20f / 120f;
+        float nameY = leftArea.y + min(leftArea.height * 90f / 450f, hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
     }
 
-    void paintRightArea(Graphics2D g2, Rectangle rightArea, Dimension cardDimension) {
+    void paintRightArea(Graphics2D g2, Rectangle2D.Float rightArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.RIGHT);
         var hand = player.getHand();
 
         var scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        var hand_height = round((hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height);
+        var hand_height = (hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height;
         var card_y_step = hand.size() < 2 ? 0 :(hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = rightArea.x + (rightArea.width - cardDimension.height) / 2;
         var hand_y_offset = rightArea.y + (rightArea.height - hand_height) / 2;
@@ -525,8 +524,8 @@ public class ModernGamePanel extends JPanel {
         }
 
         // name
-        int nameX = rightArea.x + round(rightArea.width * 20f / 120f);
-        int nameY = rightArea.y + min(round(rightArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3);
+        float nameX = rightArea.x + rightArea.width * 20f / 120f;
+        float nameY = rightArea.y + min(round(rightArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
     }
 
@@ -584,14 +583,14 @@ public class ModernGamePanel extends JPanel {
 
         // DEBUG
         g2.setColor(Color.RED);
-        var ca = getCenterArea(renderingArea);
-        var pa = getPlayerArea(renderingArea);
-        var aa = getAcrossArea(renderingArea);
-        var la = getLeftArea(renderingArea);
-        var ra = getRightArea(renderingArea);
-        var ia = getInfoArea(renderingArea);
-        var ha = getHandArea(renderingArea);
-        var da = getTeamDrawingArea(renderingArea);
+        var ca = toInt(getCenterArea(renderingArea));
+        var pa = toInt(getPlayerArea(renderingArea));
+        var aa = toInt(getAcrossArea(renderingArea));
+        var la = toInt(getLeftArea(renderingArea));
+        var ra = toInt(getRightArea(renderingArea));
+        var ia = toInt(getInfoArea(renderingArea));
+        var ha = toInt(getHandArea(renderingArea));
+        var da = toInt(getTeamDrawingArea(renderingArea));
         //  var cca = getCardArea(0, renderingArea);
         g2.drawRect(ca.x, ca.y, ca.width, ca.height);
         g2.drawRect(pa.x, pa.y, pa.width, pa.height);
@@ -603,14 +602,19 @@ public class ModernGamePanel extends JPanel {
         g2.drawRect(da.x, da.y, da.width, da.height);
 
         g2.setColor(Color.GREEN);
-        g2.drawRect(renderingArea.x, renderingArea.y, renderingArea.width, renderingArea.height);
+        g2.drawRect(round(renderingArea.x), round(renderingArea.y),
+                round(renderingArea.width), round(renderingArea.height));
     }
 
     void resizePanel(ComponentEvent evt) {
         var area = getRenderingDimension();
         float scale = 530f / area.height;
-        int x = round(530 / scale);
-        int y = round(500 / scale);
-        buttonAnnounce.setBounds(area.x + x, area.y + y,  90, 30);
+        float x = 530 / scale;
+        float y = 500 / scale;
+        buttonAnnounce.setBounds(round(area.x + x), round(area.y + y),  90, 30);
+    }
+
+    Rectangle toInt(Rectangle2D.Float rect) {
+        return new Rectangle(round(rect.x), round(rect.y), round(rect.width), round(rect.height));
     }
 }
