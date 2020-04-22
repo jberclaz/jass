@@ -18,6 +18,7 @@ public class JassClient {
             e.printStackTrace();
         }
 
+        System.setProperty("sun.java2d.opengl", "true");
         new JassPlayer(new ClientNetworkFactory(), new ModernUiFactory());
     }
 }

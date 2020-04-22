@@ -660,8 +660,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var area = getRenderingDimension();
         float scale = 530f / area.height;
         float x = 530 / scale;
-        float y = 500 / scale;
-        buttonAnnounce.setBounds(round(area.x + x), round(area.y + y), 90, 30);
+        float panelHeight = 40 / scale;
+        var size = buttonAnnounce.getPreferredSize();
+        float y = 490 / scale + (panelHeight - size.height) / 2;
+        buttonAnnounce.setBounds(round(area.x + x), round(area.y + y), size.width, size.height);
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
