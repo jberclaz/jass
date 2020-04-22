@@ -54,7 +54,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             }
         });
 
-        addMouseListener(this);
+        gamePanel.addMouseListener(this);
     }
 
     @Override

@@ -198,7 +198,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             }
             var hand = players.get(PlayerPosition.MYSELF).getHand();
             var cardDimension = getCardDimension(renderingArea);
-            float card_x_step = hand.size() == 0 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
+            float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
             return hand.get(min(cardNumber, hand.size() - 1));
         } else {
@@ -269,7 +269,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var hand = players.get(PlayerPosition.MYSELF).getHand();
         assert number < hand.size();
 
-        float card_x_step = hand.size() == 0 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
+        float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
         return new Rectangle(round(handArea.x + number * card_x_step), round(handArea.y),
                 round(cardDimension.width), round(cardDimension.height));
     }
@@ -452,7 +452,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
         float hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
         int hand_y_offset = round(playerArea.y + playerArea.height * 20f / 120f);
-        float card_x_step = hand.size() == 0 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
+        float card_x_step = hand.size() < 2 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
             if (i == hoveredCard) {
                 var image = CardImages.getImage(hand.get(i));
@@ -480,7 +480,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
         var hand_x_offset = topArea.x + (topArea.width - hand_width) / 2;
         var hand_y_offset = round(topArea.y + topArea.height * 20f / 120f);
-        var card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
+        var card_x_step = hand.size() < 2 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = hand.size() - 1; i >= 0; i--) {
             g2.drawImage(CardImages.getImage(hand.get(i)),
                     round(hand_x_offset + i * card_x_step), hand_y_offset,
