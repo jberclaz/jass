@@ -67,8 +67,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setVisible(enable);
 
         var insets = getInsets();
-        setSize(630, 565 + insets.top);
-        setMinimumSize(new Dimension(630, 565 + insets.top));
+        setSize(630, 530 + insets.top);
+        setMinimumSize(new Dimension(630, 530 + insets.top));
         setResizable(true);
 
         connectDialog();
@@ -255,7 +255,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void lostServerConnection() {
-
+        JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
+        disconnect();
     }
 
     @Override
@@ -343,5 +344,18 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         int highId = gameId / 1000;
         String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
         setTitle(title);
+    }
+
+    private void disconnect() {
+        for (int i=0; i<4; i++) {
+            gamePanel.clearPlayer(intToPlayerPosition(i));
+        }
+        gamePanel.clearCards();
+        gamePanel.hideAtout();
+        gamePanel.setMode(ModernGamePanel.GameMode.IDLE);
+        setScore(0, 0);
+        setGameId(-1);
+
+        connectDialog();
     }
 }

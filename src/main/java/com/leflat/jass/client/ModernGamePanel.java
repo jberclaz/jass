@@ -6,6 +6,8 @@ import com.leflat.jass.server.PlayerLeftExpection;
 
 import javax.swing.*;
 import java.awt.*;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
 import java.awt.geom.AffineTransform;
 import java.util.*;
 import java.util.List;
@@ -21,7 +23,7 @@ public class ModernGamePanel extends JPanel {
 
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
-    private static final float ASPECT_RATIO = 630f / 565;
+    private static final float ASPECT_RATIO = 630f / 530;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
     private GameMode gameMode = GameMode.IDLE;
     private final Set<Integer> drawnCards = new HashSet<>();
@@ -33,6 +35,7 @@ public class ModernGamePanel extends JPanel {
     private int theirScore;
     private int atoutColor = -1;
     private boolean isInteractive = false;
+    private JButton buttonAnnounce = new JButton("Annoncer");
 
     public ModernGamePanel() {
         super();
@@ -44,6 +47,31 @@ public class ModernGamePanel extends JPanel {
             LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
         }
 
+        setLayout(null);
+        add(buttonAnnounce);
+        buttonAnnounce.setEnabled(false);
+
+        addComponentListener(new ComponentListener() {
+            @Override
+            public void componentResized(ComponentEvent componentEvent) {
+                resizePanel(componentEvent);
+            }
+
+            @Override
+            public void componentMoved(ComponentEvent componentEvent) {
+
+            }
+
+            @Override
+            public void componentShown(ComponentEvent componentEvent) {
+
+            }
+
+            @Override
+            public void componentHidden(ComponentEvent componentEvent) {
+
+            }
+        });
     }
 
     public void clearCards() {
@@ -55,14 +83,20 @@ public class ModernGamePanel extends JPanel {
             }
         }
         drawnCards.clear();
+        lastPlie.clear();
         var renderingArea = getRenderingDimension();
-        repaint(getInfoArea(renderingArea).union(getCenterArea(renderingArea)));
+        repaint(getInfoArea(renderingArea)
+                .union(getCenterArea(renderingArea))
+                .union(getInfoArea(renderingArea)));
     }
 
     public void setPlayer(PlayerPosition position, BasePlayer player) {
         players.put(position, player);
-        cardAngles.put(position, random.nextFloat() * 10 - 5f);
         repaintPlayerArea(position);
+    }
+
+    public void clearPlayer(PlayerPosition position) {
+        players.remove(position);
     }
 
     public void setHand(PlayerPosition position, List<Card> hand) {
@@ -76,6 +110,7 @@ public class ModernGamePanel extends JPanel {
 
     public void setPlayedCard(PlayerPosition position, Card card) {
         playedCards.put(position, card);
+        cardAngles.put(position, random.nextFloat() * 10 - 5f);
         repaint(getCenterArea(getRenderingDimension()));
     }
 
@@ -196,7 +231,7 @@ public class ModernGamePanel extends JPanel {
     }
 
     private Dimension getCardDimension(Rectangle renderingArea) {
-        float scale = renderingArea.height / 565f;
+        float scale = renderingArea.height / 530f;
         float height = 96f * scale;
         int width = round(height / CardImages.IMG_HEIGHT * CardImages.IMG_WIDTH);
         return new Dimension(width, round(height));
@@ -258,23 +293,23 @@ public class ModernGamePanel extends JPanel {
 
     Rectangle getCenterArea(Rectangle renderingArea) {
         int carpet_width = round(renderingArea.width * 390f / 630f);
-        int carpet_height = round(renderingArea.height * 210f / 565f);
+        int carpet_height = round(renderingArea.height * 210f / 530f);
         int carpet_x_offset = renderingArea.x + round(renderingArea.width * 120f / 630f);
-        int carpet_y_offset = renderingArea.y + round(renderingArea.height * 120f / 565f);
+        int carpet_y_offset = renderingArea.y + round(renderingArea.height * 120f / 530f);
         return new Rectangle(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height);
     }
 
     Rectangle getPlayerArea(Rectangle renderingArea) {
         int width = round(renderingArea.width * 390f / 630f);
-        int height = round(renderingArea.height * 120f / 565f);
+        int height = round(renderingArea.height * 120f / 530f);
         int x = renderingArea.x + round(renderingArea.width * 120f / 630f);
-        int y = renderingArea.y + round(renderingArea.height * 330f / 565f);
+        int y = renderingArea.y + round(renderingArea.height * 330f / 530f);
         return new Rectangle(x, y, width, height);
     }
 
     Rectangle getAcrossArea(Rectangle renderingArea) {
         int width = round(renderingArea.width * 390f / 630f);
-        int height = round(renderingArea.height * 120f / 565f);
+        int height = round(renderingArea.height * 120f / 530f);
         int x = renderingArea.x + round(renderingArea.width * 120f / 630f);
         int y = renderingArea.y;
         return new Rectangle(x, y, width, height);
@@ -282,7 +317,7 @@ public class ModernGamePanel extends JPanel {
 
     Rectangle getLeftArea(Rectangle renderingArea) {
         int width = round(renderingArea.width * 120f / 630f);
-        int height = round(renderingArea.height * 450f / 565f);
+        int height = round(renderingArea.height * 450f / 530f);
         int x = renderingArea.x;
         int y = renderingArea.y;
         return new Rectangle(x, y, width, height);
@@ -290,7 +325,7 @@ public class ModernGamePanel extends JPanel {
 
     Rectangle getRightArea(Rectangle renderingArea) {
         int width = round(renderingArea.width * 120f / 630f);
-        int height = round(renderingArea.height * 450f / 565f);
+        int height = round(renderingArea.height * 450f / 530f);
         int x = renderingArea.x + round(renderingArea.width * 510f / 630f);
         int y = renderingArea.y;
         return new Rectangle(x, y, width, height);
@@ -298,9 +333,9 @@ public class ModernGamePanel extends JPanel {
 
     Rectangle getInfoArea(Rectangle renderingArea) {
         int width = renderingArea.width;
-        int height = round(renderingArea.height * 40f / 565f);
+        int height = round(renderingArea.height * 40f / 530f);
         int x = renderingArea.x;
-        int y = renderingArea.y + round(renderingArea.height * 450f / 565f);
+        int y = renderingArea.y + round(renderingArea.height * 450f / 530f);
         ;
         return new Rectangle(x, y, width, height);
     }
@@ -569,5 +604,13 @@ public class ModernGamePanel extends JPanel {
 
         g2.setColor(Color.GREEN);
         g2.drawRect(renderingArea.x, renderingArea.y, renderingArea.width, renderingArea.height);
+    }
+
+    void resizePanel(ComponentEvent evt) {
+        var area = getRenderingDimension();
+        float scale = 530f / area.height;
+        int x = round(530 / scale);
+        int y = round(500 / scale);
+        buttonAnnounce.setBounds(area.x + x, area.y + y,  90, 30);
     }
 }
