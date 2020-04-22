@@ -41,7 +41,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
         }
         gamePanel = new ModernGamePanel();
-        getContentPane().add(gamePanel);
+        setContentPane(gamePanel);
         setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
         Locale locale = new Locale("fr", "CH");

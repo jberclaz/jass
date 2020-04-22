@@ -5,6 +5,7 @@ import com.leflat.jass.common.Card;
 import com.leflat.jass.server.PlayerLeftExpection;
 
 import javax.swing.*;
+import javax.swing.border.BevelBorder;
 import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
@@ -41,6 +42,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private int atoutColor = -1;
     private boolean isInteractive = false;
     private final JButton buttonAnnounce = new JButton("Annoncer");
+    private final JPanel statusPanel = new JPanel();
     private int hoveredCard = -1;
 
     public ModernGamePanel() {
@@ -56,6 +58,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         setLayout(null);
         add(buttonAnnounce);
         buttonAnnounce.setEnabled(false);
+        add(statusPanel);
+        statusPanel.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
         addMouseMotionListener(this);
         addComponentListener(new ComponentListener() {
@@ -664,6 +668,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var size = buttonAnnounce.getPreferredSize();
         float y = 490 / scale + (panelHeight - size.height) / 2;
         buttonAnnounce.setBounds(round(area.x + x), round(area.y + y), size.width, size.height);
+
+        statusPanel.setBounds(round(area.x), round(area.y + 490 / scale),
+                round(400 /scale), round(40 /scale));
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
