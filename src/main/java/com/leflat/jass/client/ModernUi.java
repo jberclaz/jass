@@ -32,9 +32,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         this.myself = player;
         initComponents();
         loadLogos();
-        Locale locale = new Locale("fr", "CH");
-        JOptionPane.setDefaultLocale(locale);
-        addMouseListener(this);
     }
 
     private void initComponents() {
@@ -47,6 +44,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         getContentPane().add(gamePanel);
         setTitle(APP_TITLE);
         setFont(new java.awt.Font("SansSerif", Font.PLAIN, 10));
+        Locale locale = new Locale("fr", "CH");
+        JOptionPane.setDefaultLocale(locale);
 
         addWindowListener(new WindowAdapter() {
             @Override
@@ -54,6 +53,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
                 exitUi(e);
             }
         });
+
+        addMouseListener(this);
     }
 
     @Override

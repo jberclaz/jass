@@ -30,11 +30,13 @@ public class TestPlayerUi {
 
         player.setCard(player3, 10, new Card(Card.RANK_ROI, Card.COLOR_DIAMOND));
 
-        waitSec(10);
-/*
+        waitSec(2);
+
         player.setHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         player.setAtout(Card.COLOR_HEART, player1);
+
+        player.play();
 
         player.setPlayedCard(player2, new Card(Card.RANK_BOURG, Card.COLOR_HEART));
 
@@ -42,7 +44,6 @@ public class TestPlayerUi {
             var card = player.play();
             System.out.println(card);
         }
-        */
 
     }
 

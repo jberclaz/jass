@@ -8,17 +8,20 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ComponentEvent;
 import java.awt.event.ComponentListener;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseMotionListener;
 import java.awt.geom.AffineTransform;
-import java.awt.geom.Dimension2D;
 import java.awt.geom.Rectangle2D;
-import java.util.*;
+import java.awt.image.RescaleOp;
 import java.util.List;
+import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 import static java.lang.Math.*;
 
-public class ModernGamePanel extends JPanel {
+public class ModernGamePanel extends JPanel implements MouseMotionListener {
+
     enum GameMode {
         TEAM_DRAWING, GAME, IDLE
     }
@@ -38,6 +41,7 @@ public class ModernGamePanel extends JPanel {
     private int atoutColor = -1;
     private boolean isInteractive = false;
     private final JButton buttonAnnounce = new JButton("Annoncer");
+    private int hoveredCard = -1;
 
     public ModernGamePanel() {
         super();
@@ -53,6 +57,7 @@ public class ModernGamePanel extends JPanel {
         add(buttonAnnounce);
         buttonAnnounce.setEnabled(false);
 
+        addMouseMotionListener(this);
         addComponentListener(new ComponentListener() {
             @Override
             public void componentResized(ComponentEvent componentEvent) {
@@ -192,8 +197,8 @@ public class ModernGamePanel extends JPanel {
                 return null;
             }
             var hand = players.get(PlayerPosition.MYSELF).getHand();
-            var card_width = round((float) handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
-            float card_x_step = (handArea.width - card_width) / (float) (hand.size() - 1);
+            var cardDimension = getCardDimension(renderingArea);
+            float card_x_step = hand.size() == 0 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
             return hand.get(min(cardNumber, hand.size() - 1));
         } else {
@@ -201,10 +206,10 @@ public class ModernGamePanel extends JPanel {
             if (!cardArea.contains(x, y)) {
                 return null;
             }
-            var cardWidth = round((float) cardArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT);
-            float xStep = (cardArea.width - cardWidth) / 35f;
+            var cardDimension = getCardDimension(renderingArea);
+            float xStep = (cardArea.width - cardDimension.width) / 35f;
             int highNumber = (int) floor((x - cardArea.x) / xStep);
-            int lowNumber = (int) floor((x - cardArea.x - cardWidth) / xStep);
+            int lowNumber = (int) floor((x - cardArea.x - cardDimension.width) / xStep);
             for (int number = min(highNumber, 35); number >= max(0, lowNumber); number--) {
                 if (!drawnCards.contains(number)) {
                     return new Card(number);
@@ -243,7 +248,7 @@ public class ModernGamePanel extends JPanel {
 
     private Rectangle2D.Float getHandArea(Rectangle2D.Float renderingArea) {
         var player = players.get(PlayerPosition.MYSELF);
-        if (player == null ) {
+        if (player == null) {
             return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var hand = player.getHand();
@@ -258,15 +263,15 @@ public class ModernGamePanel extends JPanel {
         return new Rectangle2D.Float(hand_x_offset, hand_y_offset, hand_width, cardDimension.height);
     }
 
-    private Rectangle2D.Float getCardArea(int number, Rectangle2D.Float area) {
+    private Rectangle getCardArea(int number, Rectangle2D.Float area) {
         var handArea = getHandArea(area);
-        Rectangle2D.Float card = new Rectangle2D.Float();
-        card.width = handArea.height * (float) CardImages.IMG_WIDTH / CardImages.IMG_HEIGHT;
+        var cardDimension = getCardDimension(area);
+        var hand = players.get(PlayerPosition.MYSELF).getHand();
+        assert number < hand.size();
 
-        float card_x_step = (handArea.width - card.width) / (float) (players.get(PlayerPosition.MYSELF).getHand().size() - 1);
-        card.x = handArea.x + number * card_x_step;
-        card.y = handArea.y;
-        return card;
+        float card_x_step = hand.size() == 0 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
+        return new Rectangle(round(handArea.x + number * card_x_step), round(handArea.y),
+                round(cardDimension.width), round(cardDimension.height));
     }
 
     private Rectangle2D.Float getTeamDrawingArea(Rectangle2D.Float renderingArea) {
@@ -342,7 +347,7 @@ public class ModernGamePanel extends JPanel {
     void paintInfo(Graphics2D g2, Rectangle2D.Float infoArea, Dimension cardDimension) {
         float x_step = 30f * infoArea.width / 630f;
         float x_offset = infoArea.x + 120f * infoArea.width / 630f;
-        float y_offset = infoArea.y +5f * infoArea.height / 40f;
+        float y_offset = infoArea.y + 5f * infoArea.height / 40f;
         for (int i = 0; i < lastPlie.size(); i++) {
             int card_x = round(x_offset + x_step * i);
             g2.drawImage(CardImages.getImage(lastPlie.get(i)),
@@ -447,11 +452,20 @@ public class ModernGamePanel extends JPanel {
         float hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
         float hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
         int hand_y_offset = round(playerArea.y + playerArea.height * 20f / 120f);
-        float card_x_step = (hand_width - cardDimension.width) / (float) (hand.size() - 1);
+        float card_x_step = hand.size() == 0 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
-            g2.drawImage(CardImages.getImage(hand.get(i)),
-                    round(hand_x_offset + i * card_x_step), hand_y_offset,
-                    cardDimension.width, cardDimension.height, this);
+            if (i == hoveredCard) {
+                var image = CardImages.getImage(hand.get(i));
+                RescaleOp op = new RescaleOp(0.7f, 0, null);
+                var darken = op.filter(image, null);
+                g2.drawImage(darken,
+                        round(hand_x_offset + i * card_x_step), hand_y_offset,
+                        cardDimension.width, cardDimension.height, this);
+            } else {
+                g2.drawImage(CardImages.getImage(hand.get(i)),
+                        round(hand_x_offset + i * card_x_step), hand_y_offset,
+                        cardDimension.width, cardDimension.height, this);
+            }
         }
 
         // name
@@ -484,7 +498,7 @@ public class ModernGamePanel extends JPanel {
         var hand = player.getHand();
 
         float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        float hand_height = (hand.size()-1) * cardDimension.width / 2.1f + (float)cardDimension.getHeight();
+        float hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float) cardDimension.getHeight();
         float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.height) / (float) (hand.size() - 1);
         var hand_x_offset = leftArea.x + (leftArea.width - cardDimension.height) / 2;
         var hand_y_offset = leftArea.y + (leftArea.height - hand_height) / 2;
@@ -509,8 +523,8 @@ public class ModernGamePanel extends JPanel {
         var hand = player.getHand();
 
         var scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        var hand_height = (hand.size()-1) * cardDimension.width / 2.1f + cardDimension.height;
-        var card_y_step = hand.size() < 2 ? 0 :(hand_height - cardDimension.width) / (float) (hand.size() - 1);
+        var hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.height;
+        var card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = rightArea.x + (rightArea.width - cardDimension.height) / 2;
         var hand_y_offset = rightArea.y + (rightArea.height - hand_height) / 2;
         for (int i = 0; i < hand.size(); i++) {
@@ -591,7 +605,10 @@ public class ModernGamePanel extends JPanel {
         var ia = toInt(getInfoArea(renderingArea));
         var ha = toInt(getHandArea(renderingArea));
         var da = toInt(getTeamDrawingArea(renderingArea));
-        //  var cca = getCardArea(0, renderingArea);
+        if (players.containsKey(PlayerPosition.MYSELF) && players.get(PlayerPosition.MYSELF).getHand().size() > 0) {
+            var cca = getCardArea(0, renderingArea);
+            g2.drawRect(cca.x, cca.y, cca.width, cca.height);
+        }
         g2.drawRect(ca.x, ca.y, ca.width, ca.height);
         g2.drawRect(pa.x, pa.y, pa.width, pa.height);
         g2.drawRect(aa.x, aa.y, aa.width, aa.height);
@@ -604,6 +621,39 @@ public class ModernGamePanel extends JPanel {
         g2.setColor(Color.GREEN);
         g2.drawRect(round(renderingArea.x), round(renderingArea.y),
                 round(renderingArea.width), round(renderingArea.height));
+
+        g2.setColor(Color.BLUE);
+        var clip = g2.getClip().getBounds();
+        g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
+    }
+
+    @Override
+    public void mouseDragged(MouseEvent mouseEvent) {
+
+    }
+
+    @Override
+    public void mouseMoved(MouseEvent mouseEvent) {
+        if (!isInteractive || gameMode != GameMode.GAME) {
+            return;
+        }
+        var card = getCard(mouseEvent.getX(), mouseEvent.getY());
+        var index = card == null ? -1 : players.get(PlayerPosition.MYSELF).getHand().indexOf(card);
+        if (index < 0) {
+            if (hoveredCard != -1) {
+                repaint(getCardArea(hoveredCard, getRenderingDimension()));
+            }
+            hoveredCard = -1;
+            return;
+        }
+        if (index != hoveredCard) {
+            var area = getCardArea(index, getRenderingDimension());
+            if (hoveredCard >= 0) {
+                area = area.union(getCardArea(hoveredCard, getRenderingDimension()));
+            }
+            hoveredCard = index;
+            repaint(area);
+        }
     }
 
     void resizePanel(ComponentEvent evt) {
@@ -611,7 +661,7 @@ public class ModernGamePanel extends JPanel {
         float scale = 530f / area.height;
         float x = 530 / scale;
         float y = 500 / scale;
-        buttonAnnounce.setBounds(round(area.x + x), round(area.y + y),  90, 30);
+        buttonAnnounce.setBounds(round(area.x + x), round(area.y + y), 90, 30);
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
