@@ -1,5 +1,5 @@
 # jass
-![Java CI with Maven](https://github.com/jberclaz/jass/workflows/Java%20CI%20with%20Maven/badge.svg)
+![Java CI with Maven](https://github.com/jberclaz/jass/workflows/Build/badge.svg)
 
 Distributed Jass game for the members of the FLAT(r)
 
