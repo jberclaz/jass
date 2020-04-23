@@ -55,6 +55,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         });
 
         gamePanel.addMouseListener(this);
+        setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }
 
     @Override
