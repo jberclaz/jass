@@ -213,7 +213,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void collectPlie(int playerPosition) {
-        gamePanel.collectPlie();
+//        gamePanel.collectPlie();
+        gamePanel.collectCards(intToPlayerPosition(playerPosition));
     }
 
     @Override

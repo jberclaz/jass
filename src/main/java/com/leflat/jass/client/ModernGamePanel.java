@@ -5,13 +5,12 @@ import com.leflat.jass.common.Card;
 import com.leflat.jass.server.PlayerLeftExpection;
 
 import javax.swing.*;
+import javax.swing.Timer;
 import javax.swing.border.BevelBorder;
 import java.awt.*;
-import java.awt.event.ComponentEvent;
-import java.awt.event.ComponentListener;
-import java.awt.event.MouseEvent;
-import java.awt.event.MouseMotionListener;
+import java.awt.event.*;
 import java.awt.geom.AffineTransform;
+import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
 import java.awt.image.RescaleOp;
 import java.util.List;
@@ -24,7 +23,7 @@ import static java.lang.Math.*;
 public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     enum GameMode {
-        TEAM_DRAWING, GAME, IDLE
+        TEAM_DRAWING, GAME, IDLE, ANIMATION
     }
 
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
@@ -44,6 +43,12 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final JButton buttonAnnounce = new JButton("Annoncer");
     private final JPanel statusPanel = new JPanel();
     private int hoveredCard = -1;
+    private static final float ANIMATION_DURATION_S = 0.3f;
+    private static final int ANIMATION_FRAME_RATE = 20;
+    private final Map<PlayerPosition, Rectangle> animationPositions = new HashMap<>();
+    private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
+    private int animationFrameNumber;
+    private Timer animationTimer;
 
     public ModernGamePanel() {
         super();
@@ -95,10 +100,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         }
         drawnCards.clear();
         lastPlie.clear();
-        var renderingArea = getRenderingDimension();
-        repaint(toInt(getInfoArea(renderingArea))
-                .union(toInt(getCenterArea(renderingArea)))
-                .union(toInt(getInfoArea(renderingArea))));
+        repaint();
     }
 
     public void setPlayer(PlayerPosition position, BasePlayer player) {
@@ -223,6 +225,70 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         return null;
     }
 
+    public void collectCards(PlayerPosition position) {
+        var renderingArea = getRenderingDimension();
+        var centerArea = getCenterArea(renderingArea);
+        var cardDimension = getCardDimension(renderingArea);
+
+        Rectangle2D.Float targetArea = null;
+        switch (position) {
+            case MYSELF:
+                targetArea = getPlayerArea(renderingArea);
+                break;
+            case ACROSS:
+                targetArea = getAcrossArea(renderingArea);
+                break;
+            case LEFT:
+                targetArea = getLeftArea(renderingArea);
+                break;
+            case RIGHT:
+                targetArea = getRightArea(renderingArea);
+                break;
+        }
+        Point animationTarget = new Point(round(targetArea.x + targetArea.width / 2),
+                round(targetArea.y + targetArea.height / 2));
+
+        animationFrameNumber = 1;
+        int frameDurationMs = 1000 / ANIMATION_FRAME_RATE;
+        int totalNbrSteps = round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
+
+        for (var playerPos : PlayerPosition.values()) {
+            var cardPos = getPlayedCardPosition(playerPos, centerArea, cardDimension);
+            int width, height;
+            if (playerPos == PlayerPosition.MYSELF || playerPos == PlayerPosition.ACROSS) {
+                width = cardDimension.width;
+                height = cardDimension.height;
+            } else {
+                height = cardDimension.width;
+                width = cardDimension.height;
+            }
+            animationPositions.put(playerPos,                    new Rectangle(cardPos.x, cardPos.y, width, height));
+            animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - cardPos.x) / totalNbrSteps,
+             (animationTarget.getY() - cardPos.y) / totalNbrSteps));
+        }
+
+        animationTimer = new Timer(frameDurationMs, actionEvent -> {
+            Rectangle repaintArea = null;
+            for (var playerPos : PlayerPosition.values()) {
+                var pos = animationPositions.get(playerPos);
+                var step = animationSteps.get(playerPos);
+                repaintArea = repaintArea == null ? pos : repaintArea.union(pos);
+                pos.x += step.x;
+                pos.y += step.y;
+                repaintArea = repaintArea.union(pos);
+            }
+            animationFrameNumber++;
+            repaint(repaintArea);
+            if (animationFrameNumber >= totalNbrSteps) {
+                animationTimer.stop();
+                collectPlie();
+                gameMode = GameMode.GAME;
+            }
+        });
+        gameMode = GameMode.ANIMATION;
+        animationTimer.start();
+    }
+
     private void repaintPlayerArea(PlayerPosition position) {
         var area = getRenderingDimension();
         switch (position) {
@@ -305,11 +371,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     Rectangle2D.Float getCenterArea(Rectangle2D.Float renderingArea) {
-        float carpet_width = renderingArea.width * 390f / 630f;
-        float carpet_height = renderingArea.height * 210f / 530f;
-        float carpet_x_offset = renderingArea.x + renderingArea.width * 120f / 630f;
-        float carpet_y_offset = renderingArea.y + renderingArea.height * 120f / 530f;
-        return new Rectangle2D.Float(carpet_x_offset, carpet_y_offset, carpet_width, carpet_height);
+        float width = renderingArea.width * 390f / 630f;
+        float height = renderingArea.height * 210f / 530f;
+        float x = renderingArea.x + renderingArea.width * 120f / 630f;
+        float y = renderingArea.y + renderingArea.height * 120f / 530f;
+        return new Rectangle2D.Float(x, y, width, height);
     }
 
     Rectangle2D.Float getPlayerArea(Rectangle2D.Float renderingArea) {
@@ -346,6 +412,29 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float height = renderingArea.height * 40f / 530f;
         float y = renderingArea.y + renderingArea.height * 450f / 530f;
         return new Rectangle2D.Float(renderingArea.x, y, width, height);
+    }
+
+    Point getPlayedCardPosition(PlayerPosition position, Rectangle2D.Float centerArea, Dimension cardDimension) {
+        int x = 0, y = 0;
+        switch (position) {
+            case MYSELF:
+                x = round(centerArea.x + (centerArea.width - cardDimension.width) / 2);
+                y = round(centerArea.y + centerArea.height - cardDimension.height - cardDimension.height / 12f);
+                break;
+            case ACROSS:
+                x = round(centerArea.x + (centerArea.width - cardDimension.width) / 2);
+                y = round(centerArea.y + cardDimension.height / 12f);
+                break;
+            case LEFT:
+                x = round(centerArea.x + cardDimension.width);
+                y = round(centerArea.y + (centerArea.height - cardDimension.width) / 2f);
+                break;
+            case RIGHT:
+                x = round(centerArea.x + centerArea.width - cardDimension.width - cardDimension.height);
+                y = round(centerArea.y + (centerArea.height - cardDimension.width) / 2f);
+                break;
+        }
+        return new Point(x, y);
     }
 
     void paintInfo(Graphics2D g2, Rectangle2D.Float infoArea, Dimension cardDimension) {
@@ -408,42 +497,25 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                             card_y_offset, cardDimension.width, cardDimension.height, this);
                 }
             }
-        } else {
+        } else if (gameMode == GameMode.GAME) {
             for (var entry : playedCards.entrySet()) {
+                var position = getPlayedCardPosition(entry.getKey(), centerArea, cardDimension);
+                var xform = new AffineTransform();
+                xform.translate(position.x, position.y);
+                xform.scale(scale, scale);
                 switch (entry.getKey()) {
-                    case MYSELF:
-                        g2.drawImage(CardImages.getImage(entry.getValue()),
-                                round(centerArea.x + (centerArea.width - cardDimension.width) / 2),
-                                round(centerArea.y + centerArea.height - cardDimension.height - cardDimension.height / 12f),
-                                cardDimension.width, cardDimension.height, this);
-                        break;
-                    case ACROSS:
-                        g2.drawImage(CardImages.getImage(entry.getValue()),
-                                round(centerArea.x + (centerArea.width - cardDimension.width) / 2),
-                                round(centerArea.y + cardDimension.height / 12f),
-                                cardDimension.width, cardDimension.height, this);
-                        break;
                     case LEFT:
-                        var xform = new AffineTransform();
-                        xform.translate(centerArea.x + cardDimension.width,
-                                centerArea.y + (centerArea.height - cardDimension.width) / 2f);
-                        xform.scale(scale, scale);
                         xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
                         xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-                        g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
                         break;
                     case RIGHT:
-                        xform = new AffineTransform();
-                        xform.translate(centerArea.x + centerArea.width - cardDimension.width - cardDimension.height,
-                                centerArea.y + (centerArea.height - cardDimension.width) / 2f);
-                        xform.scale(scale, scale);
                         xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
                         xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-                        g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
                         break;
                 }
+                g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
             }
         }
     }
@@ -547,6 +619,32 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         g2.drawString(player.getName(), nameX, nameY);
     }
 
+    void paintAnimation(Graphics2D g2, Rectangle2D.Float renderingArea, Dimension cardDimension) {
+        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        for (var playerPosition : players.keySet()) {
+            var card = playedCards.get(playerPosition);
+            var pos = animationPositions.get(playerPosition);
+
+            var xform = new AffineTransform();
+            xform.translate(pos.x, pos.y);
+            xform.scale(scale, scale);
+            switch (playerPosition) {
+                case LEFT:
+                    xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                    xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
+                    xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                    break;
+                case RIGHT:
+                    xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                    xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
+                    xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                    break;
+            }
+            g2.drawRenderedImage(CardImages.getImage(card), xform);
+            g2.drawImage(CardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
+        }
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -562,6 +660,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var centerArea = getCenterArea(renderingArea);
         if (g2.getClip().intersects(centerArea)) {
             paintCenter(g2, centerArea, cardDimension);
+        }
+
+        if (gameMode == GameMode.ANIMATION) {
+            paintAnimation(g2, renderingArea, cardDimension);
         }
 
         // draw cards
@@ -670,7 +772,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         buttonAnnounce.setBounds(round(area.x + x), round(area.y + y), size.width, size.height);
 
         statusPanel.setBounds(round(area.x), round(area.y + 490 / scale),
-                round(400 /scale), round(40 /scale));
+                round(400 / scale), round(40 / scale));
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
