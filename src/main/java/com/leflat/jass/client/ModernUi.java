@@ -77,23 +77,40 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     private void connectDialog() {
-        DialogConnect dc;
-        if (myName != null && serverHost != null) {
-            dc = new DialogConnect(this, myName, serverHost);
-        } else {
-            dc = new DialogConnect(this);
-        }
-        dc.setLocationRelativeTo(this);
-        dc.setVisible(true);
-        if (!dc.ok) {
-            this.setVisible(false);
-        }
-        myName = dc.name;
-        serverHost = dc.host;
-        int gameId = myself.connect(dc.name, dc.host, dc.gameId);
-        if (gameId >= 0) {
-            setGameId(gameId);
-        }
+        int gameId = -1;
+        do {
+            DialogConnect dc;
+            if (myName != null && serverHost != null) {
+                dc = new DialogConnect(this, myName, serverHost);
+            } else {
+                dc = new DialogConnect(this);
+            }
+            dc.setLocationRelativeTo(this);
+            dc.setVisible(true);
+            if (!dc.ok) {
+                this.setVisible(false);
+                this.dispose();
+                return;
+            }
+            myName = dc.name;
+            serverHost = dc.host;
+            gameId = myself.connect(dc.name, dc.host, dc.gameId);
+            if (gameId >= 0) {
+                setGameId(gameId);
+            } else {
+                switch (gameId) {
+                    case ConnectionError.SERVER_UNREACHABLE:
+                        JOptionPane.showMessageDialog(this, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
+                    case ConnectionError.GAME_FULL:
+                        JOptionPane.showMessageDialog(this, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
+                    case ConnectionError.UNKNOWN_GAME:
+                        JOptionPane.showMessageDialog(this, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
+                        break;
+                }
+            }
+        }while (gameId <0);
     }
 
     void exitUi(WindowEvent e) {
