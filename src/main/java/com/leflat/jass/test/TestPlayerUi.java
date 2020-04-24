@@ -30,6 +30,9 @@ public class TestPlayerUi {
         player.setPlayerInfo(player2);
         //waitSec(1);
         player.setPlayerInfo(player3);
+
+        waitSec(1);
+
         //waitSec(1);
         //player.chooseTeamSelectionMethod();
 

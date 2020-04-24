@@ -41,7 +41,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private int atoutColor = -1;
     private boolean isInteractive = false;
     private final JButton buttonAnnounce = new JButton("Annoncer");
-    private final JPanel statusPanel = new JPanel();
+    private final ModernStatusPanel statusPanel = new ModernStatusPanel();
     private int hoveredCard = -1;
     private static final float ANIMATION_DURATION_S = 0.3f;//6; //0.3f;
     private static final int ANIMATION_FRAME_RATE = 20; //1;// 20;
@@ -49,6 +49,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
     private int animationFrameNumber;
     private Timer animationTimer;
+    private boolean announcementButtonPressed;
 
     public ModernGamePanel() {
         super();
@@ -63,8 +64,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         setLayout(null);
         add(buttonAnnounce);
         buttonAnnounce.setEnabled(false);
+        buttonAnnounce.addActionListener(this::pressButtonAnnouncement);
         add(statusPanel);
-        statusPanel.setBorder(new BevelBorder(BevelBorder.LOWERED));
 
         addMouseMotionListener(this);
         addComponentListener(new ComponentListener() {
@@ -290,6 +291,26 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         });
         gameMode = GameMode.ANIMATION;
         animationTimer.start();
+    }
+
+    public void setAnnouncementEnabled(boolean enabled) {
+        buttonAnnounce.setEnabled(enabled);
+        if (enabled) {
+            announcementButtonPressed = false;
+        }
+    }
+
+    public boolean announcementPressed() {
+        return announcementButtonPressed;
+    }
+
+    public void displayStatusMessage(String message) {
+        statusPanel.displayMessage(message);
+    }
+
+    private void pressButtonAnnouncement(ActionEvent evt) {
+        buttonAnnounce.setEnabled(false);
+        announcementButtonPressed = true;
     }
 
     private void repaintPlayerArea(PlayerPosition position) {

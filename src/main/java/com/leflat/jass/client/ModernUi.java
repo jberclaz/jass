@@ -230,7 +230,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void collectPlie(int playerPosition) {
-//        gamePanel.collectPlie();
         gamePanel.collectCards(intToPlayerPosition(playerPosition));
     }
 
@@ -241,12 +240,12 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public boolean hasPlayerAnnounced() {
-        return false;
+        return gamePanel.announcementPressed();
     }
 
     @Override
     public void displayStatusMessage(String message) {
-
+        gamePanel.displayStatusMessage(message);
     }
 
     @Override
@@ -270,7 +269,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setAnnouncementEnabled(boolean enable) {
-
+        gamePanel.setAnnouncementEnabled(enable);
     }
 
     @Override

@@ -55,6 +55,10 @@ public class TestClient {
             e.printStackTrace();
         }
 
+        frame.displayStatusMessage("Status message very very very very very very long long long long long long message");
+
+        waitSec(2);
+/*
         frame.prepareGame();
 
         frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
@@ -66,6 +70,8 @@ public class TestClient {
 
         frame.setAtout(Card.COLOR_HEART, 0);
         frame.setScore(157, 257);
+        */
+
     }
 
     void waitSec(float seconds) {
