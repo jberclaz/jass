@@ -43,8 +43,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final JButton buttonAnnounce = new JButton("Annoncer");
     private final JPanel statusPanel = new JPanel();
     private int hoveredCard = -1;
-    private static final float ANIMATION_DURATION_S = 0.3f;
-    private static final int ANIMATION_FRAME_RATE = 20;
+    private static final float ANIMATION_DURATION_S = 0.3f;//6; //0.3f;
+    private static final int ANIMATION_FRAME_RATE = 20; //1;// 20;
     private final Map<PlayerPosition, Rectangle> animationPositions = new HashMap<>();
     private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
     private int animationFrameNumber;
@@ -123,7 +123,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     public void setPlayedCard(PlayerPosition position, Card card) {
         playedCards.put(position, card);
-        cardAngles.put(position, random.nextFloat() * 10 - 5f);
+        // random rotation disable until we fix the animation rendering
+        cardAngles.put(position, 0f); //random.nextFloat() * 10 - 5f);
         repaint(toInt(getCenterArea(getRenderingDimension())));
     }
 
@@ -248,7 +249,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         Point animationTarget = new Point(round(targetArea.x + targetArea.width / 2),
                 round(targetArea.y + targetArea.height / 2));
 
-        animationFrameNumber = 1;
+        animationFrameNumber = 0;
         int frameDurationMs = 1000 / ANIMATION_FRAME_RATE;
         int totalNbrSteps = round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
 
@@ -262,9 +263,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 height = cardDimension.width;
                 width = cardDimension.height;
             }
-            animationPositions.put(playerPos,                    new Rectangle(cardPos.x, cardPos.y, width, height));
-            animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - cardPos.x) / totalNbrSteps,
-             (animationTarget.getY() - cardPos.y) / totalNbrSteps));
+            int start_x = cardPos.x + width/2;
+            int start_y = cardPos.y + height / 2;
+            animationPositions.put(playerPos, new Rectangle(cardPos.x, cardPos.y, width, height));
+            animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
+             (animationTarget.getY() - start_y) / totalNbrSteps));
         }
 
         animationTimer = new Timer(frameDurationMs, actionEvent -> {
@@ -272,7 +275,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             for (var playerPos : PlayerPosition.values()) {
                 var pos = animationPositions.get(playerPos);
                 var step = animationSteps.get(playerPos);
-                repaintArea = repaintArea == null ? pos : repaintArea.union(pos);
+                repaintArea = repaintArea == null ? new Rectangle(pos) : repaintArea.union(pos);
                 pos.x += step.x;
                 pos.y += step.y;
                 repaintArea = repaintArea.union(pos);
@@ -530,7 +533,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         int hand_y_offset = round(playerArea.y + playerArea.height * 20f / 120f);
         float card_x_step = hand.size() < 2 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
-            if (i == hoveredCard) {
+            if (i == hoveredCard && isInteractive) {
                 var image = CardImages.getImage(hand.get(i));
                 RescaleOp op = new RescaleOp(0.7f, 0, null);
                 var darken = op.filter(image, null);
@@ -574,8 +577,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var hand = player.getHand();
 
         float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        float hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float) cardDimension.getHeight();
-        float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.height) / (float) (hand.size() - 1);
+        float hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float) cardDimension.getWidth();
+        float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = leftArea.x + (leftArea.width - cardDimension.height) / 2;
         var hand_y_offset = leftArea.y + (leftArea.height - hand_height) / 2;
         for (int i = hand.size() - 1; i >= 0; i--) {
@@ -599,7 +602,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var hand = player.getHand();
 
         var scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
-        var hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.height;
+        var hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float)cardDimension.getWidth();
         var card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = rightArea.x + (rightArea.width - cardDimension.height) / 2;
         var hand_y_offset = rightArea.y + (rightArea.height - hand_height) / 2;
@@ -641,7 +644,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     break;
             }
             g2.drawRenderedImage(CardImages.getImage(card), xform);
-            g2.drawImage(CardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
+            var currentColor = g2.getColor();
+            g2.setColor(Color.CYAN);
+            g2.drawRect(pos.x, pos.y, pos.width, pos.height);
+            g2.setColor(currentColor);
+         //   g2.drawImage(CardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
         }
     }
 
