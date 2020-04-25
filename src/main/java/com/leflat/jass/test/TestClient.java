@@ -37,14 +37,6 @@ public class TestClient {
         var frame = uiFactory.getUi(player);
 
         frame.showUi(true);
-        var team = new Team(0);
-        team.addPlayer(new ClientPlayer(0, "Hhip"));
-        team.addPlayer(new ClientPlayer(1, "Mono"));
-        frame.displayGameResult(team, true);
-        List<BasePlayer> players = new ArrayList<>();
-        players.add(new ClientPlayer(0, "Berte"));
-        players.add(new ClientPlayer(0, "Hhip"));
-        players.add(new ClientPlayer(0, "JB"));
 
         try {
             frame.setPlayer(new ClientPlayer(0, "JB"), 0);
@@ -55,14 +47,19 @@ public class TestClient {
             e.printStackTrace();
         }
 
-        frame.displayStatusMessage("Status message very very very very very very long long long long long long message");
-
-        waitSec(2);
+        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
+        frame.setOtherPlayersHands(9);
+        frame.setPlayedCard(new Card(Card.COLOR_HEART, Card.RANK_BOURG), 0);
+        frame.setPlayedCard(new Card(Card.COLOR_HEART, Card.RANK_DAME), 1);
+        frame.setPlayedCard(new Card(Card.COLOR_HEART, Card.RANK_10), 2);
+        frame.setPlayedCard(new Card(Card.COLOR_HEART, Card.RANK_6), 3);
+        frame.collectPlie(2);
+        frame.setPlayedCard(new Card(Card.COLOR_SPADE, Card.RANK_BOURG), 2);
 /*
         frame.prepareGame();
 
-        frame.setPlayerHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
-        frame.setOtherPlayersHands(9);
+
+
 
         waitSec(2);
 

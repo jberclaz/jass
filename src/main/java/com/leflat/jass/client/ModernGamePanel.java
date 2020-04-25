@@ -25,6 +25,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         TEAM_DRAWING, GAME, IDLE, ANIMATION
     }
 
+    private final static boolean DEBUG = false;
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private static final float ASPECT_RATIO = 630f / 530;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
@@ -124,6 +125,13 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     public void setPlayedCard(PlayerPosition position, Card card) {
+        while (animationTimer != null && animationTimer.isRunning()) {
+            try {
+                Thread.sleep(300);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        }
         playedCards.put(position, card);
         // random rotation disable until we fix the animation rendering
         cardAngles.put(position, 0f); //random.nextFloat() * 10 - 5f);
@@ -679,10 +687,12 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     break;
             }
             g2.drawRenderedImage(SwissCardImages.getImage(card), xform);
-            var currentColor = g2.getColor();
-            g2.setColor(Color.CYAN);
-            g2.drawRect(pos.x, pos.y, pos.width, pos.height);
-            g2.setColor(currentColor);
+            if (DEBUG) {
+                var currentColor = g2.getColor();
+                g2.setColor(Color.CYAN);
+                g2.drawRect(pos.x, pos.y, pos.width, pos.height);
+                g2.setColor(currentColor);
+            }
          //   g2.drawImage(SwissCardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
         }
     }
@@ -743,36 +753,37 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             paintInfo(g2, infoArea, cardDimension);
         }
 
-        // DEBUG
-        g2.setColor(Color.RED);
-        var ca = toInt(getCenterArea(renderingArea));
-        var pa = toInt(getPlayerArea(renderingArea));
-        var aa = toInt(getAcrossArea(renderingArea));
-        var la = toInt(getLeftArea(renderingArea));
-        var ra = toInt(getRightArea(renderingArea));
-        var ia = toInt(getInfoArea(renderingArea));
-        var ha = toInt(getHandArea(renderingArea));
-        var da = toInt(getTeamDrawingArea(renderingArea));
-        if (players.containsKey(PlayerPosition.MYSELF) && players.get(PlayerPosition.MYSELF).getHand().size() > 0) {
-            var cca = getCardArea(0, renderingArea);
-            g2.drawRect(cca.x, cca.y, cca.width, cca.height);
+        if (DEBUG) {
+            g2.setColor(Color.RED);
+            var ca = toInt(getCenterArea(renderingArea));
+            var pa = toInt(getPlayerArea(renderingArea));
+            var aa = toInt(getAcrossArea(renderingArea));
+            var la = toInt(getLeftArea(renderingArea));
+            var ra = toInt(getRightArea(renderingArea));
+            var ia = toInt(getInfoArea(renderingArea));
+            var ha = toInt(getHandArea(renderingArea));
+            var da = toInt(getTeamDrawingArea(renderingArea));
+            if (players.containsKey(PlayerPosition.MYSELF) && players.get(PlayerPosition.MYSELF).getHand().size() > 0) {
+                var cca = getCardArea(0, renderingArea);
+                g2.drawRect(cca.x, cca.y, cca.width, cca.height);
+            }
+            g2.drawRect(ca.x, ca.y, ca.width, ca.height);
+            g2.drawRect(pa.x, pa.y, pa.width, pa.height);
+            g2.drawRect(aa.x, aa.y, aa.width, aa.height);
+            g2.drawRect(la.x, la.y, la.width, la.height);
+            g2.drawRect(ra.x, ra.y, ra.width, ra.height);
+            g2.drawRect(ia.x, ia.y, ia.width, ia.height);
+            g2.drawRect(ha.x, ha.y, ha.width, ha.height);
+            g2.drawRect(da.x, da.y, da.width, da.height);
+
+            g2.setColor(Color.GREEN);
+            g2.drawRect(round(renderingArea.x), round(renderingArea.y),
+                    round(renderingArea.width), round(renderingArea.height));
+
+            g2.setColor(Color.BLUE);
+            var clip = g2.getClip().getBounds();
+            g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
         }
-        g2.drawRect(ca.x, ca.y, ca.width, ca.height);
-        g2.drawRect(pa.x, pa.y, pa.width, pa.height);
-        g2.drawRect(aa.x, aa.y, aa.width, aa.height);
-        g2.drawRect(la.x, la.y, la.width, la.height);
-        g2.drawRect(ra.x, ra.y, ra.width, ra.height);
-        g2.drawRect(ia.x, ia.y, ia.width, ia.height);
-        g2.drawRect(ha.x, ha.y, ha.width, ha.height);
-        g2.drawRect(da.x, da.y, da.width, da.height);
-
-        g2.setColor(Color.GREEN);
-        g2.drawRect(round(renderingArea.x), round(renderingArea.y),
-                round(renderingArea.width), round(renderingArea.height));
-
-        g2.setColor(Color.BLUE);
-        var clip = g2.getClip().getBounds();
-        g2.drawRect(clip.x, clip.y, clip.width - 1, clip.height - 1);
     }
 
     @Override

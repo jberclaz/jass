@@ -230,6 +230,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void prepareGame() {
         gamePanel.setMode(ModernGamePanel.GameMode.GAME);
+        gamePanel.clearCards();
     }
 
     @Override
