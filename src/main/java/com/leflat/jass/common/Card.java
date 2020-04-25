@@ -42,7 +42,7 @@ public class Card implements Comparable<Card> {
 
     public static int atout;
 
-    private int number;
+    private final int number;
 
     public Card(int cardNumber) {
         number = cardNumber;

@@ -4,9 +4,8 @@ import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.server.PlayerLeftExpection;
 
-import javax.swing.*;
 import javax.swing.Timer;
-import javax.swing.border.BevelBorder;
+import javax.swing.*;
 import java.awt.*;
 import java.awt.event.*;
 import java.awt.geom.AffineTransform;
@@ -27,9 +26,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
-    private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private static final float ASPECT_RATIO = 630f / 530;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
+    private static final int DOT_SIZE = 7;
+    private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private GameMode gameMode = GameMode.IDLE;
     private final Set<Integer> drawnCards = new HashSet<>();
     private final List<Card> lastPlie = new ArrayList<>();
@@ -50,6 +50,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private int animationFrameNumber;
     private Timer animationTimer;
     private boolean announcementButtonPressed;
+    private PlayerPosition atoutChoser = PlayerPosition.NONE;
 
     public ModernGamePanel() {
         super();
@@ -232,21 +233,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var centerArea = getCenterArea(renderingArea);
         var cardDimension = getCardDimension(renderingArea);
 
-        Rectangle2D.Float targetArea = null;
-        switch (position) {
-            case MYSELF:
-                targetArea = getPlayerArea(renderingArea);
-                break;
-            case ACROSS:
-                targetArea = getAcrossArea(renderingArea);
-                break;
-            case LEFT:
-                targetArea = getLeftArea(renderingArea);
-                break;
-            case RIGHT:
-                targetArea = getRightArea(renderingArea);
-                break;
-        }
+        Rectangle2D.Float targetArea = getPlayerArea(position);
         Point animationTarget = new Point(round(targetArea.x + targetArea.width / 2),
                 round(targetArea.y + targetArea.height / 2));
 
@@ -308,6 +295,16 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         statusPanel.displayMessage(message);
     }
 
+    public void setAtoutChoser(PlayerPosition position) {
+        if (atoutChoser != PlayerPosition.NONE) {
+            repaint(toInt(getPlayerArea(atoutChoser)));
+        }
+        atoutChoser = position;
+        if (position != PlayerPosition.NONE) {
+            repaint(toInt(getPlayerArea(position)));
+        }
+    }
+
     private void pressButtonAnnouncement(ActionEvent evt) {
         buttonAnnounce.setEnabled(false);
         announcementButtonPressed = true;
@@ -334,7 +331,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private Dimension getCardDimension(Rectangle2D.Float renderingArea) {
         float scale = renderingArea.height / 530f;
         float height = 96f * scale;
-        float width = height / CardImages.IMG_HEIGHT * CardImages.IMG_WIDTH;
+        float width = height / SwissCardImages.IMG_HEIGHT * SwissCardImages.IMG_WIDTH;
         var dim = new Dimension();
         dim.setSize(width, height);
         return dim;
@@ -467,11 +464,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float y_offset = infoArea.y + 5f * infoArea.height / 40f;
         for (int i = 0; i < lastPlie.size(); i++) {
             int card_x = round(x_offset + x_step * i);
-            g2.drawImage(CardImages.getImage(lastPlie.get(i)),
+            g2.drawImage(SwissCardImages.getImage(lastPlie.get(i)),
                     card_x, round(y_offset),
                     card_x + cardDimension.width, round(y_offset + 35f / 40f * infoArea.height),
                     0, 0,
-                    CardImages.IMG_WIDTH, round(35f / 96f * CardImages.IMG_HEIGHT),
+                    SwissCardImages.IMG_WIDTH, round(35f / 96f * SwissCardImages.IMG_HEIGHT),
                     this);
         }
         float last_plie_x = 20f / 40 * infoArea.height;
@@ -483,7 +480,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     infoArea.y + last_plie_x);
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
             int colorSize = round(15f / 40f * infoArea.height);
-            g2.drawImage(CardImages.getColorImage(atoutColor),
+            g2.drawImage(SwissCardImages.getColorImage(atoutColor),
                     round(infoArea.x + atout_x + stringWidth),
                     round(infoArea.y + 8f / 40f * infoArea.height),
                     colorSize, colorSize, this);
@@ -509,7 +506,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         g2.fillRoundRect(round(centerArea.x), round(centerArea.y),
                 round(centerArea.width), round(centerArea.height), round(centerArea.width / 20), round(centerArea.width / 20));
         g2.setColor(color);
-        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        float scale = (float) cardDimension.height / SwissCardImages.IMG_HEIGHT;
 
         if (gameMode == GameMode.TEAM_DRAWING) {
             for (int i = 0; i < 36; i++) {
@@ -517,7 +514,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 float card_x_step = (centerArea.width - 2 * card_x_offset - cardDimension.width) / 35.0f;
                 int card_y_offset = round((centerArea.height - cardDimension.height) / 2 + centerArea.y);
                 if (!drawnCards.contains(i)) {
-                    g2.drawImage(CardImages.getBackImage(), round(centerArea.x + card_x_offset + i * card_x_step),
+                    g2.drawImage(SwissCardImages.getBackImage(), round(centerArea.x + card_x_offset + i * card_x_step),
                             card_y_offset, cardDimension.width, cardDimension.height, this);
                 }
             }
@@ -529,17 +526,17 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 xform.scale(scale, scale);
                 switch (entry.getKey()) {
                     case LEFT:
-                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                        xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
-                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                        xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                         break;
                     case RIGHT:
-                        xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                        xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
                         xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
-                        xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                        xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                         break;
                 }
-                g2.drawRenderedImage(CardImages.getImage(entry.getValue()), xform);
+                g2.drawRenderedImage(SwissCardImages.getImage(entry.getValue()), xform);
             }
         }
     }
@@ -555,14 +552,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float card_x_step = hand.size() < 2 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = 0; i < hand.size(); i++) {
             if (i == hoveredCard && isInteractive) {
-                var image = CardImages.getImage(hand.get(i));
+                var image = SwissCardImages.getImage(hand.get(i));
                 RescaleOp op = new RescaleOp(0.7f, 0, null);
                 var darken = op.filter(image, null);
                 g2.drawImage(darken,
                         round(hand_x_offset + i * card_x_step), hand_y_offset,
                         cardDimension.width, cardDimension.height, this);
             } else {
-                g2.drawImage(CardImages.getImage(hand.get(i)),
+                g2.drawImage(SwissCardImages.getImage(hand.get(i)),
                         round(hand_x_offset + i * card_x_step), hand_y_offset,
                         cardDimension.width, cardDimension.height, this);
             }
@@ -572,6 +569,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameX = playerArea.x + playerArea.width * 30f / 390f;
         float nameY = playerArea.y + playerArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
+
+        if (atoutChoser == PlayerPosition.MYSELF) {
+            int width = g2.getFontMetrics().stringWidth(player.getName());
+            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        }
     }
 
     void paintAcrossArea(Graphics2D g2, Rectangle2D.Float topArea, Dimension cardDimension) {
@@ -582,7 +584,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var hand_y_offset = round(topArea.y + topArea.height * 20f / 120f);
         var card_x_step = hand.size() < 2 ? 0 : (hand_width - cardDimension.width) / (float) (hand.size() - 1);
         for (int i = hand.size() - 1; i >= 0; i--) {
-            g2.drawImage(CardImages.getImage(hand.get(i)),
+            g2.drawImage(SwissCardImages.getImage(hand.get(i)),
                     round(hand_x_offset + i * card_x_step), hand_y_offset,
                     cardDimension.width, cardDimension.height, this);
         }
@@ -591,13 +593,18 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameX = topArea.x + topArea.width * 30f / 390f;
         float nameY = topArea.y + topArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
+
+        if (atoutChoser == PlayerPosition.ACROSS) {
+            int width = g2.getFontMetrics().stringWidth(player.getName());
+            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        }
     }
 
     void paintLeftArea(Graphics2D g2, Rectangle2D.Float leftArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.LEFT);
         var hand = player.getHand();
 
-        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        float scale = (float) cardDimension.height / SwissCardImages.IMG_HEIGHT;
         float hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float) cardDimension.getWidth();
         float card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = leftArea.x + (leftArea.width - cardDimension.height) / 2;
@@ -606,23 +613,26 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             var xform = new AffineTransform();
             xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
             xform.scale(scale, scale);
-            xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+            xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
             xform.rotate(toRadians(90));
-            xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-            g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
+            xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+            g2.drawRenderedImage(SwissCardImages.getImage(hand.get(i)), xform);
         }
 
         // name
         float nameX = leftArea.x + leftArea.width * 20f / 120f;
         float nameY = leftArea.y + min(leftArea.height * 90f / 450f, hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
+        if (atoutChoser == PlayerPosition.LEFT) {
+            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
+        }
     }
 
     void paintRightArea(Graphics2D g2, Rectangle2D.Float rightArea, Dimension cardDimension) {
         var player = players.get(PlayerPosition.RIGHT);
         var hand = player.getHand();
 
-        var scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        var scale = (float) cardDimension.height / SwissCardImages.IMG_HEIGHT;
         var hand_height = (hand.size() - 1) * cardDimension.width / 2.1f + (float)cardDimension.getWidth();
         var card_y_step = hand.size() < 2 ? 0 : (hand_height - cardDimension.width) / (float) (hand.size() - 1);
         var hand_x_offset = rightArea.x + (rightArea.width - cardDimension.height) / 2;
@@ -631,20 +641,24 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             var xform = new AffineTransform();
             xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
             xform.scale(scale, scale);
-            xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+            xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
             xform.rotate(toRadians(-90));
-            xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
-            g2.drawRenderedImage(CardImages.getImage(hand.get(i)), xform);
+            xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+            g2.drawRenderedImage(SwissCardImages.getImage(hand.get(i)), xform);
         }
 
         // name
         float nameX = rightArea.x + rightArea.width * 20f / 120f;
         float nameY = rightArea.y + min(round(rightArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
+
+        if (atoutChoser == PlayerPosition.RIGHT) {
+            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
+        }
     }
 
     void paintAnimation(Graphics2D g2, Rectangle2D.Float renderingArea, Dimension cardDimension) {
-        float scale = (float) cardDimension.height / CardImages.IMG_HEIGHT;
+        float scale = (float) cardDimension.height / SwissCardImages.IMG_HEIGHT;
         for (var playerPosition : players.keySet()) {
             var card = playedCards.get(playerPosition);
             var pos = animationPositions.get(playerPosition);
@@ -654,22 +668,22 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             xform.scale(scale, scale);
             switch (playerPosition) {
                 case LEFT:
-                    xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                    xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
                     xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
-                    xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                    xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                     break;
                 case RIGHT:
-                    xform.translate(CardImages.IMG_HEIGHT / 2f, CardImages.IMG_WIDTH / 2f);
+                    xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
                     xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
-                    xform.translate(-CardImages.IMG_WIDTH / 2f, -CardImages.IMG_HEIGHT / 2f);
+                    xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                     break;
             }
-            g2.drawRenderedImage(CardImages.getImage(card), xform);
+            g2.drawRenderedImage(SwissCardImages.getImage(card), xform);
             var currentColor = g2.getColor();
             g2.setColor(Color.CYAN);
             g2.drawRect(pos.x, pos.y, pos.width, pos.height);
             g2.setColor(currentColor);
-         //   g2.drawImage(CardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
+         //   g2.drawImage(SwissCardImages.getImage(card), (int) round(pos.getX()), (int) round(pos.getY()), cardDimension.width, cardDimension.height, this);
         }
     }
 
@@ -805,5 +819,20 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     Rectangle toInt(Rectangle2D.Float rect) {
         return new Rectangle(round(rect.x), round(rect.y), round(rect.width), round(rect.height));
+    }
+
+    Rectangle2D.Float getPlayerArea(PlayerPosition position) {
+        var renderingArea = getRenderingDimension();
+        switch(position) {
+            case MYSELF:
+                return getPlayerArea(renderingArea);
+            case ACROSS:
+                return getAcrossArea(renderingArea);
+            case LEFT:
+                return getLeftArea(renderingArea);
+            case RIGHT:
+                return getRightArea(renderingArea);
+        }
+        return null;
     }
 }

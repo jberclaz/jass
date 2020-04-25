@@ -1,5 +1,5 @@
 package com.leflat.jass.client;
 
 public enum PlayerPosition {
-    MYSELF, LEFT, RIGHT, ACROSS
+    MYSELF, LEFT, RIGHT, ACROSS, NONE
 }
