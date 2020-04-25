@@ -20,7 +20,7 @@ import java.text.ParseException;
 
 public class DialogConnect extends javax.swing.JDialog {
     private static final String INITIAL_NAME = "Joueur";
-    private static final String INITIAL_HOST = "ec2-18-216-29-52.us-east-2.compute.amazonaws.com";
+    private static final String INITIAL_HOST = "localhost";
     boolean ok = false;
     String name, host;
     int gameId;
@@ -176,6 +176,8 @@ public class DialogConnect extends javax.swing.JDialog {
         gridBagConstraints1.fill = java.awt.GridBagConstraints.BOTH;
         gridBagConstraints1.insets = new java.awt.Insets(10, 103, 10, 0);
         getContentPane().add(jButtonCancel, gridBagConstraints1);
+
+        getRootPane().setDefaultButton(jButtonOk);
     }//GEN-END:initComponents
 
     private void jButtonCancelActionPerformed(java.awt.event.ActionEvent evt) {//GEN-FIRST:event_jButtonCancelActionPerformed

@@ -8,11 +8,11 @@ import java.io.IOException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class CardImages {
+public class SwissCardImages {
     private final static Logger LOGGER = Logger.getLogger(CardImages.class.getName());
-    public static final int IMG_WIDTH = 71;
-    public static final int IMG_HEIGHT = 96;
-    private static final String IMG_PATH = "pics/";
+    public static final int IMG_WIDTH = 193;
+    public static final int IMG_HEIGHT = 300;
+    private static final String IMG_PATH = "pics/swiss/";
     private static final BufferedImage[] images = new BufferedImage[36];
     private static BufferedImage backImage;
     private static final BufferedImage[] colorImages = new BufferedImage[4];
@@ -35,10 +35,9 @@ public class CardImages {
             try {
                 backImage = ImageIO.read(backImagePath);
             } catch (IOException e) {
-                LOGGER.log(Level.SEVERE,"Unable to open image " + backImage, e);
+                LOGGER.log(Level.SEVERE, "Unable to open image " + backImage, e);
             }
-        }
-        else {
+        } else {
             LOGGER.severe("Unable to locate back card image");
         }
         for (int i = 0; i < 4; i++) {
