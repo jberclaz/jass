@@ -166,11 +166,11 @@ public class GameController extends Thread {
     Plie playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
         var plie = new Plie();
 
-        for (int i = 0; i < 4; i++) {     // demande de jouer
+        for (int i = 0; i < 4; i++) {       // demande de jouer
             var player = players.get((startingPlayer + i) % 4);
             var card = player.play();
 
-            for (int j = 1; j < 4; j++) {             // envoie la carte jouée aux autres
+            for (int j = 1; j < 4; j++) {   // envoie la carte jouée aux autres
                 players.get((startingPlayer + i + j) % 4).setPlayedCard(player, card);
             }
 

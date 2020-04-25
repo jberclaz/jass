@@ -279,9 +279,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             animationFrameNumber++;
             repaint(repaintArea);
             if (animationFrameNumber >= totalNbrSteps) {
-                animationTimer.stop();
-                collectPlie();
                 gameMode = GameMode.GAME;
+                collectPlie();
+                animationTimer.stop();
             }
         });
         gameMode = GameMode.ANIMATION;
@@ -319,21 +319,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     private void repaintPlayerArea(PlayerPosition position) {
-        var area = getRenderingDimension();
-        switch (position) {
-            case MYSELF:
-                repaint(toInt(getPlayerArea(area)));
-                break;
-            case ACROSS:
-                repaint(toInt(getAcrossArea(area)));
-                break;
-            case LEFT:
-                repaint(toInt(getLeftArea(area)));
-                break;
-            case RIGHT:
-                repaint(toInt(getRightArea(area)));
-                break;
-        }
+        var playerArea = getPlayerArea(position);
+        repaint(toInt(playerArea));
     }
 
     private Dimension getCardDimension(Rectangle2D.Float renderingArea) {
