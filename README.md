@@ -1,7 +1,7 @@
 # jass
 ![Java CI with Maven](https://github.com/jberclaz/jass/workflows/Build/badge.svg) ![Release](https://img.shields.io/github/v/release/jberclaz/jass)
 
-Distributed Jass game for the members of the FLAT(r)
+Distributed [Jass](https://en.wikipedia.org/wiki/Jass) game for the members of the FLAT(r)
 
 ## How to compile?
 `mvn package`
