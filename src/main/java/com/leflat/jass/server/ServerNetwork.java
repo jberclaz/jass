@@ -34,7 +34,7 @@ public class ServerNetwork implements IServerNetwork {
         String rawMessage = String.join(" ", message);
         os.println(rawMessage);
         os.flush();
-        LOGGER.info("Sent : " + rawMessage);
+        LOGGER.info("Sent to " + playerId + " : " + rawMessage);
     }
 
     @Override
@@ -59,7 +59,7 @@ public class ServerNetwork implements IServerNetwork {
         if (message == null) {
             throw new PlayerLeftExpection(playerId);
         }
-        LOGGER.info("Received : " + message);
+        LOGGER.info("Received from " + playerId + " : " + message);
         return message;
     }
 }
