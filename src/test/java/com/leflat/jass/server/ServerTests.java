@@ -439,6 +439,20 @@ public class ServerTests {
 
         assertEquals(180, game.getTeams()[0].getScore());
         assertEquals(120, game.getTeams()[1].getScore());
+
+        // test that double announcement works
+        when(player1.getAnnouncements()).thenReturn(Collections.emptyList());
+        when(player2.getAnnouncements()).thenReturn(Collections.emptyList());
+        List<Announcement> al = new ArrayList<>();
+        al.add(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_BOURG, Card.COLOR_HEART)));
+        al.add(new Announcement(Announcement.THREE_CARDS, new Card(Card.RANK_ROI, Card.COLOR_SPADE)));
+        when(player3.getAnnouncements()).thenReturn(al);
+        when(player4.getAnnouncements()).thenReturn(Collections.emptyList());
+
+        assertTrue(game.processAnnouncements());
+
+        assertEquals(180, game.getTeams()[0].getScore());
+        assertEquals(200, game.getTeams()[1].getScore());
     }
 
     @Test

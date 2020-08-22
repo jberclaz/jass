@@ -3,6 +3,8 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.*;
 
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -411,6 +413,7 @@ public class GameController extends Thread {
         }
     }
 
+    /*
     void setHandScoreAsync(int[] handScore, Team match) throws PlayerLeftExpection {
         List<PlayerLeftExpection> exceptions = new ArrayList<>();
         List<Thread> threads = new ArrayList<>();
@@ -436,6 +439,27 @@ public class GameController extends Thread {
         }
         for (var exception : exceptions) {
             throw exception;
+        }
+    }
+     */
+
+    void setHandScoreAsync(int[] handScore, Team match) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        int ourTeam = p.getTeam().getId();
+                        p.setHandScore(handScore[ourTeam], handScore[(ourTeam + 1) % 2], match);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        }catch(CompletionException ex){
+            throw (PlayerLeftExpection)ex.getCause();
         }
     }
 
