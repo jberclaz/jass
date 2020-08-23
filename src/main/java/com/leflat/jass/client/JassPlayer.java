@@ -138,8 +138,10 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
     public void setAtout(int color, BasePlayer firstToPlay) {
         Card.atout = color;
         frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
-        announcements = Announcement.findAnouncements(hand);
-        hasStoeck = Announcement.findStoeck(hand);
+        if (color != Card.COLOR_NONE) {
+            announcements = Announcement.findAnouncements(hand);
+            hasStoeck = Announcement.findStoeck(hand);
+        }
     }
 
     @Override

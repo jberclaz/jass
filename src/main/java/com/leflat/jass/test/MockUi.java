@@ -30,6 +30,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
+        waitSec(delaySeconds * 2);
         return rand.nextBoolean() ? TeamSelectionMethod.RANDOM : TeamSelectionMethod.MANUAL;
     }
 
@@ -64,6 +65,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public BasePlayer choosePartner(List<BasePlayer> players) {
+        waitSec(2 * delaySeconds);
         return players.get(rand.nextInt(players.size()));
     }
 
@@ -83,6 +85,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public int chooseAtout(boolean allowedToPass) {
+        waitSec(delaySeconds * 5);
         return rand.nextInt(allowedToPass ? 5 : 4);
     }
 

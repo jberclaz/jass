@@ -162,9 +162,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     public void hideAtout() {
-        this.atoutColor = -1;
-        var renderingArea = getRenderingDimension();
-        repaint(toInt(getInfoArea(renderingArea)));
+        setAtoutColor(Card.COLOR_NONE);
     }
 
     public void setScores(int ourScore, int theirScore) {
@@ -469,7 +467,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float last_plie_x = 20f / 40 * infoArea.height;
         g2.drawString("Dernière plie:", infoArea.x + last_plie_x,
                 infoArea.y + last_plie_x);
-        if (atoutColor >= 0) {
+        if (atoutColor != Card.COLOR_NONE) {
             float atout_x = 340f / 40f * infoArea.height;
             g2.drawString("Atout:", infoArea.x + atout_x,
                     infoArea.y + last_plie_x);

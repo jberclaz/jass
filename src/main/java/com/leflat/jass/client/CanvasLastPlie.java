@@ -50,7 +50,7 @@ public class CanvasLastPlie extends JPanel {
     }
 
     public void hideAtout() {
-        this.atout = 4;
+        this.atout = Card.COLOR_NONE;
         repaint();
     }
 
@@ -65,7 +65,7 @@ public class CanvasLastPlie extends JPanel {
             g2.drawImage(CardImages.getImage(lastPlie.get(i)), 120 + 30 * i, 5, this);
         }
 
-        if (atout < 4) {
+        if (atout != Card.COLOR_NONE) {
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
             g2.drawImage(CardImages.getColorImage(atout), 340 + stringWidth, 8, this);
         }
