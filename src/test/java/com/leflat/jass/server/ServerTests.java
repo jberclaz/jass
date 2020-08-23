@@ -453,6 +453,10 @@ public class ServerTests {
 
         assertEquals(180, game.getTeams()[0].getScore());
         assertEquals(200, game.getTeams()[1].getScore());
+        verify(player1).setAnnouncements(player3, al);
+        verify(player2).setAnnouncements(player3, al);
+        verify(player3).setAnnouncements(player3, al);
+        verify(player4).setAnnouncements(player3, al);
     }
 
     @Test

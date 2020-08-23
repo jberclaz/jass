@@ -248,14 +248,14 @@ public class GameController extends Thread {
     }
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
-        var choice = players.get(playerNumber).chooseAtout(true);   // demande de faire atout en premier
+        var playerToChooseAtout = players.get(playerNumber);
+        setAtoutAsync(Card.COLOR_NONE, playerToChooseAtout);
+        var choice = playerToChooseAtout.chooseAtout(true);   // demande de faire atout en premier
         if (choice == 4) {     // si on passe
             var second = players.get((playerNumber + 2) % 4);
             choice = second.chooseAtout(false);   // demande de faire atout en second
         }
-        for (var p : players) {
-            p.setAtout(choice, players.get(playerNumber));
-        }
+        setAtoutAsync(choice, playerToChooseAtout);
         return choice;
     }
 
@@ -307,9 +307,7 @@ public class GameController extends Thread {
 
                 cardsDrawn.put(p, cards.get(cardNumber));
 
-                for (var p2 : players) {
-                    p2.setCard(p, cardNumber, cards.get(cardNumber));
-                }
+                setDrawnCardAsync(p, cardNumber, cards.get(cardNumber));
             }
             // delay to allow players to watch cards
             waitSec(2);
@@ -335,20 +333,19 @@ public class GameController extends Thread {
             if (choosenCards.get(player).getRank() > choosenCards.get(highest).getRank())
                 highest = player;
         }
-        boolean ok = true;
+
         for (BasePlayer player : players) {
             if (player != lowest) {
                 if (choosenCards.get(player).getRank() == choosenCards.get(lowest).getRank()) {
-                    ok = false;
+                    return false;
                 }
             }
             if (player != highest) {
                 if (choosenCards.get(player).getRank() == choosenCards.get(highest).getRank()) {
-                    ok = false;
+                    return false;
                 }
             }
         }
-        if (!ok) return false;
 
         for (BasePlayer p : players) {
             if (p == lowest || p == highest) {
@@ -489,6 +486,25 @@ public class GameController extends Thread {
         }
     }
 
+    void setDrawnCardAsync(BasePlayer player, int position, Card card) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.setCard(player, position, card);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
      void collectPlieAsync(BasePlayer player) throws PlayerLeftExpection {
         var answers = players.stream()
                 .map(p -> CompletableFuture.supplyAsync(() -> {
@@ -508,4 +524,22 @@ public class GameController extends Thread {
         }
     }
 
+     void setAtoutAsync(int color, BasePlayer player) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.setAtout(color, player);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
 }
