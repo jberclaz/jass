@@ -244,6 +244,10 @@ public class ServerTests {
                 remotePlayer.playerLeft(otherPlayer);
                 remotePlayer.setHandScore(100, 57, null);
                 remotePlayer.setHandScore(0, 257, team);
+                try {
+                    Thread.sleep(200);
+                } catch (InterruptedException ignored) {
+                }
             } catch (PlayerLeftExpection playerLeftExpection) {
                 playerLeftExpection.printStackTrace();
             }
