@@ -196,55 +196,50 @@ public class GameController extends Thread {
     }
 
     boolean processAnnouncements() throws PlayerLeftExpection {
-        boolean validAnnoucements = false;
-        Map<Integer, List<Announcement>> annoucements = new HashMap<>();
+        boolean validAnnouncements = false;
         BasePlayer playerWithStoeck = null;
         Announcement highestAnnouncement = null;
         Team announcingTeam = null;  // joueur qui a la plus grosse annonce
-        for (var p : players) {
-            var a = p.getAnnouncements();
+        for (var player : players) {
+            var a = player.getAnnouncements();
             if (a.isEmpty()) {
                 continue;
             }
-            annoucements.put(p.getId(), a);
             for (var announcement : a) {
-                LOGGER.info(p + " announces : " + announcement);
+                LOGGER.info(player + " announces : " + announcement);
                 if (announcement.getType() == Announcement.STOECK) {
-                    playerWithStoeck = p;
+                    playerWithStoeck = player;
                     continue;
                 }
                 if (highestAnnouncement == null || announcement.compareTo(highestAnnouncement) > 0) {
                     highestAnnouncement = announcement;
-                    announcingTeam = p.getTeam();
+                    announcingTeam = player.getTeam();
                 }
             }
         }
 
         if (announcingTeam != null) { // there are announces
-            for (var p : players) {
-                if (!annoucements.containsKey(p.getId())) {
+            for (var player : players) {
+                var a = player.getAnnouncements();
+                if (a.isEmpty()) {
                     continue;
                 }
-                if ((p.getTeam() == announcingTeam)) {
-                    announcingTeam.addAnnoucementScore(annoucements.get(p.getId()));
-                    for (var p2 : players) {
-                        p2.setAnnouncements(p, annoucements.get(p.getId()));
-                    }
-                    validAnnoucements = true;
+                if ((player.getTeam() == announcingTeam)) {
+                    announcingTeam.addAnnouncementScore(a);
+                    setAnnoucementsAsync(player, a);
+                    validAnnouncements = true;
                 }
-                p.clearAnnouncements();
+                player.clearAnnouncements();
             }
-        } else if (playerWithStoeck != null) { // no announce but stock
-            for (var p : players) {
-                p.setAnnouncements(playerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null)));
-            }
-            int stoeckScore = Card.atout == Card.COLOR_SPADE ? Announcement.VALUES[Announcement.STOECK] * 2 : Announcement.VALUES[Announcement.STOECK];
+        } else if (playerWithStoeck != null) { // no announce but stoeck
+            setAnnoucementsAsync(playerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null)));
             // add stock points
+            int stoeckScore = Card.atout == Card.COLOR_SPADE ? Announcement.VALUES[Announcement.STOECK] * 2 : Announcement.VALUES[Announcement.STOECK];
             playerWithStoeck.getTeam().addScore(stoeckScore);
             playerWithStoeck.clearAnnouncements();
-            validAnnoucements = true;
+            validAnnouncements = true;
         }
-        return validAnnoucements;
+        return validAnnouncements;
     }
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
@@ -287,16 +282,12 @@ public class GameController extends Thread {
         reorderPlayers();
 
         var order = players.stream().map(BasePlayer::getId).collect(Collectors.toList());
-        for (var p : players) {
-            p.setPlayersOrder(order);
-        }
+        setPlayersOrderAsync(order);
     }
 
     void chooseTeamsRandomly() throws PlayerLeftExpection {
         // préparation du tirage des équipes
-        for (var player : players) {
-            player.prepareTeamDrawing(true);
-        }
+        prepareTeamDrawingAsync(true);
 
         boolean drawingSuccessful;
         do {
@@ -315,9 +306,7 @@ public class GameController extends Thread {
             // détermine les équipes
             drawingSuccessful = calculateTeam(cardsDrawn);
             if (!drawingSuccessful) {
-                for (var p : players) {
-                    p.prepareTeamDrawing(false);
-                }
+                prepareTeamDrawingAsync(false);
                 waitSec(2);
             }
         } while (!drawingSuccessful);
@@ -505,7 +494,7 @@ public class GameController extends Thread {
         }
     }
 
-     void collectPlieAsync(BasePlayer player) throws PlayerLeftExpection {
+    void collectPlieAsync(BasePlayer player) throws PlayerLeftExpection {
         var answers = players.stream()
                 .map(p -> CompletableFuture.supplyAsync(() -> {
                     try {
@@ -524,11 +513,68 @@ public class GameController extends Thread {
         }
     }
 
-     void setAtoutAsync(int color, BasePlayer player) throws PlayerLeftExpection {
+    void setAtoutAsync(int color, BasePlayer player) throws PlayerLeftExpection {
         var answers = players.stream()
                 .map(p -> CompletableFuture.supplyAsync(() -> {
                     try {
                         p.setAtout(color, player);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
+    void setAnnoucementsAsync(BasePlayer player, List<Announcement> announcements) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.setAnnouncements(player, announcements);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
+    void setPlayersOrderAsync(List<Integer> order) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.setPlayersOrder(order);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
+    void prepareTeamDrawingAsync(boolean firstAttempt) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.prepareTeamDrawing(firstAttempt);
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
                     }
