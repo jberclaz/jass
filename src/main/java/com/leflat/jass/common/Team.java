@@ -51,7 +51,7 @@ public class Team {
         p.setTeam(this);
     }
 
-    public void addAnnoucementScore(List<Announcement> anouncements) {
+    public void addAnnouncementScore(List<Announcement> anouncements) {
         for (var a : anouncements) {
             currentScore += Card.atout == Card.COLOR_SPADE ? 2 * a.getValue() : a.getValue();
         }

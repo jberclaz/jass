@@ -94,12 +94,12 @@ public class CommonTests {
         ans.add(new Announcement(Announcement.THREE_CARDS, new Card(12)));
 
         Card.atout = Card.COLOR_HEART;
-        team.addAnnoucementScore(ans);
+        team.addAnnouncementScore(ans);
         assertEquals(170, team.getScore());
 
         team.resetScore();
         Card.atout = Card.COLOR_SPADE;
-        team.addAnnoucementScore(ans);
+        team.addAnnouncementScore(ans);
         assertEquals(340, team.getScore());
 
         assertFalse(team.hasWon());
