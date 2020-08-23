@@ -34,11 +34,11 @@ public class TestSingleClient {
         mainPlayer = new RemotePlayer(0, new ServerNetwork(clientSocket));
 
         var clientNetworkFactory = new MockNetworkFactory(1);
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.3f));
+        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
         player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.3f));
+        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
         player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.3f));
+        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
         player3.setName("Pischus");
 
         var game = new GameController(1234);

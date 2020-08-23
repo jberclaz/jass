@@ -19,7 +19,7 @@ public class JassClient {
         }
 
         System.setProperty("sun.java2d.opengl", "true");
-        var uiFactory = args.length > 0 && args[0].compareTo("modern") == 0? new ModernUiFactory() : new OriginalUiFactory();
+        var uiFactory = args.length > 0 && args[0].compareTo("original") == 0 ? new OriginalUiFactory() : new ModernUiFactory();
         new JassPlayer(new ClientNetworkFactory(), uiFactory);
     }
 }

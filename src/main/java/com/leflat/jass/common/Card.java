@@ -26,6 +26,7 @@ public class Card implements Comparable<Card> {
     public static final int RANK_ROI = 7;
     public static final int RANK_AS = 8;
 
+    public static final int COLOR_NONE = -1;
     public static final int COLOR_SPADE = 0;
     public static final int COLOR_HEART = 1;
     public static final int COLOR_CLUB = 2;
