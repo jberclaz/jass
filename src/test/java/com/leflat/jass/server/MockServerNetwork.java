@@ -11,7 +11,7 @@ import java.util.concurrent.LinkedBlockingQueue;
 
 class MockServerNetwork implements IServerNetwork {
     public List<List<String>> sendParameters = new ArrayList<>();
-    private Queue<String[]> answers = new LinkedBlockingQueue<>();
+    private final Queue<String[]> answers = new LinkedBlockingQueue<>();
 
     public MockServerNetwork() {
 

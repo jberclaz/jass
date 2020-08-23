@@ -183,6 +183,8 @@ public class RemoteController implements IController, Runnable {
             LOGGER.log(Level.WARNING, "Lost connection to server", playerLeftExpection);
             return;
         }
-        network.sendMessage(answer);
+        if (!answer.isEmpty()) {
+            network.sendMessage(answer);
+        }
     }
 }

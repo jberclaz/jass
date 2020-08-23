@@ -32,7 +32,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
         } catch (UnsupportedEncodingException e) {
             LOGGER.log(Level.SEVERE, "Failed to encode name", e);
         }
-        network.receiveMessage();
     }
 
     @Override
@@ -49,7 +48,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
         } else {
             network.sendMessage(String.valueOf(RemoteCommand.RESTART_TEAM_DRAWING));
         }
-        network.receiveMessage();
     }
 
     @Override
@@ -64,7 +62,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
                 String.valueOf(player.getId()),
                 String.valueOf(cardPosition),
                 String.valueOf(card.getNumber()));
-        network.receiveMessage();
     }
 
     @Override
@@ -73,7 +70,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
         message.add(String.valueOf(RemoteCommand.SET_PLAYERS_ORDER));
         message.addAll(playerIds.stream().map(String::valueOf).collect(Collectors.toList()));
         network.sendMessage(message.toArray(new String[0]));
-        network.receiveMessage();
     }
 
     @Override
@@ -88,7 +84,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
         message.add(String.valueOf(RemoteCommand.SET_HAND));
         message.addAll(cards.stream().map(c -> String.valueOf(c.getNumber())).collect(Collectors.toList()));
         network.sendMessage(message.toArray(new String[0]));
-        network.receiveMessage();
     }
 
     @Override
@@ -104,7 +99,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.SET_ATOUT), String.valueOf(color), String.valueOf(firstToPlay.getId()));
-        network.receiveMessage();
     }
 
     @Override
@@ -117,19 +111,16 @@ public class RemotePlayer extends AbstractRemotePlayer {
     @Override
     public void setPlayedCard(BasePlayer player, Card card) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.SET_PLAYED_CARD), String.valueOf(player.getId()),String.valueOf(card.getNumber()) );
-        network.receiveMessage();
     }
 
     @Override
     public void collectPlie(BasePlayer player) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.COLLECT_PLIE), String.valueOf(player.getId()));
-        network.receiveMessage();
     }
 
     @Override
     public void setScores(int score, int opponentScore) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.SET_SCORES),String.valueOf(score),String.valueOf(opponentScore));
-        network.receiveMessage();
     }
 
     @Override
@@ -162,7 +153,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
             }
         }
         network.sendMessage(message.toArray(new String[0]));
-        network.receiveMessage();
     }
 
     @Override
@@ -171,7 +161,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
                 String.valueOf(winningTeam.getId()),
                 String.valueOf(winningTeam.getPlayer(0).getId()),
                 String.valueOf(winningTeam.getPlayer(1).getId()));
-        network.receiveMessage();
     }
 
     @Override
@@ -184,13 +173,10 @@ public class RemotePlayer extends AbstractRemotePlayer {
     public void playerLeft(BasePlayer player) throws PlayerLeftExpection {
         network.sendMessage(String.valueOf(RemoteCommand.PLAYER_LEFT),
                 String.valueOf(player.getId()));
-        network.receiveMessage();
     }
 
     @Override
-    public void lostServerConnection() {
-
-    }
+    public void lostServerConnection() { }
 
     @Override
     public void setHandScore(int ourScore, int theirScore, Team match) throws PlayerLeftExpection {
@@ -203,7 +189,6 @@ public class RemotePlayer extends AbstractRemotePlayer {
             message.add(String.valueOf(match.getPlayer(1).getId()));
         }
         network.sendMessage(message.toArray(new String[0]));
-        network.receiveMessage();
     }
 
     private void updatePlayerInfo() throws PlayerLeftExpection {

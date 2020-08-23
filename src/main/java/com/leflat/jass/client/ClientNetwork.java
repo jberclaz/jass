@@ -31,8 +31,8 @@ public class ClientNetwork implements IClientNetwork {
             clientSocket = new Socket();
             clientSocket.connect(new InetSocketAddress(host, PORT_NUM), CONNECTION_TIMEOUT_MS);
 
-            os = new PrintWriter(clientSocket.getOutputStream(), false);
             is = new BufferedReader(new InputStreamReader(clientSocket.getInputStream()));
+            os = new PrintWriter(clientSocket.getOutputStream(), true);
             LOGGER.info("Connection to " + host + " successful");
         } catch (SocketTimeoutException e) {
             LOGGER.log(Level.WARNING, "Server did not answer", e);
@@ -100,7 +100,6 @@ public class ClientNetwork implements IClientNetwork {
 
     private void sendRawMessage(String message) {
         os.println(message);
-        os.flush();
         LOGGER.info("Sent : " + message);
     }
 }

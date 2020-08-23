@@ -15,9 +15,8 @@ public class ServerNetwork implements IServerNetwork {
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public ServerNetwork(Socket socket) throws IOException {
-        var isr = new InputStreamReader(socket.getInputStream());
-        is = new BufferedReader(isr);
-        os = new PrintWriter(new BufferedOutputStream(socket.getOutputStream()), false);
+        is = new BufferedReader(new InputStreamReader(socket.getInputStream()));
+        os = new PrintWriter(socket.getOutputStream(), true);
     }
 
     protected ServerNetwork() {
@@ -33,7 +32,6 @@ public class ServerNetwork implements IServerNetwork {
     public void sendMessage(String... message) {
         String rawMessage = String.join(" ", message);
         os.println(rawMessage);
-        os.flush();
         LOGGER.info("Sent to " + playerId + " : " + rawMessage);
     }
 
