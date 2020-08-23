@@ -248,6 +248,7 @@ public class ServerTests {
                     Thread.sleep(200);
                 } catch (InterruptedException ignored) {
                 }
+
             } catch (PlayerLeftExpection playerLeftExpection) {
                 playerLeftExpection.printStackTrace();
             }
@@ -504,21 +505,21 @@ public class ServerTests {
 
     @Test
     void test_connection_listener() throws IOException {
-        var listener = new ConnectionListener(23107);
-        var network = new ClientNetwork();
+        var serverListener = new ConnectionListener(23107);
+        var clientNetwork = new ClientNetwork();
 
-        listener.start();
+        serverListener.start();
 
-        var info = network.connect("localhost", -1, "GC");
+        var info = clientNetwork.connect("localhost", -1, "GC");
         assertEquals(ConnectionError.CONNECTION_SUCCESSFUL, info.error);
         assertEquals(0, info.playerId);
 
-        info = network.connect("localhost", 1234, "Pierre");
+        info = clientNetwork.connect("localhost", 1234, "Pierre");
         assertEquals(ConnectionError.UNKNOWN_GAME, info.error);
 
-        listener.terminate();
+        serverListener.terminate();
         try {
-            listener.join(200);
+            serverListener.join(200);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }

@@ -80,12 +80,10 @@ public class GameController extends Thread {
         } catch (BrokenRuleException e) {
             LOGGER.severe("Error: Jass rule broken: " + e.getBrokenRule());
         } finally {
-            for (var player : players) {
-                try {
-                    player.playerLeft(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
-                } catch (PlayerLeftExpection ee) {
-                    LOGGER.warning("Player " + ee.getPlayerId() + " also left.");
-                }
+            try {
+                playerLeftAsync(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
+            } catch (PlayerLeftExpection ee) {
+                LOGGER.warning("Player " + ee.getPlayerId() + " also left.");
             }
         }
 
@@ -575,6 +573,25 @@ public class GameController extends Thread {
                 .map(p -> CompletableFuture.supplyAsync(() -> {
                     try {
                         p.prepareTeamDrawing(firstAttempt);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
+    void playerLeftAsync(BasePlayer player) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        p.playerLeft(player);
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
                     }

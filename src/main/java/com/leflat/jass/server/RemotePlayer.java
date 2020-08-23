@@ -176,9 +176,7 @@ public class RemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void lostServerConnection() {
-
-    }
+    public void lostServerConnection() { }
 
     @Override
     public void setHandScore(int ourScore, int theirScore, Team match) throws PlayerLeftExpection {
