@@ -9,6 +9,10 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
+interface IOneWay {
+    void call(IPlayer p) throws PlayerLeftExpection;
+}
+
 public class GameController extends Thread {
     private final int gameId;
     private final List<AbstractRemotePlayer> players = new ArrayList<>();
@@ -60,7 +64,7 @@ public class GameController extends Thread {
         try {
             boolean playAnotherGame;
             do {
-                setTeamsScoreAsync(true);
+                oneWayAsync(p -> p.setScores(0, 0));
 
                 chooseTeam();     // détermine les équipes
 
@@ -81,7 +85,8 @@ public class GameController extends Thread {
             LOGGER.severe("Error: Jass rule broken: " + e.getBrokenRule());
         } finally {
             try {
-                playerLeftAsync(disconnectedPlayer == null ? players.get(0) : disconnectedPlayer);
+                var playerGone = disconnectedPlayer == null ? players.get(0) : disconnectedPlayer;
+                oneWayAsync(p -> p.playerLeft(playerGone));
             } catch (PlayerLeftExpection ee) {
                 LOGGER.warning("Player " + ee.getPlayerId() + " also left.");
             }
@@ -96,7 +101,7 @@ public class GameController extends Thread {
         do {
             plie = playOneHand(firstToPlay);
 
-            setTeamsScoreAsync(false);
+            setTeamsScoreAsync();
 
             /* waits a few seconds so that the players can see the last
              * cards and the score */
@@ -111,7 +116,7 @@ public class GameController extends Thread {
 
         // Sends the winner to all player
         var winners = teams[0].hasWon() ? teams[0] : teams[1];
-        sendResultAsync(winners);
+        oneWayAsync(p -> p.setGameResult(winners));
 
         /* waits a few seconds so that the players can see all the cards */
         waitSec(4);
@@ -188,7 +193,7 @@ public class GameController extends Thread {
             return null;
         }
 
-        collectPlieAsync(plie.getOwner());
+        oneWayAsync(p -> p.collectPlie(plie.getOwner()));
 
         return plie;
     }
@@ -224,17 +229,19 @@ public class GameController extends Thread {
                 }
                 if ((player.getTeam() == announcingTeam)) {
                     announcingTeam.addAnnouncementScore(a);
-                    setAnnoucementsAsync(player, a);
+                    oneWayAsync(p -> p.setAnnouncements(player, a));
                     validAnnouncements = true;
                 }
                 player.clearAnnouncements();
             }
         } else if (playerWithStoeck != null) { // no announce but stoeck
-            setAnnoucementsAsync(playerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null)));
             // add stock points
             int stoeckScore = Card.atout == Card.COLOR_SPADE ? Announcement.VALUES[Announcement.STOECK] * 2 : Announcement.VALUES[Announcement.STOECK];
             playerWithStoeck.getTeam().addScore(stoeckScore);
             playerWithStoeck.clearAnnouncements();
+            // send announcement
+            BasePlayer finalPlayerWithStoeck = playerWithStoeck;
+            oneWayAsync(p -> p.setAnnouncements(finalPlayerWithStoeck, Collections.singletonList(new Announcement(Announcement.STOECK, null))));
             validAnnouncements = true;
         }
         return validAnnouncements;
@@ -242,13 +249,14 @@ public class GameController extends Thread {
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
         var playerToChooseAtout = players.get(playerNumber);
-        setAtoutAsync(Card.COLOR_NONE, playerToChooseAtout);
+        oneWayAsync(p -> p.setAtout(Card.COLOR_NONE, playerToChooseAtout));
         var choice = playerToChooseAtout.chooseAtout(true);   // demande de faire atout en premier
         if (choice == 4) {     // si on passe
             var second = players.get((playerNumber + 2) % 4);
             choice = second.chooseAtout(false);   // demande de faire atout en second
         }
-        setAtoutAsync(choice, playerToChooseAtout);
+        int finalChoice = choice;
+        oneWayAsync(p -> p.setAtout(finalChoice, playerToChooseAtout));
         return choice;
     }
 
@@ -280,23 +288,23 @@ public class GameController extends Thread {
         reorderPlayers();
 
         var order = players.stream().map(BasePlayer::getId).collect(Collectors.toList());
-        setPlayersOrderAsync(order);
+        oneWayAsync(p -> p.setPlayersOrder(order));
     }
 
     void chooseTeamsRandomly() throws PlayerLeftExpection {
         // préparation du tirage des équipes
-        prepareTeamDrawingAsync(true);
+        oneWayAsync(p -> p.prepareTeamDrawing(true));
 
         boolean drawingSuccessful;
         do {
             HashMap<BasePlayer, Card> cardsDrawn = new HashMap<>();    // cartes tirées
             var cards = Card.shuffle(36);
-            for (var p : players) {
-                int cardNumber = p.drawCard();
+            for (var player : players) {
+                int cardNumber = player.drawCard();
 
-                cardsDrawn.put(p, cards.get(cardNumber));
+                cardsDrawn.put(player, cards.get(cardNumber));
 
-                setDrawnCardAsync(p, cardNumber, cards.get(cardNumber));
+                oneWayAsync(p -> p.setCard(player, cardNumber, cards.get(cardNumber)));
             }
             // delay to allow players to watch cards
             waitSec(2);
@@ -304,7 +312,7 @@ public class GameController extends Thread {
             // détermine les équipes
             drawingSuccessful = calculateTeam(cardsDrawn);
             if (!drawingSuccessful) {
-                prepareTeamDrawingAsync(false);
+                oneWayAsync(p -> p.prepareTeamDrawing(false));
                 waitSec(2);
             }
         } while (!drawingSuccessful);
@@ -388,6 +396,25 @@ public class GameController extends Thread {
         }
     }
 
+    void oneWayAsync(IOneWay oneWayFunc) throws PlayerLeftExpection {
+        var answers = players.stream()
+                .map(p -> CompletableFuture.supplyAsync(() -> {
+                    try {
+                        oneWayFunc.call(p);
+                    } catch (PlayerLeftExpection playerLeftExpection) {
+                        throw new CompletionException(playerLeftExpection);
+                    }
+                    return 0;
+                }))
+                .collect(Collectors.toList());
+
+        try {
+            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+        } catch (CompletionException ex) {
+            throw (PlayerLeftExpection) ex.getCause();
+        }
+    }
+
     void setHandScoreAsync(int[] handScore, Team match) throws PlayerLeftExpection {
         var answers = players.stream()
                 .map(p -> CompletableFuture.supplyAsync(() -> {
@@ -408,36 +435,14 @@ public class GameController extends Thread {
         }
     }
 
-    void sendResultAsync(Team team) throws PlayerLeftExpection {
+    void setTeamsScoreAsync() throws PlayerLeftExpection {
         var answers = players.stream()
                 .map(p -> CompletableFuture.supplyAsync(() -> {
                     try {
-                        p.setGameResult(team);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void setTeamsScoreAsync(boolean reset) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        int ourScore = 0, theirScore = 0;
-                        if (!reset) {
-                            var ourTeam = p.getTeam();
-                            ourScore = ourTeam.getScore();
-                            int otherTeamId = (ourTeam.getId() + 1) % 2;
-                            theirScore = teams[otherTeamId].getScore();
-                        }
+                        var ourTeam = p.getTeam();
+                        int ourScore = ourTeam.getScore();
+                        int otherTeamId = (ourTeam.getId() + 1) % 2;
+                        int theirScore = teams[otherTeamId].getScore();
                         p.setScores(ourScore, theirScore);
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
@@ -459,139 +464,6 @@ public class GameController extends Thread {
                 .map(p -> CompletableFuture.supplyAsync(() -> {
                     try {
                         p.setPlayedCard(player, card);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void setDrawnCardAsync(BasePlayer player, int position, Card card) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.setCard(player, position, card);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void collectPlieAsync(BasePlayer player) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.collectPlie(player);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void setAtoutAsync(int color, BasePlayer player) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.setAtout(color, player);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void setAnnoucementsAsync(BasePlayer player, List<Announcement> announcements) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.setAnnouncements(player, announcements);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void setPlayersOrderAsync(List<Integer> order) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.setPlayersOrder(order);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void prepareTeamDrawingAsync(boolean firstAttempt) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.prepareTeamDrawing(firstAttempt);
-                    } catch (PlayerLeftExpection playerLeftExpection) {
-                        throw new CompletionException(playerLeftExpection);
-                    }
-                    return 0;
-                }))
-                .collect(Collectors.toList());
-
-        try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
-        } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
-        }
-    }
-
-    void playerLeftAsync(BasePlayer player) throws PlayerLeftExpection {
-        var answers = players.stream()
-                .map(p -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        p.playerLeft(player);
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
                     }

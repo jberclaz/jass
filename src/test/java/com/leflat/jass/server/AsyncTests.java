@@ -65,7 +65,7 @@ public class AsyncTests {
         game.addPlayer(player3);
         game.addPlayer(player4);
 
-        game.setTeamsScoreAsync(false);
+        game.setTeamsScoreAsync();
 
         verify(player1).setScores(100, 0);
         verify(player2).setScores(100, 0);
