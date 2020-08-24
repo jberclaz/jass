@@ -17,7 +17,9 @@ public class Announcement implements Comparable<Announcement> {
     public static final int[] VALUES = {20, 20, 50, 100, 100, 150, 200};
     public static final String[] NAMES = {"stoeck", "3 cartes", "cinquante", "cent", "cent", "cent cinquante", "deux cents"};
 
-    public static Announcement getStoeck() { return new Announcement(Announcement.STOECK, new Card(0));}
+    public static Announcement getStoeck() {
+        return new Announcement(Announcement.STOECK, new Card(0));
+    }
 
     public Announcement(int type, Card card) {
         this.type = type;
@@ -85,6 +87,30 @@ public class Announcement implements Comparable<Announcement> {
         }
 
         return a.getType() == this.type && a.getCard().equals(this.card);
+    }
+
+    public Card[] getCards() {
+        switch (type) {
+            case STOECK:
+                return new Card[]{new Card(Card.RANK_DAME, Card.atout), new Card(Card.RANK_ROI, Card.atout)};
+            case THREE_CARDS:
+            case FIFTY:
+            case HUNDRED:
+                var cards = new Card[type + 2];
+                for (int i = 0; i < type + 2; i++) {
+                    cards[i] = new Card(card.getRank() - i, card.getColor());
+                }
+                return cards;
+            case SQUARE:
+            case NELL_SQUARE:
+            case BOURG_SQUARE:
+                var square_cards = new Card[4];
+                for (int i = 0; i < 4; i++) {
+                    square_cards[i] = new Card(card.getRank(), i);
+                }
+                return square_cards;
+        }
+        throw new RuntimeException("Unknown announcement");
     }
 
     public static List<Announcement> findAnouncements(List<Card> hand) {
