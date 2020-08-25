@@ -62,6 +62,34 @@ public class Plie {
         }
     }
 
+    public boolean canPlay(Card card, List<Card> hand) {
+        if (cards.isEmpty()) {
+            return true;
+        }
+        if (card.getColor() == this.getColor()) {
+            return true;
+        }
+        if (card.getColor() == Card.atout) {
+            if (!cut) {
+                return true;
+            }
+            if (card.compareTo(highest) > 0) {
+                return true;
+            }
+            boolean hasNonTrumpCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
+            if (hasNonTrumpCards) {
+                return false;
+            }
+            boolean hasHigherTrumpCards = hand.stream().anyMatch(c -> c.compareTo(highest) > 0);
+            return !hasHigherTrumpCards;
+        }
+        boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
+        if (hasAskedColor) {
+            return getColor() == Card.atout && Rules.hasBourgSec(hand);
+        }
+        return true;
+    }
+
     private void follow(Card card, BasePlayer player) {
         if (!cut && card.compareTo(highest) > 0) {
             takePlie(card, player);

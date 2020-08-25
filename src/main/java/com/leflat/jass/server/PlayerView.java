@@ -10,6 +10,10 @@ public class PlayerView {
     private List<Card> knownHand = new ArrayList<>();
     private int handSize;
 
+    public PlayerView(int id) {
+        this.id = id;
+    }
+
     public void reset() {
         knownHand.clear();
         handSize = 9;
