@@ -187,7 +187,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public int chooseAtout(boolean allowedToPass) {
         if (allowedToPass) {
-            gamePanel.setAtoutChoser(PlayerPosition.MYSELF);
+            gamePanel.setAtoutChooser(PlayerPosition.MYSELF);
         }
         Object[] options = new Object[allowedToPass ? 5 : 4];
         for (int i = 0; i < 4; i++) {
@@ -199,7 +199,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir l'atout", "Choix de l'atout",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         if (choice < 0) {
-            choice = allowedToPass ? 4 : 0;
+            choice = allowedToPass ? Card.COLOR_NONE : Card.COLOR_SPADE;
         }
         return choice;
     }
@@ -207,7 +207,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
         gamePanel.setAtoutColor(atout);
-        gamePanel.setAtoutChoser(intToPlayerPosition(positionOfPlayerToChooseAtout));
+        gamePanel.setAtoutChooser(intToPlayerPosition(positionOfPlayerToChooseAtout));
     }
 
     @Override

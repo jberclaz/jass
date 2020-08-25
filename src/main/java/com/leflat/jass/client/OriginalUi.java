@@ -257,7 +257,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
         int choice = JOptionPane.showOptionDialog(this, "Veuillez choisir l'atout", "Choix de l'atout",
                 JOptionPane.DEFAULT_OPTION, JOptionPane.QUESTION_MESSAGE, null, options, options[0]);
         if (choice < 0) {
-            choice = allowedToPass ? 4 : 0;
+            choice = allowedToPass ? Card.COLOR_NONE : Card.COLOR_SPADE;
         }
         return choice;
     }

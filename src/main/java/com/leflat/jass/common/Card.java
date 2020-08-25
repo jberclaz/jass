@@ -26,11 +26,11 @@ public class Card implements Comparable<Card> {
     public static final int RANK_ROI = 7;
     public static final int RANK_AS = 8;
 
-    public static final int COLOR_NONE = -1;
     public static final int COLOR_SPADE = 0;
     public static final int COLOR_HEART = 1;
     public static final int COLOR_CLUB = 2;
     public static final int COLOR_DIAMOND = 3;
+    public static final int COLOR_NONE = 4;
 
     public static final String[] RANK_NAMES = {"six", "sept", "huit", "nell", "dix", "bourg", "dame", "roi", "as"};
     public static final String[] COLOR_NAMES = {"pique", "cœur", "trèfle", "carreau"};

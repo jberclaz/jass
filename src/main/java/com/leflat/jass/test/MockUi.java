@@ -87,7 +87,26 @@ public class MockUi implements IJassUi {
     @Override
     public int chooseAtout(boolean allowedToPass) {
         waitSec(delaySeconds * 5);
-        return rand.nextInt(allowedToPass ? 5 : 4);
+        int[] colors = {0, 0, 0, 0};
+        for (var c : hand) {
+            colors[c.getColor()]++;
+        }
+        int nbrColors = 0;
+        int bestColor = -1;
+        int bestColorCount = 0;
+        for (int colorIdx = 0; colorIdx < 4; colorIdx++) {
+            if (colors[colorIdx] > 0) {
+                nbrColors++;
+                if (colors[colorIdx] > bestColorCount) {
+                    bestColor = colorIdx;
+                    bestColorCount = colors[colorIdx];
+                }
+            }
+        }
+        if (allowedToPass && nbrColors == 4 && bestColorCount < 4) {
+            return Card.COLOR_NONE;
+        }
+        return bestColor;
     }
 
     @Override

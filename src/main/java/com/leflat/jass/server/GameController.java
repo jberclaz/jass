@@ -251,7 +251,7 @@ public class GameController extends Thread {
         var playerToChooseAtout = players.get(playerNumber);
         oneWayAsync(p -> p.setAtout(Card.COLOR_NONE, playerToChooseAtout));
         var choice = playerToChooseAtout.chooseAtout(true);   // demande de faire atout en premier
-        if (choice == 4) {     // si on passe
+        if (choice == Card.COLOR_NONE) {     // si on passe
             var second = players.get((playerNumber + 2) % 4);
             choice = second.chooseAtout(false);   // demande de faire atout en second
         }

@@ -36,10 +36,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final List<Card> lastPlie = new ArrayList<>();
     private final Map<PlayerPosition, Card> playedCards = new HashMap<>();
     private final Map<PlayerPosition, Float> cardAngles = new HashMap<>();
-    private final Random random = new Random();
     private int ourScore;
     private int theirScore;
-    private int atoutColor = -1;
+    private int atoutColor = Card.COLOR_NONE;
     private boolean isInteractive = false;
     private final JButton buttonAnnounce = new JButton("Annoncer");
     private final ModernStatusPanel statusPanel = new ModernStatusPanel();
@@ -51,7 +50,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private int animationFrameNumber;
     private Timer animationTimer;
     private boolean announcementButtonPressed;
-    private PlayerPosition atoutChoser = PlayerPosition.NONE;
+    private PlayerPosition atoutChooser = PlayerPosition.NONE;
 
     public ModernGamePanel() {
         super();
@@ -301,11 +300,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         statusPanel.displayMessage(message);
     }
 
-    public void setAtoutChoser(PlayerPosition position) {
-        if (atoutChoser != PlayerPosition.NONE) {
-            repaint(toInt(getPlayerArea(atoutChoser)));
+    public void setAtoutChooser(PlayerPosition position) {
+        if (atoutChooser != PlayerPosition.NONE) {
+            repaint(toInt(getPlayerArea(atoutChooser)));
         }
-        atoutChoser = position;
+        atoutChooser = position;
         if (position != PlayerPosition.NONE) {
             repaint(toInt(getPlayerArea(position)));
         }
@@ -563,7 +562,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = playerArea.y + playerArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChoser == PlayerPosition.MYSELF) {
+        if (atoutChooser == PlayerPosition.MYSELF) {
             int width = g2.getFontMetrics().stringWidth(player.getName());
             g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
         }
@@ -587,7 +586,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = topArea.y + topArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChoser == PlayerPosition.ACROSS) {
+        if (atoutChooser == PlayerPosition.ACROSS) {
             int width = g2.getFontMetrics().stringWidth(player.getName());
             g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
         }
@@ -616,7 +615,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameX = leftArea.x + leftArea.width * 20f / 120f;
         float nameY = leftArea.y + min(leftArea.height * 90f / 450f, hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
-        if (atoutChoser == PlayerPosition.LEFT) {
+        if (atoutChooser == PlayerPosition.LEFT) {
             g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
         }
     }
@@ -645,7 +644,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = rightArea.y + min(round(rightArea.height * 90f / 450f), hand_y_offset - cardDimension.width / 3f);
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChoser == PlayerPosition.RIGHT) {
+        if (atoutChooser == PlayerPosition.RIGHT) {
             g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
         }
     }

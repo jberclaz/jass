@@ -28,7 +28,7 @@ public class CanvasLastPlie extends JPanel {
     public CanvasLastPlie() {
         ourScore = 0;
         theirScore = 0;
-        atout = 4;      // ne rien afficher
+        atout = Card.COLOR_NONE;      // ne rien afficher
         setDoubleBuffered(true);
     }
 
