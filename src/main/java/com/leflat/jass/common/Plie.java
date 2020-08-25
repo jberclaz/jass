@@ -78,7 +78,7 @@ public class Plie {
         if (hand != null) {
             boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
             if (hasAskedColor) {
-                if (!Rules.hasBourgSec(hand)) {
+                if (getColor() != Card.atout || !Rules.hasBourgSec(hand)) {
                     throw new BrokenRuleException(Rules.RULES_MUST_FOLLOW);
                 }
             }

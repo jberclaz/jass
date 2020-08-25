@@ -168,9 +168,7 @@ public class RulesTests {
     void test_under_cut_break2() throws BrokenRuleException {
         var hand = buildHand(18, 19, 20, 21);
         plie.playCard(new Card(Card.RANK_AS, Card.COLOR_CLUB), firstPlayer, new ArrayList<>());
-        Assertions.assertThrows(BrokenRuleException.class, () -> {
-            plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand);
-        });
+        Assertions.assertThrows(BrokenRuleException.class, () -> plie.playCard(new Card(Card.RANK_8, Card.COLOR_CLUB), secondPlayer, hand));
     }
 
     @Test
@@ -185,6 +183,14 @@ public class RulesTests {
         assertFalse(plie.isCut());
         assertEquals(3, plie.getScore());
         assertEquals(2, plie.getSize());
+    }
+
+    @Test
+    void test_not_follow_with_bourg_sec() {
+        Card.atout = Card.COLOR_CLUB;
+        var bourg = new Card(Card.RANK_BOURG, Card.COLOR_CLUB);
+        List<Card> hand = Arrays.asList(new Card(Card.RANK_10, Card.COLOR_HEART), new Card(Card.RANK_6, Card.COLOR_HEART), bourg);
+        Assertions.assertThrows(BrokenRuleException.class, () -> plie.playCard(new Card(Card.RANK_6, Card.COLOR_SPADE), secondPlayer, hand));
     }
 
     public static List<Card> buildHand(int... numbers) {
