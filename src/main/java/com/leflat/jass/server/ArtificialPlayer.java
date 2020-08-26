@@ -99,6 +99,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
+        // TODO: update cardsInGame if the player is not following
         try {
             currentPlie.playCard(card, player, null);
         } catch (BrokenRuleException e) {
