@@ -1,10 +1,7 @@
 package com.leflat.jass.test;
 
 import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.server.RemotePlayer;
-import com.leflat.jass.server.ServerNetwork;
+import com.leflat.jass.server.*;
 
 import java.io.IOException;
 import java.net.ServerSocket;
@@ -34,12 +31,15 @@ public class TestSingleClient {
         mainPlayer = new RemotePlayer(0, new ServerNetwork(clientSocket));
 
         var clientNetworkFactory = new MockNetworkFactory(1);
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
-        player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
-        player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
-        player3.setName("Pischus");
+        //var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
+        var player1 = new ArtificialPlayer(1, "Berte");
+        //player1.setName("Berte");
+        //var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
+        var player2 = new ArtificialPlayer(2, "GC");
+        //player2.setName("GC");
+        //var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
+        //player3.setName("Pischus");
+        var player3 = new ArtificialPlayer(3, "Pischus");
 
         var game = new GameController(1234);
 
@@ -48,7 +48,7 @@ public class TestSingleClient {
         game.addPlayer(player2);
         game.addPlayer(player3);
 
-        game.run();
+        game.start();
     }
 
     public static void main(String[] args) {

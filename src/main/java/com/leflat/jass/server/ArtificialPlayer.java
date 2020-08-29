@@ -9,11 +9,16 @@ import java.util.stream.Collectors;
 
 public class ArtificialPlayer extends AbstractRemotePlayer {
     private final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
-    private List<Integer> drawnCards = new ArrayList<>();
-    private Float[][] cardsInGame = new Float[3][36];
+    private final List<Integer> drawnCards = new ArrayList<>();
+    private final GameView gameView = new GameView();
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
     private final Map<Integer, PlayerView> players = new HashMap<>();
     private Plie currentPlie;
+    private boolean hasStoeck;
+    private Card playedCard;
+    private final Random rand = new Random();
+    private int ourScore = 0;
+    private int theirScore = 0;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -29,8 +34,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
-        //throw new RuntimeException("Artificial player should not have to choose team selection method");
-        return TeamSelectionMethod.MANUAL;
+        throw new RuntimeException("Artificial player should not have to choose team selection method");
     }
 
     @Override
@@ -40,13 +44,16 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int drawCard() {
-        // TODO: implement
-        return 0;
+        int randomCard;
+        do {
+            randomCard = rand.nextInt(36);
+        } while (drawnCards.contains(randomCard));
+        return randomCard;
     }
 
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) {
-        drawnCards.add(card.getNumber());
+        drawnCards.add(cardPosition);
     }
 
     @Override
@@ -61,15 +68,14 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int choosePartner() {
-        //throw new RuntimeException("Artificial player should not have to choose partner");
-        return new Random().nextInt(3) + 1;
+        throw new RuntimeException("Artificial player should not have to choose partner");
     }
 
     @Override
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
         super.setHand(cards);
         players.values().forEach(PlayerView::reset);
-        resetCardProbs();
+        gameView.reset(cards);
         currentPlie = new Plie();
     }
 
@@ -81,34 +87,39 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
-
+        announcements = Announcement.findAnouncements(hand);
+        hasStoeck = Announcement.findStoeck(hand);
     }
 
     @Override
     public Card play() {
-        // TODO: implement
-        var cardPlayed = chooseBestCard();
+        playedCard = chooseBestCard();
         try {
-            currentPlie.playCard(cardPlayed, this, hand);
+            currentPlie.playCard(playedCard, this, hand);
         } catch (BrokenRuleException e) {
             e.printStackTrace();
         }
-        removeCard(cardPlayed);
-        return cardPlayed;
+        removeCard(playedCard);
+        return playedCard;
     }
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
-        // TODO: update cardsInGame if the player is not following
+        // if player doesn't follow, we know he doesn't have this color
+        if (currentPlie.getSize() > 0 && card.getColor() != Card.atout && card.getColor() != currentPlie.getColor()) {
+            var position = playersPositions.get(player.getId()) - 1;
+            for (int r = 0; r < 9; r++) {
+                card = new Card(r, currentPlie.getColor());
+                gameView.playerDoesNotHaveCard(position, card);
+            }
+        }
         try {
             currentPlie.playCard(card, player, null);
         } catch (BrokenRuleException e) {
             LOGGER.log(Level.SEVERE, "Error: broken rule", e);
             System.exit(1);
         }
-        for (int i = 0; i < 3; i++) {
-            cardsInGame[i][card.getNumber()] = 0f;
-        }
+        gameView.cardPlayed(card);
     }
 
     @Override
@@ -118,12 +129,20 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setScores(int score, int opponentScore) {
-
+        ourScore = score;
+        theirScore = opponentScore;
     }
 
     @Override
-    public List<Announcement> getAnnouncements() throws PlayerLeftExpection {
-        return null;
+    public List<Announcement> getAnnouncements() {
+        if (hand.size() == 8) {
+            // can announce only on first plie
+            return announcements;
+        }
+        if (playedStoeck()) {
+            return Collections.singletonList(Announcement.getStoeck());
+        }
+        return Collections.emptyList();
     }
 
     @Override
@@ -135,27 +154,21 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                 continue;
             }
             for (var card : announcement.getCards()) {
-                for (int p =0; p < 3; p++) {
-                    cardsInGame[p][card.getNumber()] = p == position ? 1f : 0f;
-                }
+                gameView.playerHasCard(position, card);
             }
             if (announcement.getType() == Announcement.THREE_CARDS || announcement.getType() == Announcement.FIFTY) {
                 if (announcement.getCard().getRank() < Card.RANK_AS) {
-                    int nextSuiteCard = announcement.getCard().getNumber()+1;
+                    int nextSuiteCard = announcement.getCard().getNumber() + 1;
                     if (!hand.contains(new Card(nextSuiteCard))) {
-                        for (int p = 0; p < 3; p++) {
-                            cardsInGame[p][nextSuiteCard] = p == position ? 0f : .5f;
-                        }
+                        gameView.playerDoesNotHaveCard(position, nextSuiteCard);
                     }
                 }
                 int previousSuiteCardRank = announcement.getCard().getRank();
-                previousSuiteCardRank -= announcement.getType() == Announcement.THREE_CARDS ? 3 :4;
+                previousSuiteCardRank -= announcement.getType() == Announcement.THREE_CARDS ? 3 : 4;
                 if (previousSuiteCardRank >= 0) {
                     var previousSuiteCard = new Card(previousSuiteCardRank, announcement.getCard().getColor());
                     if (!hand.contains(previousSuiteCard)) {
-                        for (int p = 0; p < 3; p++) {
-                            cardsInGame[p][previousSuiteCard.getNumber()] = p == position ? 0f : .5f;
-                        }
+                        gameView.playerDoesNotHaveCard(position, previousSuiteCard);
                     }
                 }
             }
@@ -169,7 +182,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public boolean getNewGame() {
-        return false;
+        throw new RuntimeException("Artificial player should not have to choose new game");
     }
 
     @Override
@@ -187,16 +200,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     }
 
-    private void resetCardProbs() {
-        for (int i = 0; i < 36; i++) {
-            var card = new Card(i);
-            float prob = hand.contains(card) ? 0f : 1 / 3f;
-            for (int p = 0; p < 3; p++) {
-                cardsInGame[p][i] = prob;
-            }
-        }
-    }
-
     private int getInitialRelativePosition(BasePlayer player) {
         return (player.getId() - id + 4) % 4;
     }
@@ -205,14 +208,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         List<Card> validCards;
         if (currentPlie.getSize() == 0) {
             validCards = new ArrayList<>(hand);
-        }
-        else {
-            validCards = hand.stream().filter(c->currentPlie.canPlay(c, hand)).collect(Collectors.toList());
+        } else {
+            validCards = hand.stream().filter(c -> currentPlie.canPlay(c, hand)).collect(Collectors.toList());
         }
         Card bestCard = null;
         float bestScore = -1000;
-        for (int ci=0; ci<validCards.size(); ci++) {
-            var score = playRandomGames(hand, cardsInGame, validCards.get(ci), 100);
+        for (int ci = 0; ci < validCards.size(); ci++) {
+            var score = playRandomGames(hand, validCards.get(ci), 100);
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCards.get(ci);
@@ -221,7 +223,26 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         return bestCard;
     }
 
-    private float playRandomGames(List<Card> hand, Float[][] cardsInGame, Card card, int numberOfGames) {
+    private float playRandomGames(List<Card> hand, Card card, int numberOfGames) {
         return 0;
+    }
+
+    private boolean playedStoeck() {
+        if (!hasStoeck) {
+            return false;
+        }
+        if (playedCard.getColor() != Card.atout ||
+                (playedCard.getRank() != Card.RANK_DAME &&
+                        playedCard.getRank() != Card.RANK_ROI)) {
+            return false;
+        }
+        for (var card : hand) {
+            if (card.getColor() == Card.atout &&
+                    (card.getRank() == Card.RANK_DAME ||
+                            card.getRank() == Card.RANK_ROI)) {
+                return false;
+            }
+        }
+        return true;
     }
 }

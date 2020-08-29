@@ -2,17 +2,19 @@ package com.leflat.jass.test;
 
 import com.leflat.jass.common.*;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 public class MockUi implements IJassUi {
-    private Random rand = new Random();
+    private final Random rand = new Random();
     private List<Card> hand;
-    private IRemotePlayer player;
+    private final IRemotePlayer player;
     private float delaySeconds = 0;
     private boolean hasAskedForNewGame = false;
+    private final List<Integer> drawnCards = new ArrayList<>();
 
     public MockUi(IRemotePlayer player, float delaySeconds) {
         this.player = player;
@@ -37,7 +39,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public void prepareTeamDrawing() {
-
+        drawnCards.clear();
     }
 
     @Override
@@ -53,15 +55,18 @@ public class MockUi implements IJassUi {
         thread.start();
     }
 
-
     @Override
     public int getDrawnCardPosition() {
-        return rand.nextInt(36);
+        int randomCard;
+        do {
+            randomCard = rand.nextInt(36);
+        } while (drawnCards.contains(randomCard));
+        return randomCard;
     }
 
     @Override
     public void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException {
-
+        drawnCards.add(cardPosition);
     }
 
     @Override
