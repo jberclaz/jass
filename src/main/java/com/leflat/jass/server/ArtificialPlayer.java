@@ -29,7 +29,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setPlayerInfo(BasePlayer player) {
         var relativePosition = getInitialRelativePosition(player);
         playersPositions.put(player.getId(), relativePosition);
-        players.put(player.getId(), new PlayerView(player.getId()));
+        //players.put(player.getId(), new PlayerView(player.getId()));
     }
 
     @Override
@@ -74,7 +74,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     @Override
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
         super.setHand(cards);
-        players.values().forEach(PlayerView::reset);
+        //players.values().forEach(PlayerView::reset);
         gameView.reset(cards);
         currentPlie = new Plie();
     }
@@ -233,18 +233,19 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         }
         Card bestCard = null;
         float bestScore = -1000;
-        for (int ci = 0; ci < validCards.size(); ci++) {
-            var score = playRandomGames(hand, validCards.get(ci), 100);
+        for (Card validCard : validCards) {
+            var score = playRandomGames(hand, validCard, 100);
             if (score > bestScore) {
                 bestScore = score;
-                bestCard = validCards.get(ci);
+                bestCard = validCard;
             }
         }
         return bestCard;
     }
 
     private float playRandomGames(List<Card> hand, Card card, int numberOfGames) {
-        return 0;
+        var hands = gameView.getRandomHands();
+        return rand.nextFloat() * 100;
     }
 
     private boolean playedStoeck() {

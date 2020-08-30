@@ -3,15 +3,18 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.Card;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class GameView {
     private final Random rand = new Random();
     private final Map<Integer, Float[]> cardsInGame = new HashMap<>();
     private final Map<Integer, List<Card>> cardsInHands = new HashMap<>();
+    private final Map<Integer, Integer> handSizes = new HashMap<>();
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
             cardsInHands.put(p, new ArrayList<>());
+            handSizes.put(p, 0);
         }
     }
 
@@ -19,13 +22,14 @@ public class GameView {
         cardsInGame.clear();
         for (int p = 0; p < 3; p++) {
             cardsInHands.get(p).clear();
+            handSizes.put(p, 9);
         }
         for (int i = 0; i < 36; i++) {
             var card = new Card(i);
             if (hand.contains((card))) {
                 continue;
             }
-            cardsInGame.put(i, new Float[]{0.3f, 0.3f, 0.3f});
+            cardsInGame.put(i, new Float[]{1 / 3f, 1 / 3f, 1 / 3f});
         }
         assert getNumberCardsInGame() == 27;
     }
@@ -34,6 +38,7 @@ public class GameView {
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removed = cardsInGame.remove(card.getNumber());
         var removed2 = cardsInHands.get(player).remove(card);
+        handSizes.put(player, handSizes.get(player) - 1);
         if (removed == null && !removed2) {
             System.out.println("warning!");
         }
@@ -106,18 +111,46 @@ public class GameView {
         return s.toString();
     }
 
-    public Map<Integer, List<Card>> getRandomHands(int p1num, int p2num, int p3num) {
+    public Map<Integer, List<Card>> getRandomHands() {
         var hands = new HashMap<Integer, List<Card>>();
         for (int p = 0; p < 3; p++) {
-            hands.put(p, new ArrayList<>());
+            hands.put(p, new ArrayList<>(cardsInHands.get(p)));
         }
-        for (var card : cardsInGame.entrySet()) {
-
+        var sortedEntrySet = new ArrayList<>(cardsInGame.entrySet());
+        sortedEntrySet.sort((e1, e2) -> {
+            var p1 = e1.getValue();
+            var p2 = e2.getValue();
+            int zeros1 = 0, zeros2 = 0;
+            for (int p = 0; p < 3; p++) {
+                if (p1[p] == 0) {
+                    zeros1++;
+                }
+                if (p2[p] == 0) {
+                    zeros2++;
+                }
+            }
+            return zeros2 - zeros1;
+        });
+        for (var card : sortedEntrySet) {
+            var probs = card.getValue();
+            int player = -1;
+            do {
+                float sumProb = 0;
+                float f = rand.nextFloat();
+                for (int p = 0; p < 3; p++) {
+                    sumProb += probs[p];
+                    if (f < sumProb) {
+                        player = p;
+                        break;
+                    }
+                }
+            } while (hands.get(player).size() == handSizes.get(player));
+            hands.get(player).add(new Card(card.getKey()));
         }
         return hands;
     }
 
     int getNumberCardsInGame() {
-        return cardsInGame.size() + cardsInHands.get(0).size()+ cardsInHands.get(1).size()+ cardsInHands.get(2).size();
+        return cardsInGame.size() + cardsInHands.get(0).size() + cardsInHands.get(1).size() + cardsInHands.get(2).size();
     }
 }
