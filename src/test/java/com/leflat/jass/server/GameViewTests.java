@@ -75,6 +75,9 @@ public class GameViewTests {
         gameView.playerDoesNotHaveCard(2, 14);
         assertEquals(cardsInGame.size(), 26);
         assertEquals(cardsInHands.get(1).size(), 1);
+
+        gameView.playerDoesNotHaveCard(2, 1);
+        assertEquals(cardsInGame.size(), 26);
     }
 
     @Test

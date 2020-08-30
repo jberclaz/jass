@@ -47,8 +47,12 @@ public class GameView {
 
     public void playerHasCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
+        var card = new Card(cardNumber);
+        if (cardsInHands.get(player).contains(card)) {
+            throw new RuntimeException("We already know player " + player + " has card " + card);
+        }
         cardsInGame.remove(cardNumber);
-        cardsInHands.get(player).add(new Card(cardNumber));
+        cardsInHands.get(player).add(card);
         assert getNumberCardsInGame() == previousNumberCardsInGame;
     }
 
@@ -58,6 +62,9 @@ public class GameView {
 
     public void playerDoesNotHaveCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
+        if (cardsInHands.get(player).contains(new Card(cardNumber))) {
+            throw new RuntimeException("Contradictory game view");
+        }
         var prob = cardsInGame.get(cardNumber);
         if (prob == null) {
             return;

@@ -12,10 +12,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private final List<Integer> drawnCards = new ArrayList<>();
     private final GameView gameView = new GameView();
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
-    private final Map<Integer, PlayerView> players = new HashMap<>();
+    //private final Map<Integer, PlayerView> players = new HashMap<>();
     private Plie currentPlie;
-    private boolean hasStoeck;
     private Card playedCard;
+    private boolean hasStoeck;
     private final Random rand = new Random();
     private int ourScore = 0;
     private int theirScore = 0;
@@ -29,7 +29,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setPlayerInfo(BasePlayer player) {
         var relativePosition = getInitialRelativePosition(player);
         playersPositions.put(player.getId(), relativePosition);
-        //players.put(player.getId(), new PlayerView(player.getId()));
     }
 
     @Override
@@ -74,7 +73,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     @Override
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
         super.setHand(cards);
-        //players.values().forEach(PlayerView::reset);
         gameView.reset(cards);
         currentPlie = new Plie();
     }
@@ -105,7 +103,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
-        // TODO: change opponent card probablities
+        // TODO: change opponent card probabilities
         announcements = Announcement.findAnouncements(hand);
         hasStoeck = Announcement.findStoeck(hand);
     }
@@ -230,6 +228,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             validCards = new ArrayList<>(hand);
         } else {
             validCards = hand.stream().filter(c -> currentPlie.canPlay(c, hand)).collect(Collectors.toList());
+        }
+        if (validCards.size() == 1) {
+            return validCards.get(0);
         }
         Card bestCard = null;
         float bestScore = -1000;

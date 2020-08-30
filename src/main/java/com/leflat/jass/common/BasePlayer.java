@@ -11,7 +11,7 @@ public abstract class BasePlayer {
     protected int id;
     protected Team team;
     protected List<Announcement> announcements = new ArrayList<>(); // annonces
-    protected List<Card> hand = new ArrayList<>();
+    protected final List<Card> hand = new ArrayList<>();
 
     // Constructeur
     public BasePlayer(int id) {
