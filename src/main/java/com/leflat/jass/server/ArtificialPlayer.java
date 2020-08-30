@@ -81,12 +81,31 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int chooseAtout(boolean first) {
-        // TODO: implement
-        return Card.COLOR_SPADE;
+        int[] colors = {0, 0, 0, 0};
+        for (var c : hand) {
+            colors[c.getColor()]++;
+        }
+        int nbrColors = 0;
+        int bestColor = -1;
+        int bestColorCount = 0;
+        for (int colorIdx = 0; colorIdx < 4; colorIdx++) {
+            if (colors[colorIdx] > 0) {
+                nbrColors++;
+                if (colors[colorIdx] > bestColorCount) {
+                    bestColor = colorIdx;
+                    bestColorCount = colors[colorIdx];
+                }
+            }
+        }
+        if (first && nbrColors == 4 && bestColorCount < 4) {
+            return Card.COLOR_NONE;
+        }
+        return bestColor;
     }
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
+        // TODO: change opponent card probablities
         announcements = Announcement.findAnouncements(hand);
         hasStoeck = Announcement.findStoeck(hand);
     }
@@ -105,12 +124,12 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
+        System.out.println(name + " : " + player.getName() + " played " + card);
         // if player doesn't follow, we know he doesn't have this color
         if (currentPlie.getSize() > 0 && card.getColor() != Card.atout && card.getColor() != currentPlie.getColor()) {
             var position = playersPositions.get(player.getId()) - 1;
             for (int r = 0; r < 9; r++) {
-                card = new Card(r, currentPlie.getColor());
-                gameView.playerDoesNotHaveCard(position, card);
+                gameView.playerDoesNotHaveCard(position, new Card(r, currentPlie.getColor()));
             }
         }
         try {
@@ -119,7 +138,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             LOGGER.log(Level.SEVERE, "Error: broken rule", e);
             System.exit(1);
         }
-        gameView.cardPlayed(card);
+        var position = playersPositions.get(player.getId()) - 1;
+        gameView.cardPlayed(position, card);
     }
 
     @Override

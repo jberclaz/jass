@@ -50,7 +50,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         addWindowListener(new WindowAdapter() {
             @Override
             public void windowClosing(WindowEvent e) {
-                exitUi(e);
+                exitUi();
             }
         });
 
@@ -77,7 +77,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     private void connectDialog() {
-        int gameId = -1;
+        int gameId;
         do {
             DialogConnect dc;
             if (myName != null && serverHost != null) {
@@ -110,10 +110,10 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
                         break;
                 }
             }
-        }while (gameId <0);
+        } while (gameId < 0);
     }
 
-    void exitUi(WindowEvent e) {
+    void exitUi() {
         if (myself.isConnected()) {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
             if (choice != 0) {
@@ -371,7 +371,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     private void disconnect() {
-        for (int i=0; i<4; i++) {
+        for (int i = 0; i < 4; i++) {
             gamePanel.clearPlayer(intToPlayerPosition(i));
         }
         gamePanel.clearCards();

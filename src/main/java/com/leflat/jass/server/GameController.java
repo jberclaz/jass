@@ -411,7 +411,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -431,7 +434,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -454,7 +460,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -467,14 +476,20 @@ public class GameController extends Thread {
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
                     }
-                    return 0;
+                    return p.getId();
                 }))
                 .collect(Collectors.toList());
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            var result = answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            assert result.size() == 3;
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
+
+
 }
