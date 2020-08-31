@@ -61,7 +61,7 @@ public class GameView {
             throw new RuntimeException("Card " + new Card(cardNumber) + " was not in game");
         }
         cardsInHands.get(player).add(card);
-        assert getNumberCardsInGame() == previousNumberCardsInGame: getNumberCardsInGame() + " != " + previousNumberCardsInGame;
+        assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
     public void playerHasCard(int player, Card card) {
@@ -132,6 +132,15 @@ public class GameView {
         for (int p = 0; p < 3; p++) {
             hands.put(p, new ArrayList<>(cardsInHands.get(p)));
         }
+        int[] cardsSum = new int[3];
+        for (var prob : cardsInGame.values()) {
+            for (int p = 0; p < 3; p++) {
+                if (prob[p] > 0) {
+                    cardsSum[p]++;
+                }
+            }
+        }
+
         var sortedEntrySet = new ArrayList<>(cardsInGame.entrySet());
         sortedEntrySet.sort((e1, e2) -> {
             var p1 = e1.getValue();
@@ -149,6 +158,24 @@ public class GameView {
         });
         for (var card : sortedEntrySet) {
             var probs = card.getValue();
+            boolean attributed = false;
+            for (int p = 0; p < 3; p++) {
+                if (cardsSum[p] == handSizes.get(p) - hands.get(p).size()) {
+                    if (probs[p] > 0) {
+                        hands.get(p).add(new Card(card.getKey()));
+                        attributed = true;
+                        break;
+                    }
+                }
+            }
+            for (int p = 0; p < 3; p++) {
+                if (probs[p] > 0) {
+                    cardsSum[p]--;
+                }
+            }
+            if (attributed) {
+                continue;
+            }
             int player = -1;
             do {
                 float sumProb = 0;

@@ -260,7 +260,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     }
 
     private float playRandomGames(List<Card> hand, Card card, int numberOfGames) {
-        // var hands = gameView.getRandomHands();
+        var hands = gameView.getRandomHands();
         return rand.nextFloat() * 100;
     }
 
