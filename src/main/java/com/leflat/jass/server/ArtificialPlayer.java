@@ -12,6 +12,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private final List<Integer> drawnCards = new ArrayList<>();
     private final GameView gameView = new GameView();
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
+    private final Map<Integer, BasePlayer> players = new HashMap<>();
+    private final Map<Integer, BasePlayer> playersByPosition = new HashMap<>();
     private Plie currentPlie;
     private Card playedCard;
     private boolean hasStoeck;
@@ -28,6 +30,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setPlayerInfo(BasePlayer player) {
         var relativePosition = getInitialRelativePosition(player);
         playersPositions.put(player.getId(), relativePosition);
+        players.put(player.getId(), player);
     }
 
     @Override
@@ -60,7 +63,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         playersPositions.clear();
         for (int i = 0; i < playerIds.size(); i++) {
             int playerId = playerIds.get(i);
-            playersPositions.put(playerId, (i - ownPosition + 4) % 4);
+            int position = (i - ownPosition + 4) % 4;
+            playersPositions.put(playerId, position);
+            if (position > 0) {
+                playersByPosition.put(position, players.get(playerId));
+            }
         }
     }
 
@@ -80,6 +87,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int chooseAtout(boolean first) {
+        // TODO: take announcements in consideration
         int[] colors = {0, 0, 0, 0};
         for (var c : hand) {
             colors[c.getColor()]++;
@@ -250,18 +258,66 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         Card bestCard = null;
         float bestScore = -1000;
         for (Card validCard : validCards) {
-            var score = playRandomGames(hand, validCard, 100);
+            var score = evaluateMoveReward(hand, validCard, 10000);
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCard;
             }
         }
+        System.out.println(name + " : best move is " + bestCard);
         return bestCard;
     }
 
-    private float playRandomGames(List<Card> hand, Card card, int numberOfGames) {
-        var hands = gameView.getRandomHands();
-        return rand.nextFloat() * 100;
+    private float evaluateMoveReward(List<Card> hand, Card move, int numberOfGames) {
+        List<Card>[] hands = new List[4];
+        int reward = 0;
+        for (int game = 0; game < numberOfGames; game++) {
+            hands[0] = new ArrayList(hand);
+            int i = 1;
+            for (var h : gameView.getRandomHands()) {
+                hands[i++] = h;
+            }
+            Plie plie = new Plie(currentPlie);
+            int startPlayer = (4 - plie.getSize()) % 4;
+            try {
+                plie.playCard(move, this, hands[0]);
+            } catch (BrokenRuleException e) {
+                e.printStackTrace();
+            }
+            hands[0].remove(move);
+            int gameScore = 0;
+            int plieWinnerPosition;
+            do {
+                while (plie.getSize() < 4) {
+                    int currentPlayer = (startPlayer + plie.getSize()) % 4;
+                    final var finalPlie = new Plie(plie);
+                    var validMoves = hands[currentPlayer].stream().filter(c -> finalPlie.canPlay(c, hands[currentPlayer])).collect(Collectors.toList());
+                    if (validMoves.isEmpty()) {
+                        throw new RuntimeException("No valid move!");
+                    }
+                    Card randomMove;
+                    if (validMoves.size() == 1) {
+                        randomMove = validMoves.get(0);
+                    } else {
+                        randomMove = validMoves.get(rand.nextInt(validMoves.size()));
+                    }
+                    try {
+                        plie.playCard(randomMove, currentPlayer == 0 ? this : playersByPosition.get(currentPlayer), hands[currentPlayer]);
+                    } catch (BrokenRuleException e) {
+                        e.printStackTrace();
+                    }
+                    hands[currentPlayer].remove(randomMove);
+                }
+                plieWinnerPosition = playersPositions.get(plie.getOwner().getId());
+                gameScore += plieWinnerPosition % 2 == 0 ? plie.getScore() : -plie.getScore();
+                plie = new Plie();
+            } while (!hands[0].isEmpty());
+            // TODO: handle match scoring
+            // 5 de der
+            gameScore += plieWinnerPosition % 2 == 0 ? 5 : -5;
+            reward += gameScore;
+        }
+        return (float) reward / numberOfGames;
     }
 
     private boolean playedStoeck() {

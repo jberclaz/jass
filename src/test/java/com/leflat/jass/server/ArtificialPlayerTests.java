@@ -107,8 +107,16 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_play() throws PlayerLeftExpection {
+        var secondPlayer = new ArtificialPlayer(0, "Wein");
+        var fourthPlayer = new ArtificialPlayer(3, "Hhip");
+        player.setPlayerInfo(secondPlayer);
+        player.setPlayerInfo(otherPlayer);
+        player.setPlayerInfo(fourthPlayer);
+        player.setPlayersOrder(Arrays.asList(1, 3, 0, 2));
+
         var originalHand = buildHand(1, 4, 9, 10, 12, 20, 22, 30, 33);
         player.setHand(originalHand);
+        player.setAtout(Card.COLOR_HEART, otherPlayer);
         var card = player.play();
         assertEquals(8, hand.size());
         assertFalse(hand.contains(card));
@@ -117,6 +125,12 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_get_announcements() throws PlayerLeftExpection {
+        var secondPlayer = new ArtificialPlayer(0, "Wein");
+        var fourthPlayer = new ArtificialPlayer(3, "Hhip");
+        player.setPlayerInfo(secondPlayer);
+        player.setPlayerInfo(otherPlayer);
+        player.setPlayerInfo(fourthPlayer);
+        player.setPlayersOrder(Arrays.asList(1, 3, 0, 2));
         player.setHand(buildHand(1, 2, 3, 9, 10, 11, 20, 21, 23));
         player.setAtout(Card.COLOR_HEART, otherPlayer);
         player.play();

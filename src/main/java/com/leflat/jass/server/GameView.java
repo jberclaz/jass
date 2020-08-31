@@ -8,12 +8,11 @@ public class GameView {
     private final Random rand = new Random();
     private final Map<Integer, Float[]> cardsInGame = new HashMap<>();
     private final List<Card>[] cardsInHands = new List[3];
-    private final Map<Integer, Integer> handSizes = new HashMap<>();
+    private final int[] handSizes = new int[3];
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
             cardsInHands[p] = new ArrayList<>();
-            handSizes.put(p, 0);
         }
     }
 
@@ -21,7 +20,7 @@ public class GameView {
         cardsInGame.clear();
         for (int p = 0; p < 3; p++) {
             cardsInHands[p].clear();
-            handSizes.put(p, 9);
+            handSizes[p] = 9;
         }
         for (int i = 0; i < 36; i++) {
             var card = new Card(i);
@@ -37,7 +36,7 @@ public class GameView {
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removed = cardsInGame.remove(card.getNumber());
         var removed2 = cardsInHands[player].remove(card);
-        handSizes.put(player, handSizes.get(player) - 1);
+        handSizes[player] --;
         if (removed == null && !removed2) {
             System.out.println("warning!");
         }
@@ -123,11 +122,11 @@ public class GameView {
         return s.toString();
     }
 
-    public Map<Integer, List<Card>> getRandomHands() {
-        assert getNumberCardsInGame() == (handSizes.get(0) + handSizes.get(1) + handSizes.get(2));
-        var hands = new HashMap<Integer, List<Card>>();
+    public List<Card>[] getRandomHands() {
+        assert getNumberCardsInGame() == (handSizes[0] + handSizes[1] + handSizes[2]);
+        var hands = new List[3];
         for (int p = 0; p < 3; p++) {
-            hands.put(p, new ArrayList<>(cardsInHands[p]));
+            hands[p] = new ArrayList<>(cardsInHands[p]);
         }
         int[] cardsSum = new int[3];
         for (var prob : cardsInGame.values()) {
@@ -157,9 +156,9 @@ public class GameView {
             var probs = card.getValue();
             boolean attributed = false;
             for (int p = 0; p < 3; p++) {
-                if (cardsSum[p] == handSizes.get(p) - hands.get(p).size()) {
+                if (cardsSum[p] == handSizes[p] - hands[p].size()) {
                     if (probs[p] > 0) {
-                        hands.get(p).add(new Card(card.getKey()));
+                        hands[p].add(new Card(card.getKey()));
                         attributed = true;
                         break;
                     }
@@ -184,8 +183,8 @@ public class GameView {
                         break;
                     }
                 }
-            } while (hands.get(player).size() == handSizes.get(player));
-            hands.get(player).add(new Card(card.getKey()));
+            } while (hands[player].size() == handSizes[player]);
+            hands[player].add(new Card(card.getKey()));
         }
         return hands;
     }

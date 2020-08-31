@@ -19,6 +19,13 @@ public class Plie {
         this.owner = player;
     }
 
+    public Plie(Plie plie) {
+        highest = plie.highest == null ? null : new Card(plie.highest.getNumber());
+        cut = plie.cut;
+        owner = plie.owner;
+        cards = new ArrayList<>(plie.cards);
+    }
+
     public int getColor() {
         if (cards.isEmpty()) {
             return -1;

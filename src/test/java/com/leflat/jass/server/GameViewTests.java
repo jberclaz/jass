@@ -14,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.*;
 public class GameViewTests {
     GameView gameView;
     Field cardsInGameField, cardsInHandsField, handSizesField;
-    Map<Integer, Integer> handSizes;
+    int[] handSizes;
     Map<Integer, Float[]> cardsInGame;
     List<Card>[] cardsInHands;
 
@@ -27,16 +27,16 @@ public class GameViewTests {
         cardsInGameField.setAccessible(true);
         cardsInHandsField.setAccessible(true);
         handSizesField.setAccessible(true);
-        handSizes = (Map<Integer, Integer>) handSizesField.get(gameView);
+        handSizes = (int[]) handSizesField.get(gameView);
         cardsInGame = (Map<Integer, Float[]>) cardsInGameField.get(gameView);
         cardsInHands = (List<Card>[]) cardsInHandsField.get(gameView);
         gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17));
     }
 
     @Test
-    public void test_reset() throws IllegalAccessException {
+    public void test_reset() {
         for (int p = 0; p < 3; p++) {
-            assertEquals(handSizes.get(p), 9);
+            assertEquals(handSizes[p], 9);
         }
         assertEquals(cardsInGame.size(), 27);
     }
@@ -120,31 +120,31 @@ public class GameViewTests {
     @Test
     public void test_get_random_hands() {
         var hands = gameView.getRandomHands();
-        assertEquals(hands.size(), 3);
+        assertEquals(hands.length, 3);
         for (int h = 0; h < 3; h++) {
-            assertEquals(hands.get(h).size(), 9);
+            assertEquals(hands[h].size(), 9);
         }
 
         gameView.cardPlayed(0, new Card(30));
         hands = gameView.getRandomHands();
-        assertEquals(hands.get(0).size(), 8);
+        assertEquals(hands[0].size(), 8);
 
         gameView.playerHasCard(0, 31);
         gameView.playerHasCard(0, 32);
         gameView.playerHasCard(1, 33);
         hands = gameView.getRandomHands();
-        assertTrue(hands.get(0).contains(new Card(31)));
-        assertTrue(hands.get(0).contains(new Card(32)));
-        assertEquals(hands.get(0).size(), 8);
-        assertTrue(hands.get(1).contains(new Card(33)));
-        assertEquals(hands.get(1).size(), 9);
+        assertTrue(hands[0].contains(new Card(31)));
+        assertTrue(hands[0].contains(new Card(32)));
+        assertEquals(hands[0].size(), 8);
+        assertTrue(hands[1].contains(new Card(33)));
+        assertEquals(hands[1].size(), 9);
 
         gameView.playerDoesNotHaveCard(2, 20);
         gameView.playerDoesNotHaveCard(2, 21);
         gameView.playerDoesNotHaveCard(2, 22);
         hands = gameView.getRandomHands();
-        assertFalse(hands.get(2).contains(new Card(20)));
-        assertFalse(hands.get(2).contains(new Card(21)));
-        assertFalse(hands.get(2).contains(new Card(22)));
+        assertFalse(hands[2].contains(new Card(20)));
+        assertFalse(hands[2].contains(new Card(21)));
+        assertFalse(hands[2].contains(new Card(22)));
     }
 }
