@@ -13,12 +13,14 @@ public class MockUi implements IJassUi {
     private List<Card> hand;
     private final IRemotePlayer player;
     private float delaySeconds = 0;
-    private boolean hasAskedForNewGame = false;
     private final List<Integer> drawnCards = new ArrayList<>();
+    private int nbrGames;
+    private int playedGames = 0;
 
-    public MockUi(IRemotePlayer player, float delaySeconds) {
+    public MockUi(IRemotePlayer player, float delaySeconds, int nbrGames) {
         this.player = player;
         this.delaySeconds = delaySeconds;
+        this.nbrGames = nbrGames;
     }
 
     @Override
@@ -174,11 +176,8 @@ public class MockUi implements IJassUi {
 
     @Override
     public boolean getNewGame() {
-        if (!hasAskedForNewGame) {
-            hasAskedForNewGame = true;
-            return true;
-        }
-        return false;
+        playedGames++;
+        return playedGames < nbrGames;
     }
 
     @Override

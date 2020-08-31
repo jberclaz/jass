@@ -3,7 +3,6 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.Card;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class GameView {
     private final Random rand = new Random();
@@ -47,13 +46,22 @@ public class GameView {
 
     public void playerHasCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
+        if (!cardsInGame.containsKey(cardNumber)) {
+            return;
+        }
         var card = new Card(cardNumber);
+        if (!cardsInHands.containsKey(player)) {
+            throw new RuntimeException("cardsInHands doesn't have key " + player);
+        }
         if (cardsInHands.get(player).contains(card)) {
             throw new RuntimeException("We already know player " + player + " has card " + card);
         }
-        cardsInGame.remove(cardNumber);
+        var removedCard = cardsInGame.remove(cardNumber);
+        if (removedCard == null) {
+            throw new RuntimeException("Card " + new Card(cardNumber) + " was not in game");
+        }
         cardsInHands.get(player).add(card);
-        assert getNumberCardsInGame() == previousNumberCardsInGame;
+        assert getNumberCardsInGame() == previousNumberCardsInGame: getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
     public void playerHasCard(int player, Card card) {
@@ -119,6 +127,7 @@ public class GameView {
     }
 
     public Map<Integer, List<Card>> getRandomHands() {
+        assert getNumberCardsInGame() == (handSizes.get(0) + handSizes.get(1) + handSizes.get(2));
         var hands = new HashMap<Integer, List<Card>>();
         for (int p = 0; p < 3; p++) {
             hands.put(p, new ArrayList<>(cardsInHands.get(p)));

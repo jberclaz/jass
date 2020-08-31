@@ -12,7 +12,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private final List<Integer> drawnCards = new ArrayList<>();
     private final GameView gameView = new GameView();
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
-    //private final Map<Integer, PlayerView> players = new HashMap<>();
     private Plie currentPlie;
     private Card playedCard;
     private boolean hasStoeck;
@@ -72,9 +71,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
+        Card.sort(cards);
         super.setHand(cards);
         gameView.reset(cards);
         currentPlie = new Plie();
+        System.out.println(name + " : " + hand);
     }
 
     @Override
@@ -103,6 +104,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
+        if (color == Card.COLOR_NONE) {
+            return;
+        }
         // TODO: change opponent card probabilities
         announcements = Announcement.findAnouncements(hand);
         hasStoeck = Announcement.findStoeck(hand);
@@ -122,12 +126,15 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
-        System.out.println(name + " : " + player.getName() + " played " + card);
+        var position = playersPositions.get(player.getId()) - 1;
         // if player doesn't follow, we know he doesn't have this color
         if (currentPlie.getSize() > 0 && card.getColor() != Card.atout && card.getColor() != currentPlie.getColor()) {
-            var position = playersPositions.get(player.getId()) - 1;
+            var bourg = new Card(Card.RANK_BOURG, Card.atout);
             for (int r = 0; r < 9; r++) {
-                gameView.playerDoesNotHaveCard(position, new Card(r, currentPlie.getColor()));
+                var missingGard = new Card(r, currentPlie.getColor());
+                if (!missingGard.equals(bourg)) {
+                    gameView.playerDoesNotHaveCard(position, missingGard);
+                }
             }
         }
         try {
@@ -136,7 +143,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             LOGGER.log(Level.SEVERE, "Error: broken rule", e);
             System.exit(1);
         }
-        var position = playersPositions.get(player.getId()) - 1;
         gameView.cardPlayed(position, card);
     }
 
@@ -155,6 +161,12 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public List<Announcement> getAnnouncements() {
         if (hand.size() == 8) {
             // can announce only on first plie
+            if (!announcements.isEmpty()) {
+                System.out.println(name + " has " + announcements.size() + " announcements");
+            }
+            for (var a : announcements) {
+                System.out.println(name + " announces " + a);
+            }
             return announcements;
         }
         if (playedStoeck()) {
@@ -165,6 +177,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAnnouncements(BasePlayer player, List<Announcement> announcements) {
+        if (player.getId() == this.id) {
+            return;
+        }
         var position = playersPositions.get(player.getId()) - 1;
         for (var announcement : announcements) {
             if (announcement.getType() == Announcement.STOECK) {
@@ -245,7 +260,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     }
 
     private float playRandomGames(List<Card> hand, Card card, int numberOfGames) {
-        var hands = gameView.getRandomHands();
+        // var hands = gameView.getRandomHands();
         return rand.nextFloat() * 100;
     }
 

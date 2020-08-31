@@ -203,11 +203,13 @@ public class GameController extends Thread {
         BasePlayer playerWithStoeck = null;
         Announcement highestAnnouncement = null;
         Team announcingTeam = null;  // joueur qui a la plus grosse annonce
+        Map<BasePlayer, List<Announcement>> announcementsMap = new HashMap<>();
         for (var player : players) {
             var a = player.getAnnouncements();
             if (a.isEmpty()) {
                 continue;
             }
+            announcementsMap.put(player, a);
             for (var announcement : a) {
                 LOGGER.info(player + " announces : " + announcement);
                 if (announcement.getType() == Announcement.STOECK) {
@@ -223,10 +225,10 @@ public class GameController extends Thread {
 
         if (announcingTeam != null) { // there are announces
             for (var player : players) {
-                var a = player.getAnnouncements();
-                if (a.isEmpty()) {
+                if (!announcementsMap.containsKey(player)) {
                     continue;
                 }
+                var a = announcementsMap.get(player);
                 if ((player.getTeam() == announcingTeam)) {
                     announcingTeam.addAnnouncementScore(a);
                     oneWayAsync(p -> p.setAnnouncements(player, a));
