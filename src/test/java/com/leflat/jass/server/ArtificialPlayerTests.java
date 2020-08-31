@@ -141,12 +141,12 @@ public class ArtificialPlayerTests {
         cardsInGameField.setAccessible(true);
         cardsInHandsField.setAccessible(true);
         var cardsInGame = (Map<Integer, Float[]>) cardsInGameField.get(gameView);
-        var cardsInHands = (Map<Integer, List<Card>>) cardsInHandsField.get(gameView);
+        var cardsInHands = (List<Card>[]) cardsInHandsField.get(gameView);
         assertEquals(24, cardsInGame.size());
-        assertEquals(3, cardsInHands.get(0).size());
-        assertTrue(cardsInHands.get(0).contains(new Card(33)));
-        assertTrue(cardsInHands.get(0).contains(new Card(32)));
-        assertTrue(cardsInHands.get(0).contains(new Card(31)));
+        assertEquals(3, cardsInHands[0].size());
+        assertTrue(cardsInHands[0].contains(new Card(33)));
+        assertTrue(cardsInHands[0].contains(new Card(32)));
+        assertTrue(cardsInHands[0].contains(new Card(31)));
         assertEquals(0, cardsInGame.get(34)[0]);
         assertEquals(0.5f, cardsInGame.get(34)[1]);
         assertEquals(0, cardsInGame.get(30)[0]);

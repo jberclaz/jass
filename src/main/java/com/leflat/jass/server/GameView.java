@@ -7,12 +7,12 @@ import java.util.*;
 public class GameView {
     private final Random rand = new Random();
     private final Map<Integer, Float[]> cardsInGame = new HashMap<>();
-    private final Map<Integer, List<Card>> cardsInHands = new HashMap<>();
+    private final List<Card>[] cardsInHands = new List[3];
     private final Map<Integer, Integer> handSizes = new HashMap<>();
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
-            cardsInHands.put(p, new ArrayList<>());
+            cardsInHands[p] = new ArrayList<>();
             handSizes.put(p, 0);
         }
     }
@@ -20,7 +20,7 @@ public class GameView {
     public void reset(List<Card> hand) {
         cardsInGame.clear();
         for (int p = 0; p < 3; p++) {
-            cardsInHands.get(p).clear();
+            cardsInHands[p].clear();
             handSizes.put(p, 9);
         }
         for (int i = 0; i < 36; i++) {
@@ -36,7 +36,7 @@ public class GameView {
     public void cardPlayed(int player, Card card) {
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removed = cardsInGame.remove(card.getNumber());
-        var removed2 = cardsInHands.get(player).remove(card);
+        var removed2 = cardsInHands[player].remove(card);
         handSizes.put(player, handSizes.get(player) - 1);
         if (removed == null && !removed2) {
             System.out.println("warning!");
@@ -50,17 +50,14 @@ public class GameView {
             return;
         }
         var card = new Card(cardNumber);
-        if (!cardsInHands.containsKey(player)) {
-            throw new RuntimeException("cardsInHands doesn't have key " + player);
-        }
-        if (cardsInHands.get(player).contains(card)) {
+        if (cardsInHands[player].contains(card)) {
             throw new RuntimeException("We already know player " + player + " has card " + card);
         }
         var removedCard = cardsInGame.remove(cardNumber);
         if (removedCard == null) {
             throw new RuntimeException("Card " + new Card(cardNumber) + " was not in game");
         }
-        cardsInHands.get(player).add(card);
+        cardsInHands[player].add(card);
         assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
@@ -70,7 +67,7 @@ public class GameView {
 
     public void playerDoesNotHaveCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
-        if (cardsInHands.get(player).contains(new Card(cardNumber))) {
+        if (cardsInHands[player].contains(new Card(cardNumber))) {
             throw new RuntimeException("Contradictory game view");
         }
         var prob = cardsInGame.get(cardNumber);
@@ -115,9 +112,9 @@ public class GameView {
             s.append(new Card(card.getKey()).toString()).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
         }
         for (int p = 0; p < 3; p++) {
-            if (!cardsInHands.get(p).isEmpty()) {
+            if (!cardsInHands[p].isEmpty()) {
                 s.append(p).append(": ");
-                for (var card : cardsInHands.get(p)) {
+                for (var card : cardsInHands[p]) {
                     s.append(card).append(" ");
                 }
                 s.append("\n");
@@ -130,7 +127,7 @@ public class GameView {
         assert getNumberCardsInGame() == (handSizes.get(0) + handSizes.get(1) + handSizes.get(2));
         var hands = new HashMap<Integer, List<Card>>();
         for (int p = 0; p < 3; p++) {
-            hands.put(p, new ArrayList<>(cardsInHands.get(p)));
+            hands.put(p, new ArrayList<>(cardsInHands[p]));
         }
         int[] cardsSum = new int[3];
         for (var prob : cardsInGame.values()) {
@@ -194,6 +191,6 @@ public class GameView {
     }
 
     int getNumberCardsInGame() {
-        return cardsInGame.size() + cardsInHands.get(0).size() + cardsInHands.get(1).size() + cardsInHands.get(2).size();
+        return cardsInGame.size() + cardsInHands[0].size() + cardsInHands[1].size() + cardsInHands[2].size();
     }
 }

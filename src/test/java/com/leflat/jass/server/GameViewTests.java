@@ -16,7 +16,7 @@ public class GameViewTests {
     Field cardsInGameField, cardsInHandsField, handSizesField;
     Map<Integer, Integer> handSizes;
     Map<Integer, Float[]> cardsInGame;
-    Map<Integer, List<Card>> cardsInHands;
+    List<Card>[] cardsInHands;
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
@@ -29,7 +29,7 @@ public class GameViewTests {
         handSizesField.setAccessible(true);
         handSizes = (Map<Integer, Integer>) handSizesField.get(gameView);
         cardsInGame = (Map<Integer, Float[]>) cardsInGameField.get(gameView);
-        cardsInHands = (Map<Integer, List<Card>>) cardsInHandsField.get(gameView);
+        cardsInHands = (List<Card>[]) cardsInHandsField.get(gameView);
         gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17));
     }
 
@@ -48,22 +48,22 @@ public class GameViewTests {
 
         gameView.playerHasCard(2, 10);
         assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands.get(2).size(), 1);
+        assertEquals(cardsInHands[2].size(), 1);
 
         gameView.cardPlayed(2, new Card(10));
         assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands.get(2).size(), 0);
+        assertEquals(cardsInHands[2].size(), 0);
     }
 
     @Test
     public void test_player_has_card() {
         gameView.playerHasCard(2, 10);
         assertEquals(cardsInGame.size(), 26);
-        assertEquals(cardsInHands.get(2).size(), 1);
+        assertEquals(cardsInHands[2].size(), 1);
 
         gameView.playerHasCard(2, new Card(12));
         assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands.get(2).size(), 2);
+        assertEquals(cardsInHands[2].size(), 2);
     }
 
     @Test
@@ -74,7 +74,7 @@ public class GameViewTests {
 
         gameView.playerDoesNotHaveCard(2, 14);
         assertEquals(cardsInGame.size(), 26);
-        assertEquals(cardsInHands.get(1).size(), 1);
+        assertEquals(cardsInHands[1].size(), 1);
 
         gameView.playerDoesNotHaveCard(2, 1);
         assertEquals(cardsInGame.size(), 26);
