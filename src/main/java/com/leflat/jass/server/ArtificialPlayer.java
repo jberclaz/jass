@@ -20,6 +20,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private final Random rand = new Random();
     private int ourScore = 0;
     private int theirScore = 0;
+    private int numberOfPlies;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -82,12 +83,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         super.setHand(cards);
         gameView.reset(cards);
         currentPlie = new Plie();
-        System.out.println(name + " : " + hand);
+        numberOfPlies = 0;
     }
 
     @Override
     public int chooseAtout(boolean first) {
         // TODO: take announcements in consideration
+        // TODO: use a randomized strategy
         int[] colors = {0, 0, 0, 0};
         for (var c : hand) {
             colors[c.getColor()]++;
@@ -156,6 +158,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void collectPlie(BasePlayer player) {
+        if (playersPositions.get(player.getId()) % 2 == 0) {
+            numberOfPlies++;
+        }
         currentPlie = new Plie();
     }
 
@@ -272,7 +277,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         List<Card>[] hands = new List[4];
         int reward = 0;
         for (int game = 0; game < numberOfGames; game++) {
-            hands[0] = new ArrayList(hand);
+            int pliesCollected = numberOfPlies;
+            hands[0] = new ArrayList<>(hand);
             int i = 1;
             for (var h : gameView.getRandomHands()) {
                 hands[i++] = h;
@@ -309,12 +315,22 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                     hands[currentPlayer].remove(randomMove);
                 }
                 plieWinnerPosition = playersPositions.get(plie.getOwner().getId());
-                gameScore += plieWinnerPosition % 2 == 0 ? plie.getScore() : -plie.getScore();
+                if (plieWinnerPosition % 2 == 0) {
+                    gameScore += plie.getScore();
+                    pliesCollected ++;
+                } else {
+                    gameScore -= plie.getScore();
+                }
                 plie = new Plie();
             } while (!hands[0].isEmpty());
-            // TODO: handle match scoring
-            // 5 de der
-            gameScore += plieWinnerPosition % 2 == 0 ? 5 : -5;
+            int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
+            gameScore += plieWinnerPosition % 2 == 0 ? cinqDeDer : -cinqDeDer;
+            int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
+            if (pliesCollected == 9) {
+                gameScore += match;
+            } else if (pliesCollected == 0) {
+                gameScore -= match;
+            }
             reward += gameScore;
         }
         return (float) reward / numberOfGames;
