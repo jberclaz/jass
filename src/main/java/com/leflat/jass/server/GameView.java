@@ -124,7 +124,7 @@ public class GameView {
 
     public List<Card>[] getRandomHands() {
         assert getNumberCardsInGame() == (handSizes[0] + handSizes[1] + handSizes[2]);
-        var hands = new List[3];
+        List<Card>[] hands = new List[3];
         for (int p = 0; p < 3; p++) {
             hands[p] = new ArrayList<>(cardsInHands[p]);
         }
