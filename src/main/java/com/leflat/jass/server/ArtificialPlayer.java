@@ -90,6 +90,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public int chooseAtout(boolean first) {
         // TODO: take announcements in consideration
         // TODO: use a randomized strategy
+
+        return chooseBestAtout(first);
+/*
         int[] colors = {0, 0, 0, 0};
         for (var c : hand) {
             colors[c.getColor()]++;
@@ -110,6 +113,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             return Card.COLOR_NONE;
         }
         return bestColor;
+        */
     }
 
     @Override
@@ -353,5 +357,30 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             }
         }
         return true;
+    }
+
+    int chooseBestAtout(boolean canPass) {
+        int bestAtout = Card.COLOR_NONE;
+        float bestScore = -10000;
+        for (int atout=Card.COLOR_SPADE; atout<=Card.COLOR_DIAMOND; atout++) {
+            Card.atout = atout;
+            var announcements = Announcement.findAnouncements(hand);
+            float startScore = announcements.stream().mapToInt(Announcement::getValue).sum();
+            if (atout==Card.COLOR_SPADE) {
+                startScore *= 2;
+            }
+            float maxScore = -10000;
+            for (var card : hand) {
+                float score = evaluateMoveReward(hand, card, 1000);
+                if (score > maxScore) {
+                    maxScore = score;
+                }
+            }
+            if (bestScore < startScore + maxScore) {
+                bestScore = startScore + maxScore;
+                bestAtout = atout;
+            }
+        }
+        return bestScore < 0 && canPass ? Card.COLOR_NONE : bestAtout;
     }
 }
