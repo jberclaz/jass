@@ -85,10 +85,16 @@ public class ArtificialPlayerTests {
     }
 
     @Test
-    public void test_set_atout() throws PlayerLeftExpection {
-        player.setHand(buildHand(1, 2, 10, 11, 20, 21, 30, 31, 32));
+    public void test_choose_atout() throws PlayerLeftExpection {
+        var thirdPlayer = new ArtificialPlayer(3, "GC");
+        var fourthPlayer = new ArtificialPlayer(0, "Mono");
+        player.setPlayerInfo(otherPlayer);
+        player.setPlayerInfo(thirdPlayer);
+        player.setPlayerInfo(fourthPlayer);
+        player.setPlayersOrder(Arrays.asList(0, 1, 2, 3));
+        player.setHand(buildHand(1, 2, 10, 11, 20, 21, 29, 31, 28));
         assertEquals(player.chooseAtout(true), Card.COLOR_NONE);
-        assertEquals(player.chooseAtout(false), Card.COLOR_DIAMOND);
+        assertEquals(player.chooseAtout(false), Card.COLOR_CLUB);
         player.setHand(buildHand(1, 2, 3, 4, 10, 20, 30, 31, 32));
         assertEquals(player.chooseAtout(true), Card.COLOR_SPADE);
     }

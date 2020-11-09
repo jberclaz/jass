@@ -32,6 +32,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         var relativePosition = getInitialRelativePosition(player);
         playersPositions.put(player.getId(), relativePosition);
         players.put(player.getId(), player);
+        playersByPosition.put(relativePosition, player);
     }
 
     @Override
@@ -62,6 +63,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setPlayersOrder(List<Integer> playerIds) {
         int ownPosition = playerIds.indexOf(id);
         playersPositions.clear();
+        playersByPosition.clear();
         for (int i = 0; i < playerIds.size(); i++) {
             int playerId = playerIds.get(i);
             int position = (i - ownPosition + 4) % 4;
@@ -88,32 +90,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int chooseAtout(boolean first) {
-        // TODO: take announcements in consideration
-        // TODO: use a randomized strategy
-
         return chooseBestAtout(first);
-/*
-        int[] colors = {0, 0, 0, 0};
-        for (var c : hand) {
-            colors[c.getColor()]++;
-        }
-        int nbrColors = 0;
-        int bestColor = -1;
-        int bestColorCount = 0;
-        for (int colorIdx = 0; colorIdx < 4; colorIdx++) {
-            if (colors[colorIdx] > 0) {
-                nbrColors++;
-                if (colors[colorIdx] > bestColorCount) {
-                    bestColor = colorIdx;
-                    bestColorCount = colors[colorIdx];
-                }
-            }
-        }
-        if (first && nbrColors == 4 && bestColorCount < 4) {
-            return Card.COLOR_NONE;
-        }
-        return bestColor;
-        */
     }
 
     @Override
@@ -287,7 +264,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             for (var h : gameView.getRandomHands()) {
                 hands[i++] = h;
             }
-            Plie plie = new Plie(currentPlie);
+            var plie = new Plie(currentPlie);
             int startPlayer = (4 - plie.getSize()) % 4;
             try {
                 plie.playCard(move, this, hands[0]);
@@ -321,7 +298,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                 plieWinnerPosition = playersPositions.get(plie.getOwner().getId());
                 if (plieWinnerPosition % 2 == 0) {
                     gameScore += plie.getScore();
-                    pliesCollected ++;
+                    pliesCollected++;
                 } else {
                     gameScore -= plie.getScore();
                 }
@@ -362,11 +339,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     int chooseBestAtout(boolean canPass) {
         int bestAtout = Card.COLOR_NONE;
         float bestScore = -10000;
-        for (int atout=Card.COLOR_SPADE; atout<=Card.COLOR_DIAMOND; atout++) {
+        for (int atout = Card.COLOR_SPADE; atout <= Card.COLOR_DIAMOND; atout++) {
             Card.atout = atout;
             var announcements = Announcement.findAnouncements(hand);
             float startScore = announcements.stream().mapToInt(Announcement::getValue).sum();
-            if (atout==Card.COLOR_SPADE) {
+            if (atout == Card.COLOR_SPADE) {
                 startScore *= 2;
             }
             float maxScore = -10000;
@@ -376,7 +353,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                     maxScore = score;
                 }
             }
-            if (bestScore < startScore + maxScore) {
+            if (startScore + maxScore > bestScore) {
                 bestScore = startScore + maxScore;
                 bestAtout = atout;
             }
