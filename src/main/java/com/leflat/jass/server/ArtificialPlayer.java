@@ -8,10 +8,10 @@ import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
 public class ArtificialPlayer extends AbstractRemotePlayer {
-    private final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
+    protected final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
     private final List<Integer> drawnCards = new ArrayList<>();
     private final GameView gameView = new GameView();
-    private final Map<Integer, Integer> playersPositions = new HashMap<>();
+    protected final Map<Integer, Integer> playersPositions = new HashMap<>();
     private final Map<Integer, BasePlayer> players = new HashMap<>();
     private final Map<Integer, BasePlayer> playersByPosition = new HashMap<>();
     private Plie currentPlie;
