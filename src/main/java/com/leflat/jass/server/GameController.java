@@ -203,11 +203,13 @@ public class GameController extends Thread {
         BasePlayer playerWithStoeck = null;
         Announcement highestAnnouncement = null;
         Team announcingTeam = null;  // joueur qui a la plus grosse annonce
+        Map<BasePlayer, List<Announcement>> announcementsMap = new HashMap<>();
         for (var player : players) {
             var a = player.getAnnouncements();
             if (a.isEmpty()) {
                 continue;
             }
+            announcementsMap.put(player, a);
             for (var announcement : a) {
                 LOGGER.info(player + " announces : " + announcement);
                 if (announcement.getType() == Announcement.STOECK) {
@@ -223,10 +225,10 @@ public class GameController extends Thread {
 
         if (announcingTeam != null) { // there are announces
             for (var player : players) {
-                var a = player.getAnnouncements();
-                if (a.isEmpty()) {
+                if (!announcementsMap.containsKey(player)) {
                     continue;
                 }
+                var a = announcementsMap.get(player);
                 if ((player.getTeam() == announcingTeam)) {
                     announcingTeam.addAnnouncementScore(a);
                     oneWayAsync(p -> p.setAnnouncements(player, a));
@@ -411,7 +413,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -431,7 +436,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -454,7 +462,10 @@ public class GameController extends Thread {
         try {
             answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
 
@@ -467,14 +478,20 @@ public class GameController extends Thread {
                     } catch (PlayerLeftExpection playerLeftExpection) {
                         throw new CompletionException(playerLeftExpection);
                     }
-                    return 0;
+                    return p.getId();
                 }))
                 .collect(Collectors.toList());
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            var result = answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            assert result.size() == 3;
         } catch (CompletionException ex) {
-            throw (PlayerLeftExpection) ex.getCause();
+            if (ex.getCause() instanceof PlayerLeftExpection) {
+                throw (PlayerLeftExpection) ex.getCause();
+            }
+            throw new RuntimeException(ex.getCause());
         }
     }
+
+
 }

@@ -19,6 +19,13 @@ public class Plie {
         this.owner = player;
     }
 
+    public Plie(Plie plie) {
+        highest = plie.highest == null ? null : new Card(plie.highest.getNumber());
+        cut = plie.cut;
+        owner = plie.owner;
+        cards = new ArrayList<>(plie.cards);
+    }
+
     public int getColor() {
         if (cards.isEmpty()) {
             return -1;
@@ -60,6 +67,34 @@ public class Plie {
         } else {
             doesNotFollow(card, player, hand);
         }
+    }
+
+    public boolean canPlay(Card card, List<Card> hand) {
+        if (cards.isEmpty()) {
+            return true;
+        }
+        if (card.getColor() == this.getColor()) {
+            return true;
+        }
+        if (card.getColor() == Card.atout) {
+            if (!cut) {
+                return true;
+            }
+            if (card.compareTo(highest) > 0) {
+                return true;
+            }
+            boolean hasNonTrumpCards = hand.stream().anyMatch(c -> c.getColor() != Card.atout);
+            if (hasNonTrumpCards) {
+                return false;
+            }
+            boolean hasHigherTrumpCards = hand.stream().anyMatch(c -> c.compareTo(highest) > 0);
+            return !hasHigherTrumpCards;
+        }
+        boolean hasAskedColor = hand.stream().anyMatch(c -> c.getColor() == this.getColor());
+        if (hasAskedColor) {
+            return getColor() == Card.atout && Rules.hasBourgSec(hand);
+        }
+        return true;
     }
 
     private void follow(Card card, BasePlayer player) {

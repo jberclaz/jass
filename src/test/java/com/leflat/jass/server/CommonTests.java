@@ -10,6 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static com.leflat.jass.server.RulesTests.buildHand;
 import static org.junit.jupiter.api.Assertions.*;
 
 public class CommonTests {
@@ -56,8 +57,7 @@ public class CommonTests {
 
     @Test
     public void find_suit_test() {
-        int[] list = {5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 32};
-        var annoucements = Announcement.findAnouncements(Arrays.stream(list).mapToObj(Card::new).collect(Collectors.toList()));
+        var annoucements = Announcement.findAnouncements(buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 32));
         assertEquals(2, annoucements.size());
         var firstAnouncement = annoucements.get(0);
         assertEquals(firstAnouncement.getType(), Announcement.THREE_CARDS);
@@ -65,11 +65,14 @@ public class CommonTests {
         var secondAnouncement = annoucements.get(1);
         assertEquals(secondAnouncement.getType(), Announcement.FIFTY);
         assertEquals(secondAnouncement.getCard().getNumber(), 22);
+
+        annoucements = Announcement.findAnouncements(buildHand(0, 5, 19, 21, 22, 26, 28, 31, 33));
+        assertEquals(0, annoucements.size());
     }
 
     @Test
     public void find_stoeck_test() {
-        var cards = RulesTests.buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25);
+        var cards = buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 25);
         Card.atout = Card.COLOR_HEART;
         assertFalse(Announcement.findStoeck(cards));
         Card.atout = Card.COLOR_CLUB;

@@ -65,6 +65,7 @@ public class Card implements Comparable<Card> {
         return number;
     }
 
+    @Override
     public String toString() {
         return RANK_NAMES[getRank()] + " de " + COLOR_NAMES[getColor()];
     }
@@ -134,14 +135,11 @@ public class Card implements Comparable<Card> {
         if (card.getColor() == Card.atout) {
             if (card.getRank() == Card.RANK_BOURG) {
                 return -1;
-            }
-            else if (this.getRank() == Card.RANK_BOURG) {
+            } else if (this.getRank() == Card.RANK_BOURG) {
                 return 1;
-            }
-            else if (card.getRank() == Card.RANK_NELL) {
+            } else if (card.getRank() == Card.RANK_NELL) {
                 return -1;
-            }
-            else if (this.getRank() == Card.RANK_NELL) {
+            } else if (this.getRank() == Card.RANK_NELL) {
                 return 1;
             }
         }
@@ -151,7 +149,7 @@ public class Card implements Comparable<Card> {
         return 1;
     }
 
-     @Override
+    @Override
     public boolean equals(Object o) {
         if (o == this) {
             return true;
