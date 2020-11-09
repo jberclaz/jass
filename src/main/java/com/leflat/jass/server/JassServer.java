@@ -1,6 +1,8 @@
 package com.leflat.jass.server;
 
 import java.io.IOException;
+import java.io.InputStream;
+import java.util.Properties;
 import java.util.logging.FileHandler;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -11,9 +13,24 @@ import java.util.logging.SimpleFormatter;
 public class JassServer {
     public static final int DEFAULT_PORT = 23107;
 
+    public static String getVersion() {
+        InputStream resourceAsStream = JassServer.class.getResourceAsStream("/META-INF/maven/com.leflat/jass/pom.properties");
+        if (resourceAsStream == null) {
+            return "SNAPSHOT";
+        }
+        var prop = new Properties();
+        try {
+            prop.load(resourceAsStream);
+        } catch (IOException e) {
+            e.printStackTrace();
+            return "SNAPSHOT";
+        }
+        return prop.getProperty("version");
+    }
+
     public static void main(String[] args) {
-        System.out.println("FLAT Jass System Server");
-        System.out.println("Version 2.0");
+        System.out.println("Jass Server");
+        System.out.println("Version " + getVersion());
         System.out.println("(c) 2000-2020 by FLAT(r)");
         System.out.println();
 
