@@ -67,7 +67,7 @@ public class GameView {
     public void playerDoesNotHaveCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
         if (cardsInHands[player].contains(new Card(cardNumber))) {
-            throw new RuntimeException("Contradictory game view");
+            throw new RuntimeException("Contradictory game view: strategy believes that player " + player + " does not have card " + cardNumber);
         }
         var prob = cardsInGame.get(cardNumber);
         if (prob == null) {

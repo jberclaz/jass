@@ -194,6 +194,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     public void setInteractive(boolean interactive) {
         this.isInteractive = interactive;
+        hoveredCard = -1;
     }
 
     public boolean isInsidePlayerCardsArea(int x, int y) {
@@ -606,7 +607,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
             xform.scale(scale, scale);
             xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-            xform.rotate(toRadians(90));
+            xform.rotate(toRadians(-90));
             xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
             g2.drawRenderedImage(SwissCardImages.getImage(hand.get(i)), xform);
         }
@@ -634,7 +635,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             xform.translate(hand_x_offset, hand_y_offset + card_y_step * i);
             xform.scale(scale, scale);
             xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-            xform.rotate(toRadians(-90));
+            xform.rotate(toRadians(90));
             xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
             g2.drawRenderedImage(SwissCardImages.getImage(hand.get(i)), xform);
         }
