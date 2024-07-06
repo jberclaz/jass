@@ -111,7 +111,7 @@ public class GameViewTests {
             gameView.cardPlayed(i % 3, new Card(i));
             assertEquals(gameView.getNumberCardsInGame(), 27 - i + 19);
         }
-        for (int i = 30; i < 36; i++) {
+        for (int i = 30; i < Card.DECK_SIZE; i++) {
             gameView.playerHasCard(i % 3, new Card(i));
             assertEquals(gameView.getNumberCardsInGame(), 17);
         }

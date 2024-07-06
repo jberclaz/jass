@@ -264,7 +264,7 @@ public class GameController extends Thread {
 
     int drawCards() throws PlayerLeftExpection {
         int playerWithDiamondSeven = 0;      // 7 de carreau
-        var cards = Card.shuffle(36);     // choisir les cartes au hasard
+        var cards = Card.shuffle(Card.DECK_SIZE);     // choisir les cartes au hasard
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 9; j++) {
                 if (cards.get(i * 9 + j).getNumber() == Card.DIAMOND_SEVEN) {    // 7 de carreau
@@ -300,7 +300,7 @@ public class GameController extends Thread {
         boolean drawingSuccessful;
         do {
             HashMap<BasePlayer, Card> cardsDrawn = new HashMap<>();    // cartes tirées
-            var cards = Card.shuffle(36);
+            var cards = Card.shuffle(Card.DECK_SIZE);
             for (var player : players) {
                 int cardNumber = player.drawCard();
 

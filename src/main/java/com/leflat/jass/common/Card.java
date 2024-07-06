@@ -15,6 +15,7 @@ import java.util.Random;
  */
 
 public class Card implements Comparable<Card> {
+    public static final int DECK_SIZE = 36;
     public static final int DIAMOND_SEVEN = Card.COLOR_DIAMOND * 9 + 1;
     public static final int RANK_6 = 0;
     public static final int RANK_7 = 1;

@@ -33,7 +33,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
 
     @Override
     public int drawCard() {
-        return rand.nextInt(36);
+        return rand.nextInt(Card.DECK_SIZE);
     }
 
     @Override

@@ -13,12 +13,12 @@ public class CardImages {
     public static final int IMG_WIDTH = 71;
     public static final int IMG_HEIGHT = 96;
     private static final String IMG_PATH = "pics/";
-    private static final BufferedImage[] images = new BufferedImage[36];
+    private static final BufferedImage[] images = new BufferedImage[Card.DECK_SIZE];
     private static BufferedImage backImage;
     private static final BufferedImage[] colorImages = new BufferedImage[4];
 
     static {
-        for (int i = 0; i < 36; i++) {
+        for (int i = 0; i < Card.DECK_SIZE; i++) {
             var imagePath = CardImages.class.getClassLoader().getResource(imagePath(i));
             if (imagePath == null) {
                 LOGGER.severe("Unable to locate card image " + i);

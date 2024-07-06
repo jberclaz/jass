@@ -12,6 +12,8 @@
 
 package com.leflat.jass.client;
 
+import com.leflat.jass.common.Card;
+
 import java.awt.*;
 
 import static java.lang.Integer.max;
@@ -44,7 +46,7 @@ public class CanvasTop extends JassCanvas {
 
         Dimension d = getSize();
 
-        int w = (d.width - 36 - hand.size() * X_STEP) / 2;
+        int w = (d.width - Card.DECK_SIZE - hand.size() * X_STEP) / 2;
         for (int i = 0; i < hand.size(); i++) {
             g2.drawImage(CardImages.getImage(hand.get(i)), w + X_STEP * i, CARD_Y, this);
         }

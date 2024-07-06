@@ -49,7 +49,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public int drawCard() {
         int randomCard;
         do {
-            randomCard = rand.nextInt(36);
+            randomCard = rand.nextInt(Card.DECK_SIZE);
         } while (drawnCards.contains(randomCard));
         return randomCard;
     }

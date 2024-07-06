@@ -22,7 +22,7 @@ public class GameView {
             cardsInHands[p].clear();
             handSizes[p] = 9;
         }
-        for (int i = 0; i < 36; i++) {
+        for (int i = 0; i < Card.DECK_SIZE; i++) {
             var card = new Card(i);
             if (hand.contains((card))) {
                 continue;

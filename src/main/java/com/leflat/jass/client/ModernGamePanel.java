@@ -507,7 +507,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float scale = (float) cardDimension.height / SwissCardImages.IMG_HEIGHT;
 
         if (gameMode == GameMode.TEAM_DRAWING) {
-            for (int i = 0; i < 36; i++) {
+            for (int i = 0; i < Card.DECK_SIZE; i++) {
                 float card_x_offset = centerArea.width / 10f;
                 float card_x_step = (centerArea.width - 2 * card_x_offset - cardDimension.width) / 35.0f;
                 int card_y_offset = round((centerArea.height - cardDimension.height) / 2 + centerArea.y);

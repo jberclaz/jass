@@ -83,7 +83,7 @@ public class CanvasCenter extends JPanel {
             case MODE_PICK_CARD:
                 int yOffset = (d.height - CardImages.IMG_HEIGHT) / 2;
                 int xOffset = (d.width - 35 * X_STEP - CardImages.IMG_WIDTH) / 2;
-                for (int i = 0; i < 36; i++) {
+                for (int i = 0; i < Card.DECK_SIZE; i++) {
                     if (!drawnCards.contains(i)) {
                         g.drawImage(CardImages.getBackImage(), xOffset + i * X_STEP, yOffset, this);
                     }
