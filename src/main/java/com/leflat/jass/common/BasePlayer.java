@@ -53,7 +53,7 @@ public abstract class BasePlayer {
     }
 
     public void removeCard(Card card) {
-        hand.removeIf(c->c.getNumber() == card.getNumber());
+        hand.removeIf(c->c == card);
     }
 
     public String toString() { return name; }

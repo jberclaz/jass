@@ -156,10 +156,8 @@ public class Announcement implements Comparable<Announcement> {
                     nbrCards++;
                 j++;
             }
-            if (nbrCards > 2) {   // on a trouvé une suite
-                if (nbrCards > 5) {
-                    nbrCards = 5;
-                }
+            if (nbrCards >= 3 && nbrCards <= 5) {   // on a trouvé une suite
+                // if the number of cards is greater than 6, it means that there is another higher suite of five cards
                 announcements.add(new Announcement(nbrCards - 2, hand.get(i + nbrCards - 1)));
                 i = j - 1;
             }

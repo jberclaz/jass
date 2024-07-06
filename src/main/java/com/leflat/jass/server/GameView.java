@@ -6,76 +6,72 @@ import java.util.*;
 
 public class GameView {
     private final Random rand = new Random();
-    private final Map<Integer, Float[]> cardsInGame = new HashMap<>();
-    private final List<Card>[] cardsInHands = new List[3];
+    private final Map<Integer, Float[]> unknownCardsInGame = new HashMap<>();
+    private final List<Card>[] knownCardsInHands = new List[3];
     private final int[] handSizes = new int[3];
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
-            cardsInHands[p] = new ArrayList<>();
+            knownCardsInHands[p] = new ArrayList<>();
         }
     }
 
-    public void reset(List<Card> hand) {
-        cardsInGame.clear();
+    public void reset(List<Card> ownHand) {
+        unknownCardsInGame.clear();
         for (int p = 0; p < 3; p++) {
-            cardsInHands[p].clear();
+            knownCardsInHands[p].clear();
             handSizes[p] = 9;
         }
         for (int i = 0; i < Card.DECK_SIZE; i++) {
             var card = new Card(i);
-            if (hand.contains((card))) {
+            if (ownHand.contains((card))) {
                 continue;
             }
-            cardsInGame.put(i, new Float[]{1 / 3f, 1 / 3f, 1 / 3f});
+            unknownCardsInGame.put(i, new Float[]{1 / 3f, 1 / 3f, 1 / 3f});
         }
         assert getNumberCardsInGame() == 27;
     }
 
     public void cardPlayed(int player, Card card) {
         int previousNumberCardsInGame = getNumberCardsInGame();
-        var removed = cardsInGame.remove(card.getNumber());
-        var removed2 = cardsInHands[player].remove(card);
-        handSizes[player] --;
-        if (removed == null && !removed2) {
-            System.out.println("warning!");
+        var removedCardFromGame = unknownCardsInGame.remove(card.getNumber());
+        var removedCardFromHand = knownCardsInHands[player].remove(card);
+        if ((removedCardFromGame != null) == removedCardFromHand) {
+            throw new RuntimeException("Card " + card + " played by player " + player + " was not properly accounted for in GameView");
         }
+        handSizes[player] --;
         assert getNumberCardsInGame() == (previousNumberCardsInGame - 1);
     }
 
     public void playerHasCard(int player, int cardNumber) {
-        int previousNumberCardsInGame = getNumberCardsInGame();
-        if (!cardsInGame.containsKey(cardNumber)) {
-            return;
-        }
-        var card = new Card(cardNumber);
-        if (cardsInHands[player].contains(card)) {
-            throw new RuntimeException("We already know player " + player + " has card " + card);
-        }
-        var removedCard = cardsInGame.remove(cardNumber);
-        if (removedCard == null) {
-            throw new RuntimeException("Card " + new Card(cardNumber) + " was not in game");
-        }
-        cardsInHands[player].add(card);
-        assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
+        playerHasCard(player, new Card(cardNumber));
     }
 
     public void playerHasCard(int player, Card card) {
-        playerHasCard(player, card.getNumber());
+        int previousNumberCardsInGame = getNumberCardsInGame();
+        if (!unknownCardsInGame.containsKey(card.getNumber())) {
+            throw new RuntimeException("Card " + card + " was not in game");
+        }
+        if (knownCardsInHands[player].contains(card)) {
+            throw new RuntimeException("We already know player " + player + " has card " + card);
+        }
+        unknownCardsInGame.remove(card.getNumber());
+        knownCardsInHands[player].add(card);
+        assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
     public void playerDoesNotHaveCard(int player, int cardNumber) {
         int previousNumberCardsInGame = getNumberCardsInGame();
-        if (cardsInHands[player].contains(new Card(cardNumber))) {
-            throw new RuntimeException("Contradictory game view: strategy believes that player " + player + " does not have card " + cardNumber);
+        if (knownCardsInHands[player].contains(new Card(cardNumber))) {
+            throw new RuntimeException("Contradictory game view: strategy believes that player " + player + " has card " + cardNumber);
         }
-        var prob = cardsInGame.get(cardNumber);
+        var prob = unknownCardsInGame.get(cardNumber);
         if (prob == null) {
             return;
         }
         if (prob[player] > 0) {
             prob[player] = 0f;
-            normalize(cardNumber);
+            normalizeCardsProbabilities(cardNumber);
         }
         assert getNumberCardsInGame() == previousNumberCardsInGame;
     }
@@ -84,11 +80,11 @@ public class GameView {
         playerDoesNotHaveCard(player, card.getNumber());
     }
 
-    private void normalize(int cardNumber) {
-        var prob = cardsInGame.get(cardNumber);
+    private void normalizeCardsProbabilities(int cardNumber) {
+        var prob = unknownCardsInGame.get(cardNumber);
         float sum = prob[0] + prob[1] + prob[2];
         if (sum == 0) {
-            throw new RuntimeException("Sum should never be zero");
+            throw new RuntimeException("Probabilities should not sum to zero");
         }
         int unique = -1;
         for (int p = 0; p < 3; p++) {
@@ -106,14 +102,14 @@ public class GameView {
     @Override
     public String toString() {
         StringBuilder s = new StringBuilder();
-        for (var card : cardsInGame.entrySet()) {
+        for (var card : unknownCardsInGame.entrySet()) {
             var prob = card.getValue();
             s.append(new Card(card.getKey()).toString()).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
         }
         for (int p = 0; p < 3; p++) {
-            if (!cardsInHands[p].isEmpty()) {
+            if (!knownCardsInHands[p].isEmpty()) {
                 s.append(p).append(": ");
-                for (var card : cardsInHands[p]) {
+                for (var card : knownCardsInHands[p]) {
                     s.append(card).append(" ");
                 }
                 s.append("\n");
@@ -126,10 +122,10 @@ public class GameView {
         assert getNumberCardsInGame() == (handSizes[0] + handSizes[1] + handSizes[2]);
         List<Card>[] hands = new List[3];
         for (int p = 0; p < 3; p++) {
-            hands[p] = new ArrayList<>(cardsInHands[p]);
+            hands[p] = new ArrayList<>(knownCardsInHands[p]);
         }
         int[] cardsSum = new int[3];
-        for (var prob : cardsInGame.values()) {
+        for (var prob : unknownCardsInGame.values()) {
             for (int p = 0; p < 3; p++) {
                 if (prob[p] > 0) {
                     cardsSum[p]++;
@@ -137,7 +133,7 @@ public class GameView {
             }
         }
 
-        var sortedEntrySet = new ArrayList<>(cardsInGame.entrySet());
+        var sortedEntrySet = new ArrayList<>(unknownCardsInGame.entrySet());
         sortedEntrySet.sort((e1, e2) -> {
             var p1 = e1.getValue();
             var p2 = e2.getValue();
@@ -190,6 +186,6 @@ public class GameView {
     }
 
     int getNumberCardsInGame() {
-        return cardsInGame.size() + cardsInHands[0].size() + cardsInHands[1].size() + cardsInHands[2].size();
+        return unknownCardsInGame.size() + knownCardsInHands[0].size() + knownCardsInHands[1].size() + knownCardsInHands[2].size();
     }
 }

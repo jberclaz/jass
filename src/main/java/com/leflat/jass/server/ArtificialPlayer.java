@@ -9,10 +9,10 @@ import java.util.stream.Collectors;
 
 public class ArtificialPlayer extends AbstractRemotePlayer {
     protected final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
-    private final List<Integer> drawnCards = new ArrayList<>();
+    private final List<Integer> remainingCardsToDraw = new ArrayList<>();
     private final GameView gameView = new GameView();
-    protected final Map<Integer, Integer> playersPositions = new HashMap<>();
-    private final Map<Integer, BasePlayer> players = new HashMap<>();
+    protected final Map<Integer, Integer> positionsByIds = new HashMap<>();
+    private final Map<Integer, BasePlayer> playersByIds = new HashMap<>();
     private final Map<Integer, BasePlayer> playersByPosition = new HashMap<>();
     private Plie currentPlie;
     private Card playedCard;
@@ -20,7 +20,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private final Random rand = new Random();
     private int ourScore = 0;
     private int theirScore = 0;
-    private int numberOfPlies;
+    private int numberOfPliesWonByOwnTeam;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -30,8 +30,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     @Override
     public void setPlayerInfo(BasePlayer player) {
         var relativePosition = getInitialRelativePosition(player);
-        playersPositions.put(player.getId(), relativePosition);
-        players.put(player.getId(), player);
+        positionsByIds.put(player.getId(), relativePosition);
+        playersByIds.put(player.getId(), player);
         playersByPosition.put(relativePosition, player);
     }
 
@@ -42,34 +42,34 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void prepareTeamDrawing(boolean firstAttempt) {
-        drawnCards.clear();
+        remainingCardsToDraw.clear();
+        for (int i=0; i<Card.DECK_SIZE; i++) {
+            remainingCardsToDraw.add(i);
+        }
     }
 
     @Override
     public int drawCard() {
-        int randomCard;
-        do {
-            randomCard = rand.nextInt(Card.DECK_SIZE);
-        } while (drawnCards.contains(randomCard));
-        return randomCard;
+        int randomPosition = rand.nextInt(remainingCardsToDraw.size());
+        return remainingCardsToDraw.get(randomPosition);
     }
 
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) {
-        drawnCards.add(cardPosition);
+        remainingCardsToDraw.remove(Integer.valueOf(cardPosition));
     }
 
     @Override
     public void setPlayersOrder(List<Integer> playerIds) {
         int ownPosition = playerIds.indexOf(id);
-        playersPositions.clear();
+        positionsByIds.clear();
         playersByPosition.clear();
         for (int i = 0; i < playerIds.size(); i++) {
             int playerId = playerIds.get(i);
             int position = (i - ownPosition + 4) % 4;
-            playersPositions.put(playerId, position);
+            positionsByIds.put(playerId, position);
             if (position > 0) {
-                playersByPosition.put(position, players.get(playerId));
+                playersByPosition.put(position, playersByIds.get(playerId));
             }
         }
     }
@@ -85,7 +85,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         super.setHand(cards);
         gameView.reset(cards);
         currentPlie = new Plie();
-        numberOfPlies = 0;
+        numberOfPliesWonByOwnTeam = 0;
     }
 
     @Override
@@ -117,14 +117,14 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
-        var position = playersPositions.get(player.getId()) - 1;
+        var position = positionsByIds.get(player.getId()) - 1;
         // if player doesn't follow, we know he doesn't have this color
         if (currentPlie.getSize() > 0 && card.getColor() != Card.atout && card.getColor() != currentPlie.getColor()) {
             var bourg = new Card(Card.RANK_BOURG, Card.atout);
             for (int r = 0; r < 9; r++) {
-                var missingGard = new Card(r, currentPlie.getColor());
-                if (!missingGard.equals(bourg)) {
-                    gameView.playerDoesNotHaveCard(position, missingGard);
+                var missingCard = new Card(r, currentPlie.getColor());
+                if (!missingCard.equals(bourg)) {
+                    gameView.playerDoesNotHaveCard(position, missingCard);
                 }
             }
         }
@@ -139,8 +139,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void collectPlie(BasePlayer player) {
-        if (playersPositions.get(player.getId()) % 2 == 0) {
-            numberOfPlies++;
+        if (positionsByIds.get(player.getId()) % 2 == 0) {
+            numberOfPliesWonByOwnTeam++;
         }
         currentPlie = new Plie();
     }
@@ -174,22 +174,24 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         if (player.getId() == this.id) {
             return;
         }
-        var position = playersPositions.get(player.getId()) - 1;
+        var position = positionsByIds.get(player.getId()) - 1;
         for (var announcement : announcements) {
             if (announcement.getType() == Announcement.STOECK) {
-                // currently we can only announce stoeck when we play the last card
+                // currently we can only announce stoeck when we play the last card => by then, cards have already been played
                 continue;
             }
             for (var card : announcement.getCards()) {
                 gameView.playerHasCard(position, card);
             }
-            if (announcement.getType() == Announcement.THREE_CARDS || announcement.getType() == Announcement.FIFTY) {
+            if (announcement.getType() == Announcement.THREE_CARDS || announcement.getType() == Announcement.FIFTY || announcement.getType() == Announcement.HUNDRED) {
                 if (announcement.getCard().getRank() < Card.RANK_AS) {
                     int nextSuiteCard = announcement.getCard().getNumber() + 1;
                     if (!hand.contains(new Card(nextSuiteCard))) {
                         gameView.playerDoesNotHaveCard(position, nextSuiteCard);
                     }
                 }
+            }
+            if (announcement.getType() == Announcement.THREE_CARDS || announcement.getType() == Announcement.FIFTY) {
                 int previousSuiteCardRank = announcement.getCard().getRank();
                 previousSuiteCardRank -= announcement.getType() == Announcement.THREE_CARDS ? 3 : 4;
                 if (previousSuiteCardRank >= 0) {
@@ -258,7 +260,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         List<Card>[] hands = new List[4];
         int reward = 0;
         for (int game = 0; game < numberOfGames; game++) {
-            int pliesCollected = numberOfPlies;
+            int pliesCollected = numberOfPliesWonByOwnTeam;
             hands[0] = new ArrayList<>(hand);
             int i = 1;
             for (var h : gameView.getRandomHands()) {
@@ -295,7 +297,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                     }
                     hands[currentPlayer].remove(randomMove);
                 }
-                plieWinnerPosition = playersPositions.get(plie.getOwner().getId());
+                plieWinnerPosition = positionsByIds.get(plie.getOwner().getId());
                 if (plieWinnerPosition % 2 == 0) {
                     gameScore += plie.getScore();
                     pliesCollected++;

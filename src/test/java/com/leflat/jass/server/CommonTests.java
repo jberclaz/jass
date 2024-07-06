@@ -42,6 +42,24 @@ public class CommonTests {
         anouncement = new Announcement(Announcement.NELL_SQUARE, new Card(Card.RANK_NELL, Card.COLOR_HEART));
         assertEquals("cent cinquante des nells", anouncement.toString());
         assertEquals(150, anouncement.getValue());
+        var cards = anouncement.getCards();
+        assertEquals(cards.length, 4);
+        for (int i=0; i<4; i++) {
+            assertEquals(cards[i], new Card(Card.RANK_NELL, i));
+        }
+
+        anouncement = new Announcement(Announcement.STOECK, null);
+        assertEquals("stoeck", anouncement.toString());
+        cards = anouncement.getCards();
+        assertEquals(cards.length, 2);
+        assertEquals(cards[0], new Card(Card.RANK_DAME, Card.atout));
+        assertEquals(cards[1], new Card(Card.RANK_ROI, Card.atout));
+        assertEquals(20, anouncement.getValue());
+
+        assertThrows(RuntimeException.class, () -> {
+            var a = new Announcement(19, null);
+            a.getCards();
+        });
     }
 
     @Test
@@ -53,6 +71,18 @@ public class CommonTests {
         assertEquals(anouncement.getType(), Announcement.BOURG_SQUARE);
         assertEquals(anouncement.getCard().getRank(), Card.RANK_BOURG);
         assertEquals(200, anouncement.getValue());
+
+        int[] list2 = {4, 9, 12, 13, 19, 22, 24, 31};
+        annoucements = Announcement.findAnouncements(Arrays.stream(list2).mapToObj(Card::new).collect(Collectors.toList()));
+        assertEquals(1, annoucements.size());
+        anouncement = annoucements.get(0);
+        assertEquals(anouncement.getType(), Announcement.SQUARE);
+
+        int[] list3 = {3, 9, 10, 12, 19, 21, 24, 30};
+        annoucements = Announcement.findAnouncements(Arrays.stream(list3).mapToObj(Card::new).collect(Collectors.toList()));
+        assertEquals(1, annoucements.size());
+        anouncement = annoucements.get(0);
+        assertEquals(anouncement.getType(), Announcement.NELL_SQUARE);
     }
 
     @Test
@@ -68,6 +98,16 @@ public class CommonTests {
 
         annoucements = Announcement.findAnouncements(buildHand(0, 5, 19, 21, 22, 26, 28, 31, 33));
         assertEquals(0, annoucements.size());
+
+        annoucements = Announcement.findAnouncements(buildHand(0, 1, 2, 3, 4, 20, 22, 24, 26));
+        assertEquals(1, annoucements.size());
+        assertEquals(annoucements.get(0).getType(), Announcement.HUNDRED);
+        assertEquals(annoucements.get(0).getCard().getNumber(), 4);
+
+        annoucements = Announcement.findAnouncements(buildHand(0, 1, 2, 3, 4, 5, 22, 24, 26));
+        assertEquals(1, annoucements.size());
+        assertEquals(annoucements.get(0).getType(), Announcement.HUNDRED);
+        assertEquals(annoucements.get(0).getCard().getNumber(), 5);
     }
 
     @Test

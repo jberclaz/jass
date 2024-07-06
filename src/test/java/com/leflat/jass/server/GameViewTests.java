@@ -13,23 +13,23 @@ import static org.junit.jupiter.api.Assertions.*;
 
 public class GameViewTests {
     GameView gameView;
-    Field cardsInGameField, cardsInHandsField, handSizesField;
+    Field unknownCardsInGameField, knownCardsInHandsField, handSizesField;
     int[] handSizes;
-    Map<Integer, Float[]> cardsInGame;
-    List<Card>[] cardsInHands;
+    Map<Integer, Float[]> unknownCardsInGame;
+    List<Card>[] knownCardsInHands;
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
         gameView = new GameView();
-        cardsInGameField = GameView.class.getDeclaredField("cardsInGame");
-        cardsInHandsField = GameView.class.getDeclaredField("cardsInHands");
+        unknownCardsInGameField = GameView.class.getDeclaredField("unknownCardsInGame");
+        knownCardsInHandsField = GameView.class.getDeclaredField("knownCardsInHands");
         handSizesField = GameView.class.getDeclaredField("handSizes");
-        cardsInGameField.setAccessible(true);
-        cardsInHandsField.setAccessible(true);
+        unknownCardsInGameField.setAccessible(true);
+        knownCardsInHandsField.setAccessible(true);
         handSizesField.setAccessible(true);
         handSizes = (int[]) handSizesField.get(gameView);
-        cardsInGame = (Map<Integer, Float[]>) cardsInGameField.get(gameView);
-        cardsInHands = (List<Card>[]) cardsInHandsField.get(gameView);
+        unknownCardsInGame = (Map<Integer, Float[]>) unknownCardsInGameField.get(gameView);
+        knownCardsInHands = (List<Card>[]) knownCardsInHandsField.get(gameView);
         gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17));
     }
 
@@ -38,46 +38,62 @@ public class GameViewTests {
         for (int p = 0; p < 3; p++) {
             assertEquals(handSizes[p], 9);
         }
-        assertEquals(cardsInGame.size(), 27);
+        assertEquals(unknownCardsInGame.size(), 27);
     }
 
     @Test
     public void test_card_played() {
         gameView.cardPlayed(0, new Card(0));
-        assertEquals(cardsInGame.size(), 26);
+        assertEquals(unknownCardsInGame.size(), 26);
 
         gameView.playerHasCard(2, 10);
-        assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands[2].size(), 1);
+        assertEquals(unknownCardsInGame.size(), 25);
+        assertEquals(knownCardsInHands[2].size(), 1);
 
         gameView.cardPlayed(2, new Card(10));
-        assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands[2].size(), 0);
+        assertEquals(unknownCardsInGame.size(), 25);
+        assertEquals(knownCardsInHands[2].size(), 0);
+
+        // play same card twice
+        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(2, new Card(10)));
+
+        //
+        knownCardsInHands[0].add(new Card(2));
+        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(0, new Card(2)));
     }
 
     @Test
     public void test_player_has_card() {
         gameView.playerHasCard(2, 10);
-        assertEquals(cardsInGame.size(), 26);
-        assertEquals(cardsInHands[2].size(), 1);
+        assertEquals(unknownCardsInGame.size(), 26);
+        assertEquals(knownCardsInHands[2].size(), 1);
+        assertEquals(knownCardsInHands[2].get(0), new Card(10));
 
         gameView.playerHasCard(2, new Card(12));
-        assertEquals(cardsInGame.size(), 25);
-        assertEquals(cardsInHands[2].size(), 2);
+        assertEquals(unknownCardsInGame.size(), 25);
+        assertEquals(knownCardsInHands[2].size(), 2);
+
+        assertThrows(RuntimeException.class, () -> gameView.playerHasCard(2, new Card(12)));
+        assertThrows(RuntimeException.class, () -> gameView.playerHasCard(1, new Card(12)));
     }
 
     @Test
     public void test_player_doesnot_have_card() {
         gameView.playerDoesNotHaveCard(0, 14);
-        assertEquals(cardsInGame.size(), 27);
-        assertEquals(cardsInGame.get(14)[0], 0f);
+        assertEquals(unknownCardsInGame.size(), 27);
+        assertEquals(unknownCardsInGame.get(14)[0], 0f);
+        assertEquals(unknownCardsInGame.get(14)[1], 0.5f);
+        assertEquals(unknownCardsInGame.get(14)[2], 0.5f);
 
         gameView.playerDoesNotHaveCard(2, 14);
-        assertEquals(cardsInGame.size(), 26);
-        assertEquals(cardsInHands[1].size(), 1);
+        assertEquals(unknownCardsInGame.size(), 26);
+        assertEquals(knownCardsInHands[1].size(), 1);
+        assertEquals(knownCardsInHands[1].get(0), new Card(14));
+
+        assertThrows(RuntimeException.class, () -> gameView.playerDoesNotHaveCard(1, 14));
 
         gameView.playerDoesNotHaveCard(2, 1);
-        assertEquals(cardsInGame.size(), 26);
+        assertEquals(unknownCardsInGame.size(), 26);
     }
 
     @Test
