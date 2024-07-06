@@ -21,7 +21,7 @@ import java.util.Collection;
 import java.util.List;
 
 public class CanvasLastPlie extends JPanel {
-    private List<Card> lastPlie = new ArrayList<>();
+    private final List<Card> lastPlie = new ArrayList<>();
     private int atout;
     private int ourScore, theirScore;
 

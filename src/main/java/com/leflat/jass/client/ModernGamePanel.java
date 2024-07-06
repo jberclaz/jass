@@ -19,6 +19,11 @@ import java.util.logging.Logger;
 
 import static java.lang.Math.*;
 
+/**
+ * This class implements the central canvas on the player client, including the pad where cards are played,
+ * the players hands and the info area underneath the main player's cards. It also contains the logic for
+ * interactive cards selection.
+ */
 public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     enum GameMode {
@@ -336,7 +341,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var hand = player.getHand();
-        if (hand.size() == 0) {
+        if (hand.isEmpty()) {
             return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var playerArea = getPlayerArea(renderingArea);
@@ -355,7 +360,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
         float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
         return new Rectangle(round(handArea.x + number * card_x_step), round(handArea.y),
-                round(cardDimension.width), round(cardDimension.height));
+                cardDimension.width, cardDimension.height);
     }
 
     private Rectangle2D.Float getTeamDrawingArea(Rectangle2D.Float renderingArea) {
@@ -748,7 +753,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             var ia = toInt(getInfoArea(renderingArea));
             var ha = toInt(getHandArea(renderingArea));
             var da = toInt(getTeamDrawingArea(renderingArea));
-            if (players.containsKey(PlayerPosition.MYSELF) && players.get(PlayerPosition.MYSELF).getHand().size() > 0) {
+            if (players.containsKey(PlayerPosition.MYSELF) && !players.get(PlayerPosition.MYSELF).getHand().isEmpty()) {
                 var cca = getCardArea(0, renderingArea);
                 g2.drawRect(cca.x, cca.y, cca.width, cca.height);
             }

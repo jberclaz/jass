@@ -59,7 +59,7 @@ public class SwissCardImages {
     }
 
     public static BufferedImage getImage(Card card) {
-        if (!card.isBack()) {
+        if (card.isFront()) {
             return images[card.getNumber()];
         }
         return backImage;

@@ -50,10 +50,10 @@ public class ClientNetwork implements IClientNetwork {
                 return new ClientConnectionInfo(receivedGameId);
             }
             playerId = Integer.parseInt(receiveRawMessage());
-            var encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8.toString());
+            var encodedName = URLEncoder.encode(name, StandardCharsets.UTF_8);
             sendMessage(Collections.singletonList(encodedName));
             return new ClientConnectionInfo(playerId, receivedGameId, ConnectionError.CONNECTION_SUCCESSFUL);
-        } catch (ServerDisconnectedException | UnsupportedEncodingException e) {
+        } catch (ServerDisconnectedException e) {
             LOGGER.log(Level.WARNING, "Server disconnected during connection", e);
         }
         return new ClientConnectionInfo(ConnectionError.SERVER_UNREACHABLE);

@@ -4,6 +4,9 @@ import javax.swing.*;
 import javax.swing.border.BevelBorder;
 import java.awt.*;
 
+/**
+ * This class contains the information text box at the bottom of the UI.
+ */
 public class ModernStatusPanel extends JPanel {
     private String text = "";
 

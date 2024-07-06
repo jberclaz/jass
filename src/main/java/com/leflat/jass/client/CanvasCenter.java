@@ -34,8 +34,8 @@ public class CanvasCenter extends JPanel {
     private int mode;  /* 0 : rien, 1 : tirer les équipes
      * 2 : tirer les équipes et choisir une carte
      * 3 : jouer */
-    private List<Integer> drawnCards = new ArrayList<>();
-    private Map<Integer, Card> shownCards = new HashMap<>();
+    private final List<Integer> drawnCards = new ArrayList<>();
+    private final Map<Integer, Card> shownCards = new HashMap<>();
 
     public CanvasCenter() {
         mode = MODE_PASSIVE;

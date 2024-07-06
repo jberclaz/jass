@@ -74,8 +74,8 @@ public class Card implements Comparable<Card> {
         return getColor() == Card.atout ? VALUES_ATOUT[getRank()] : VALUES[getRank()];
     }
 
-    public boolean isBack() {
-        return number == BACK_NUMBER;
+    public boolean isFront() {
+        return number != BACK_NUMBER;
     }
 
     public static Card getBack() {

@@ -65,12 +65,7 @@ public class RemoteController implements IController, Runnable {
             switch (command) {
                 case RemoteCommand.SET_PLAYER_INFO:
                     int playerId = Integer.parseInt(message[1]);
-                    String name = null;
-                    try {
-                        name = URLDecoder.decode(message[2], StandardCharsets.UTF_8.toString());
-                    } catch (UnsupportedEncodingException e) {
-                        LOGGER.log(Level.SEVERE, "Unable to decode name", e);
-                    }
+                    String name = URLDecoder.decode(message[2], StandardCharsets.UTF_8);
                     player.setPlayerInfo(new ClientPlayer(playerId, name));
                     break;
                 case RemoteCommand.CHOOSE_TEAM_SELECTION_METHOD:

@@ -26,8 +26,8 @@ public class Announcement implements Comparable<Announcement> {
         this.card = card;
     }
 
-    private int type;     // 0: stöck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carré
-    private Card card;    // plus haute carte de l'annonce
+    private final int type;     // 0: stöck, 1: 3 cartes, 2: cinquante, 3: cent, 4: carré
+    private final Card card;    // plus haute carte de l'annonce
 
     public int getType() {
         return type;
