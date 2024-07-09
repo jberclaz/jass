@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.util.logging.*;
 
 public class ArtificialClient extends ArtificialPlayer implements IRemotePlayer {
+    protected final static Logger LOGGER = Logger.getLogger(ArtificialClient.class.getName());
     private final IClientNetworkFactory networkFactory;
     private IClientNetwork network = null;
     private IController controller = null;
@@ -17,10 +18,10 @@ public class ArtificialClient extends ArtificialPlayer implements IRemotePlayer 
         this.networkFactory = networkFactory;
         int result = connect(name, host, gameId);
         if (result < 0) {
-            System.err.println("Unable to connect to game " + gameId + " : " + result);
+            LOGGER.warning("Unable to connect to game " + gameId + " : " + result);
         }
         else {
-            System.out.println("Connected to game " + gameId);
+            LOGGER.info("Connected to game " + gameId);
             try {
                 controllerThread.join();
             } catch (InterruptedException e) {

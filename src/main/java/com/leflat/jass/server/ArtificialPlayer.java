@@ -156,10 +156,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         if (hand.size() == 8) {
             // can announce only on first plie
             if (!announcements.isEmpty()) {
-                System.out.println(name + " has " + announcements.size() + " announcements");
+                LOGGER.info(name + " has " + announcements.size() + " announcements");
             }
             for (var a : announcements) {
-                System.out.println(name + " announces " + a);
+                LOGGER.info(name + " announces " + a);
             }
             return announcements;
         }
@@ -252,7 +252,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
                 bestCard = validCard;
             }
         }
-        System.out.println(name + " : best move is " + bestCard);
+        LOGGER.info(name + " : best move is " + bestCard);
         return bestCard;
     }
 
