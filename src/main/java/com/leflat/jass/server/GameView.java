@@ -3,8 +3,10 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.Card;
 
 import java.util.*;
+import java.util.logging.Logger;
 
 public class GameView {
+    protected final static Logger LOGGER = Logger.getLogger(GameView.class.getName());
     private final Random rand = new Random();
     private final Map<Integer, Float[]> unknownCardsInGame = new HashMap<>();
     private final List<Card>[] knownCardsInHands = new List[3];
@@ -50,7 +52,7 @@ public class GameView {
     public void playerHasCard(int player, Card card) {
         int previousNumberCardsInGame = getNumberCardsInGame();
         if (!unknownCardsInGame.containsKey(card.getNumber())) {
-            throw new RuntimeException("Card " + card + " was not in game");
+            return;
         }
         if (knownCardsInHands[player].contains(card)) {
             throw new RuntimeException("We already know player " + player + " has card " + card);
