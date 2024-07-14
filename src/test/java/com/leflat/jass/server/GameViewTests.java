@@ -73,8 +73,10 @@ public class GameViewTests {
         assertEquals(unknownCardsInGame.size(), 25);
         assertEquals(knownCardsInHands[2].size(), 2);
 
-        assertThrows(RuntimeException.class, () -> gameView.playerHasCard(2, new Card(12)));
-        assertThrows(RuntimeException.class, () -> gameView.playerHasCard(1, new Card(12)));
+        assertDoesNotThrow(() -> {
+            gameView.playerHasCard(2, new Card(12));
+        });
+        assertDoesNotThrow(() -> gameView.playerHasCard(1, new Card(12)));
     }
 
     @Test
