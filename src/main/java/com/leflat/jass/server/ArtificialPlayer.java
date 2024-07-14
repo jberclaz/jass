@@ -21,10 +21,16 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private int ourScore = 0;
     private int theirScore = 0;
     private int numberOfPliesWonByOwnTeam;
+    private int strength = 1000;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
         setName(name);
+    }
+
+    public ArtificialPlayer(int id, String name, int strength) {
+        this(id, name);
+        this.strength = strength;
     }
 
     @Override
@@ -156,10 +162,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         if (hand.size() == 8) {
             // can announce only on first plie
             if (!announcements.isEmpty()) {
-                System.out.println(name + " has " + announcements.size() + " announcements");
+                LOGGER.info(name + " has " + announcements.size() + " announcements");
             }
             for (var a : announcements) {
-                System.out.println(name + " announces " + a);
+                LOGGER.info(name + " announces " + a);
             }
             return announcements;
         }
@@ -246,13 +252,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         Card bestCard = null;
         float bestScore = -1000;
         for (Card validCard : validCards) {
-            var score = evaluateMoveReward(hand, validCard, 10000);
+            var score = evaluateMoveReward(hand, validCard, strength * 10);
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCard;
             }
         }
-        System.out.println(name + " : best move is " + bestCard);
+        LOGGER.info(name + " : best move is " + bestCard);
         return bestCard;
     }
 
@@ -350,7 +356,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             }
             float maxScore = -10000;
             for (var card : hand) {
-                float score = evaluateMoveReward(hand, card, 1000);
+                float score = evaluateMoveReward(hand, card, strength);
                 if (score > maxScore) {
                     maxScore = score;
                 }

@@ -4,7 +4,7 @@ import com.leflat.jass.common.IClientNetwork;
 import com.leflat.jass.common.IClientNetworkFactory;
 
 public class MockNetworkFactory implements IClientNetworkFactory {
-    private static int nbrPlayers = 0;
+    private int nbrPlayers = 0;
 
     public MockNetworkFactory() {
 
