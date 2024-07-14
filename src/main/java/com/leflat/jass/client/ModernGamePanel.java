@@ -40,7 +40,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final Set<Integer> drawnCards = new HashSet<>();
     private final List<Card> lastPlie = new ArrayList<>();
     private final Map<PlayerPosition, Card> playedCards = new HashMap<>();
-    private final Map<PlayerPosition, Float> cardAngles = new HashMap<>();
+    private final Map<PlayerPosition, Double> cardAngles = new HashMap<>();
     private int ourScore;
     private int theirScore;
     private int atoutColor = Card.COLOR_NONE;
@@ -56,6 +56,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private Timer animationTimer;
     private boolean announcementButtonPressed;
     private PlayerPosition atoutChooser = PlayerPosition.NONE;
+    private Random random = new Random();
 
     public ModernGamePanel() {
         super();
@@ -139,7 +140,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         }
         playedCards.put(position, card);
         // random rotation disable until we fix the animation rendering
-        cardAngles.put(position, 0f); //random.nextFloat() * 10 - 5f);
+        cardAngles.put(position, toRadians(random.nextFloat() * 10 - 5f));
         repaint(toInt(getCenterArea(getRenderingDimension())));
     }
 
@@ -268,7 +269,12 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             }
             int start_x = cardPos.x + width/2;
             int start_y = cardPos.y + height / 2;
-            animationPositions.put(playerPos, new Rectangle(cardPos.x, cardPos.y, width, height));
+            var angle = cardAngles.get(playerPos);
+            var abscos = abs(cos(angle));
+            var abssin = abs(sin(angle));
+            var rotatedWidth = (int)ceil(width * abscos + height * abssin);
+            var rotatedHeight = (int)ceil(width * abssin + height * abscos);
+            animationPositions.put(playerPos, new Rectangle(cardPos.x - (rotatedWidth -width) / 2, cardPos.y - (rotatedHeight-height) / 2, rotatedWidth, rotatedHeight));
             animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
              (animationTarget.getY() - start_y) / totalNbrSteps));
         }
@@ -532,12 +538,22 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 switch (entry.getKey()) {
                     case LEFT:
                         xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-                        xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
+                        xform.rotate(PI / 2 + cardAngles.get(PlayerPosition.LEFT));
                         xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                         break;
                     case RIGHT:
                         xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-                        xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
+                        xform.rotate(-PI / 2 + cardAngles.get(PlayerPosition.RIGHT));
+                        xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+                        break;
+                    case ACROSS:
+                        xform.translate(SwissCardImages.IMG_WIDTH / 2f, SwissCardImages.IMG_HEIGHT / 2f);
+                        xform.rotate(cardAngles.get(PlayerPosition.ACROSS));
+                        xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+                        break;
+                    case MYSELF:
+                        xform.translate(SwissCardImages.IMG_WIDTH / 2f, SwissCardImages.IMG_HEIGHT / 2f);
+                        xform.rotate(cardAngles.get(PlayerPosition.MYSELF));
                         xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                         break;
                 }
@@ -673,13 +689,23 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             xform.scale(scale, scale);
             switch (playerPosition) {
                 case LEFT:
-                    xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-                    xform.rotate(toRadians(90 + cardAngles.get(PlayerPosition.LEFT)));
+                    xform.translate( pos.width/2, pos.height / 2);
+                    xform.rotate(PI / 2 + cardAngles.get(PlayerPosition.LEFT));
                     xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                     break;
                 case RIGHT:
                     xform.translate(SwissCardImages.IMG_HEIGHT / 2f, SwissCardImages.IMG_WIDTH / 2f);
-                    xform.rotate(toRadians(-90 + cardAngles.get(PlayerPosition.RIGHT)));
+                    xform.rotate(-PI / 2 + cardAngles.get(PlayerPosition.RIGHT));
+                    xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+                    break;
+                case ACROSS:
+                    xform.translate(SwissCardImages.IMG_WIDTH / 2f, SwissCardImages.IMG_HEIGHT / 2f);
+                    xform.rotate(cardAngles.get(PlayerPosition.ACROSS));
+                    xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
+                    break;
+                case MYSELF:
+                    xform.translate(SwissCardImages.IMG_WIDTH / 2f, SwissCardImages.IMG_HEIGHT / 2f);
+                    xform.rotate(cardAngles.get(PlayerPosition.MYSELF));
                     xform.translate(-SwissCardImages.IMG_WIDTH / 2f, -SwissCardImages.IMG_HEIGHT / 2f);
                     break;
             }

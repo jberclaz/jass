@@ -5,6 +5,7 @@ import com.leflat.jass.client.JassPlayer;
 import com.leflat.jass.client.ModernUiFactory;
 import com.leflat.jass.client.OriginalUiFactory;
 import com.leflat.jass.common.Card;
+import com.leflat.jass.common.Team;
 
 import java.util.Arrays;
 
@@ -31,6 +32,19 @@ public class TestPlayerUi {
         //waitSec(1);
         player.setPlayerInfo(player3);
 
+        waitSec(2);
+
+        // Test new game
+        player.setHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
+        waitSec(1);
+
+        player.setPlayedCard(player1, new Card(Card.RANK_BOURG, Card.COLOR_DIAMOND));
+        waitSec(1);
+
+        player.setPlayedCard(player2, new Card(Card.RANK_DAME, Card.COLOR_DIAMOND));
+        waitSec(1);
+
+        player.setHand(buildHand(11, 12, 13, 14, 15, 16, 17, 18, 19));
         waitSec(1);
 
         //waitSec(1);
@@ -48,7 +62,7 @@ public class TestPlayerUi {
         player.setCard(player3, 30, new Card(Card.RANK_ROI, Card.COLOR_SPADE));
 
       //  player.setPlayersOrder(Arrays.asList(1, 3, 2, 0));
-*/
+
         player.setHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9));
 
         //var atout = player.chooseAtout(true);
@@ -113,7 +127,7 @@ public class TestPlayerUi {
         waitSec(5);
         player.collectPlie(player);
 
-        /*
+
 
         player.setPlayedCard(player1, new Card(Card.RANK_BOURG, Card.COLOR_HEART));
         player.setPlayedCard(player2, new Card(Card.RANK_DAME, Card.COLOR_HEART));
