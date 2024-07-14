@@ -107,6 +107,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         }
         drawnCards.clear();
         lastPlie.clear();
+        playedCards.clear();
         repaint();
     }
 
@@ -253,6 +254,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         int totalNbrSteps = round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
 
         for (var playerPos : PlayerPosition.values()) {
+            if (playerPos == PlayerPosition.NONE) {
+                continue;
+            }
             var cardPos = getPlayedCardPosition(playerPos, centerArea, cardDimension);
             int width, height;
             if (playerPos == PlayerPosition.MYSELF || playerPos == PlayerPosition.ACROSS) {
@@ -272,6 +276,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         animationTimer = new Timer(frameDurationMs, actionEvent -> {
             Rectangle repaintArea = null;
             for (var playerPos : PlayerPosition.values()) {
+                if (playerPos == PlayerPosition.NONE) {
+                    continue;
+                }
                 var pos = animationPositions.get(playerPos);
                 var step = animationSteps.get(playerPos);
                 repaintArea = repaintArea == null ? new Rectangle(pos) : repaintArea.union(pos);
