@@ -3,7 +3,6 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.Card;
 
 import java.util.*;
-import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class GameView {
