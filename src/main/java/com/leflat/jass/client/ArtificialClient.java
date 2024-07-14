@@ -37,7 +37,7 @@ public class ArtificialClient extends ArtificialPlayer implements IRemotePlayer 
             network = null;
             return connectionInfo.error;
         }
-             id = connectionInfo.playerId;
+        id = connectionInfo.playerId;
         positionsByIds.put(id, 0);
         controller = new RemoteController(this, network);
         controllerThread = new Thread(controller, "controller-thread");

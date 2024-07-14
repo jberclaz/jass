@@ -131,11 +131,11 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     private void jButtonConnectActionPerformed(java.awt.event.ActionEvent evt) {
         //GEN-FIRST:event_jButtonConnectActionPerformed
         if (!myself.isConnected()) {
-            DialogConnect dc;
+            DialogConnection dc;
             if (myName != null && serverHost != null) {
-                dc = new DialogConnect(this, myName, serverHost);
+                dc = new DialogConnection(this, myName, serverHost);
             } else {
-                dc = new DialogConnect(this);
+                dc = new DialogConnection(this);
             }
             dc.setLocationRelativeTo(this);
             dc.setVisible(true);

@@ -27,6 +27,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         setName(name);
     }
 
+    public ArtificialPlayer() {
+        super(0);
+    }
+
     @Override
     public void setPlayerInfo(BasePlayer player) {
         var relativePosition = getInitialRelativePosition(player);
@@ -350,7 +354,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             }
             float maxScore = -10000;
             for (var card : hand) {
-                float score = evaluateMoveReward(hand, card, 1000);
+                float score = evaluateMoveReward(hand, card, 5000);
                 if (score > maxScore) {
                     maxScore = score;
                 }

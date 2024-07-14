@@ -77,14 +77,15 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     private void connectDialog() {
-        int gameId;
+        int returnCode;
         do {
-            DialogConnect dc;
+            DialogConnection dc;
             if (myName != null && serverHost != null) {
-                dc = new DialogConnect(this, myName, serverHost);
+                dc = new DialogConnection(this, myName, serverHost);
             } else {
-                dc = new DialogConnect(this);
+                dc = new DialogConnection(this);
             }
+            dc.pack();
             dc.setLocationRelativeTo(this);
             dc.setVisible(true);
             if (!dc.ok) {
@@ -94,11 +95,18 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             }
             myName = dc.name;
             serverHost = dc.host;
-            gameId = myself.connect(dc.name, dc.host, dc.gameId);
-            if (gameId >= 0) {
-                setGameId(gameId);
+            returnCode = myself.connect(dc.name, dc.host, dc.gameId);
+            if (returnCode >= 0) {
+                setGameId(returnCode);
+                if (dc.gameId < 0 && dc.aiPlayers > 0) {
+                    for (int i=0; i<dc.aiPlayers; ++i) {
+                        var aiName = String.format("iBerte %d", i+1);
+                        var aiPlayer = new RemoteArtificialPlayer(new ClientNetworkFactory());
+                        aiPlayer.connect(aiName, dc.host, returnCode);
+                    }
+                }
             } else {
-                switch (gameId) {
+                switch (returnCode) {
                     case ConnectionError.SERVER_UNREACHABLE:
                         JOptionPane.showMessageDialog(this, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
                         break;
@@ -110,7 +118,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
                         break;
                 }
             }
-        } while (gameId < 0);
+        } while (returnCode < 0);
     }
 
     void exitUi() {
@@ -229,8 +237,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void prepareGame() {
-        gamePanel.setMode(ModernGamePanel.GameMode.GAME);
         gamePanel.clearCards();
+        gamePanel.setMode(ModernGamePanel.GameMode.GAME);
     }
 
     @Override
