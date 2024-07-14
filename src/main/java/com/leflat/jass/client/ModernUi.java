@@ -17,6 +17,8 @@ import java.util.logging.Logger;
 public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
     private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
+    public static final int DEFAULT_WIDTH = 630;
+    public static final int DEFAULT_HEIGHT = 530;
 
     private final IRemotePlayer myself;
     private ModernGamePanel gamePanel;
