@@ -36,7 +36,6 @@ public class GameView {
     }
 
     public void cardPlayed(int player, Card card) {
-        LOGGER.info("Player " + player + " has just played card " + card);
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removedCardFromGame = unknownCardsInGame.remove(card.getNumber());
         var removedCardFromHand = knownCardsInHands[player].remove(card);
@@ -61,7 +60,6 @@ public class GameView {
         }
         unknownCardsInGame.remove(card.getNumber());
         knownCardsInHands[player].add(card);
-        LOGGER.info("Player " + player + " has card " + card);
         assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
