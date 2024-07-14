@@ -21,10 +21,16 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private int ourScore = 0;
     private int theirScore = 0;
     private int numberOfPliesWonByOwnTeam;
+    private int strength = 1000;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
         setName(name);
+    }
+
+    public ArtificialPlayer(int id, String name, int strength) {
+        this(id, name);
+        this.strength = strength;
     }
 
     @Override
@@ -246,7 +252,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         Card bestCard = null;
         float bestScore = -1000;
         for (Card validCard : validCards) {
-            var score = evaluateMoveReward(hand, validCard, 10000);
+            var score = evaluateMoveReward(hand, validCard, strength * 10);
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCard;
@@ -350,7 +356,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             }
             float maxScore = -10000;
             for (var card : hand) {
-                float score = evaluateMoveReward(hand, card, 1000);
+                float score = evaluateMoveReward(hand, card, strength);
                 if (score > maxScore) {
                     maxScore = score;
                 }
