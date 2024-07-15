@@ -30,7 +30,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         TEAM_DRAWING, GAME, IDLE, ANIMATION
     }
 
-    private final static boolean DEBUG = true;
+    private final static boolean DEBUG = false;
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private static final float ASPECT_RATIO = (float)ModernUi.DEFAULT_WIDTH / ModernUi.DEFAULT_HEIGHT;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
@@ -49,7 +49,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final ModernStatusPanel statusPanel = new ModernStatusPanel();
     private int hoveredCard = -1;
     private static final float ANIMATION_DURATION_S = 0.3f;
-    private static final int ANIMATION_FRAME_RATE = 20;
+    private static final int ANIMATION_FRAME_RATE = 25;
     private final Map<PlayerPosition, Rectangle> playedCardsPositions = new HashMap<>();
     private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
     private int animationFrameNumber;
@@ -254,9 +254,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             if (playerPos == PlayerPosition.NONE) {
                 continue;
             }
-            var cardBbox = playedCardsPositions.get(position);
-            int start_x = cardBbox.x;
-            int start_y = cardBbox.y;
+            var cardBbox = playedCardsPositions.get(playerPos);
+            int start_x = cardBbox.x + cardBbox.width / 2;
+            int start_y = cardBbox.y + cardBbox.height / 2;
             animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
                     (animationTarget.getY() - start_y) / totalNbrSteps));
         }
@@ -269,6 +269,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 }
                 var cardBbox = playedCardsPositions.get(playerPos);
                 var step = animationSteps.get(playerPos);
+                // erase previous frame
                 repaintArea = repaintArea == null ? new Rectangle(cardBbox) : repaintArea.union(cardBbox);
                 cardBbox.x += step.x;
                 cardBbox.y += step.y;
@@ -822,6 +823,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
         statusPanel.setBounds(round(area.x), round(area.y + 490 / scale),
                 round(400 / scale), round(40 / scale));
+        // TODO: resize cards positions and animation steps
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
