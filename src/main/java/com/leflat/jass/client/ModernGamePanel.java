@@ -249,50 +249,49 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     public void collectCards(PlayerPosition position) {
-        Rectangle2D.Float targetArea = getPlayerArea(position);
-        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2),
-                round(targetArea.y + targetArea.height / 2));
+        Rectangle2D.Float targetArea = getPlayerAreaOriginal(position);
+        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2 - DEFAULT_CENTER_LEFT ),
+                round(targetArea.y + targetArea.height / 2 - DEFAULT_CENTER_TOP));
 
         animationFrameNumber = 0;
         int frameDurationMs = DEBUG ? 10000 / ANIMATION_FRAME_RATE : 1000 / ANIMATION_FRAME_RATE;
         int totalNbrSteps = DEBUG ? round(ANIMATION_DURATION_S * 10000 / frameDurationMs)
                 : round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
 
-        var area = getRenderingDimension();
-        float scale = DEFAULT_HEIGHT / area.height;
-
         for (var playerPos : PlayerPosition.values()) {
             if (playerPos == PlayerPosition.NONE) {
                 continue;
             }
             var cardBbox = playedCardsPositions.get(playerPos);
-            int start_x = (int) round((cardBbox.x + cardBbox.width / 2) * scale);
-            int start_y = (int) round((cardBbox.y + cardBbox.height / 2) * scale);
+            int start_x = (int) round(cardBbox.x + cardBbox.width / 2);
+            int start_y = (int) round(cardBbox.y + cardBbox.height / 2);
             animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
                     (animationTarget.getY() - start_y) / totalNbrSteps));
         }
 
         animationTimer = new Timer(frameDurationMs, actionEvent -> {
-            Rectangle repaintArea = null;
-            var areaTimer = getRenderingDimension();
-            float scaleTimer = DEFAULT_HEIGHT / areaTimer.height;
+            Rectangle2D.Double repaintArea = null;
             for (var playerPos : PlayerPosition.values()) {
                 if (playerPos == PlayerPosition.NONE) {
                     continue;
                 }
                 var cardBbox = playedCardsPositions.get(playerPos);
                 var step = animationSteps.get(playerPos);
-                var scaledcardBBbox = new Rectangle((int) round(cardBbox.x * scaleTimer), (int) round(cardBbox.y * scaleTimer), (int) round(cardBbox.width * scaleTimer), (int) round(cardBbox.height * scaleTimer));
                 // erase previous frame
-                repaintArea = repaintArea == null ? new Rectangle(scaledcardBBbox) : repaintArea.union(scaledcardBBbox);
+                if (repaintArea == null) {
+                    repaintArea = new Rectangle2D.Double(cardBbox.x, cardBbox.y, cardBbox.width, cardBbox.height);
+                } else {
+                    Rectangle.union(repaintArea, cardBbox, repaintArea);
+                }
                 cardBbox.x += step.x;
                 cardBbox.y += step.y;
-                scaledcardBBbox.x += round(step.x * scaleTimer);
-                scaledcardBBbox.y += round(step.y * scaleTimer);
-                repaintArea = repaintArea.union(scaledcardBBbox);
+                Rectangle.union(repaintArea, cardBbox, repaintArea);
             }
             animationFrameNumber++;
-            repaint(repaintArea);
+            var renderArea = getRenderingDimension();
+            var centerArea = getCenterArea(renderArea);
+            var scale = renderArea.width / DEFAULT_WIDTH;
+            repaint(new Rectangle((int)round(centerArea.x + repaintArea.x * scale), (int)round(centerArea.y + repaintArea.y * scale), (int)round(repaintArea.width * scale), (int)round(repaintArea.height * scale)));
             if (animationFrameNumber >= totalNbrSteps) {
                 gameMode = GameMode.GAME;
                 collectPlie();
@@ -848,6 +847,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     Rectangle2D.Float getPlayerArea(PlayerPosition position) {
         var renderingArea = getRenderingDimension();
+        return getPlayerArea(position, renderingArea);
+    }
+
+    Rectangle2D.Float getPlayerArea(PlayerPosition position, Rectangle2D.Float renderingArea) {
         switch (position) {
             case MYSELF:
                 return getPlayerArea(renderingArea);
@@ -857,6 +860,20 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 return getLeftArea(renderingArea);
             case RIGHT:
                 return getRightArea(renderingArea);
+        }
+        return null;
+    }
+
+    Rectangle2D.Float getPlayerAreaOriginal(PlayerPosition position) {
+        switch (position) {
+            case MYSELF:
+                return new Rectangle2D.Float(DEFAULT_CENTER_LEFT, DEFAULT_CENTER_TOP + DEFAULT_CENTER_HEIGHT, DEFAULT_CENTER_WIDTH, DEFAULT_CENTER_TOP);
+            case ACROSS:
+                return new Rectangle2D.Float(DEFAULT_CENTER_LEFT, 0, DEFAULT_CENTER_WIDTH, DEFAULT_CENTER_TOP);
+            case LEFT:
+                return new Rectangle2D.Float(0, 0, DEFAULT_CENTER_LEFT, DEFAULT_CENTER_TOP * 2 + DEFAULT_CENTER_HEIGHT);
+            case RIGHT:
+                return new Rectangle2D.Float(DEFAULT_CENTER_LEFT + DEFAULT_CENTER_WIDTH, 0, DEFAULT_CENTER_LEFT, DEFAULT_CENTER_TOP * 2 + DEFAULT_CENTER_HEIGHT);
         }
         return null;
     }

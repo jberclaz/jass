@@ -44,7 +44,7 @@ public class TestPlayerUi {
 
         waitSec(1);
 
-        player.collectPlie(player1);
+        player.collectPlie(player);
 
 
         //waitSec(1);
