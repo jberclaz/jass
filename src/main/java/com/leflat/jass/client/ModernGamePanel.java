@@ -30,7 +30,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         TEAM_DRAWING, GAME, IDLE, ANIMATION
     }
 
-    private final static boolean DEBUG = true;
+    private final static boolean DEBUG = false;
     private final static Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
     private static final int DEFAULT_WIDTH = 630;
     private static final int DEFAULT_HEIGHT = 530;
@@ -220,13 +220,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             return null;
         }
         var renderingArea = getRenderingDimension();
+        var scale = renderingArea.width / DEFAULT_WIDTH;
         if (gameMode == GameMode.GAME) {
             var handArea = getHandArea(renderingArea);
             if (!handArea.contains(x, y)) {
                 return null;
             }
             var hand = players.get(PlayerPosition.MYSELF).getHand();
-            var cardDimension = getCardDimension(renderingArea);
+            var cardDimension = getCardDimension(scale);
             float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
             return hand.get(min(cardNumber, hand.size() - 1));
@@ -235,7 +236,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             if (!cardArea.contains(x, y)) {
                 return null;
             }
-            var cardDimension = getCardDimension(renderingArea);
+            var cardDimension = getCardDimension(scale);
             float xStep = (cardArea.width - cardDimension.width) / 35f;
             int highNumber = (int) floor((x - cardArea.x) / xStep);
             int lowNumber = (int) floor((x - cardArea.x - cardDimension.width) / xStep);
@@ -250,7 +251,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     public void collectCards(PlayerPosition position) {
         Rectangle2D.Float targetArea = getPlayerAreaOriginal(position);
-        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2 - DEFAULT_CENTER_LEFT ),
+        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2 - DEFAULT_CENTER_LEFT),
                 round(targetArea.y + targetArea.height / 2 - DEFAULT_CENTER_TOP));
 
         animationFrameNumber = 0;
@@ -291,7 +292,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             var renderArea = getRenderingDimension();
             var centerArea = getCenterArea(renderArea);
             var scale = renderArea.width / DEFAULT_WIDTH;
-            repaint(new Rectangle((int)round(centerArea.x + repaintArea.x * scale), (int)round(centerArea.y + repaintArea.y * scale), (int)round(repaintArea.width * scale), (int)round(repaintArea.height * scale)));
+            repaint(new Rectangle((int) round(centerArea.x + repaintArea.x * scale), (int) round(centerArea.y + repaintArea.y * scale), (int) round(repaintArea.width * scale), (int) round(repaintArea.height * scale)));
             if (animationFrameNumber >= totalNbrSteps) {
                 gameMode = GameMode.GAME;
                 collectPlie();
@@ -359,8 +360,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         repaint(toInt(playerArea));
     }
 
-    private Dimension getCardDimension(Rectangle2D.Float renderingArea) {
-        float scale = renderingArea.height / (float) DEFAULT_HEIGHT;
+    private Dimension getCardDimension(float scale) {
         float height = (float) CardImages.IMG_HEIGHT * scale;
         float width = height / SwissCardImages.IMG_HEIGHT * SwissCardImages.IMG_WIDTH;
         var dim = new Dimension();
@@ -378,7 +378,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             return new Rectangle2D.Float(0, 0, 0, 0);
         }
         var playerArea = getPlayerArea(renderingArea);
-        var cardDimension = getCardDimension(renderingArea);
+        var cardDimension = getCardDimension(renderingArea.width / DEFAULT_WIDTH);
         float hand_width = (hand.size() - 1) * cardDimension.width / 2.1f + cardDimension.width;
         float hand_x_offset = playerArea.x + (playerArea.width - hand_width) / 2;
         float hand_y_offset = playerArea.y + round(playerArea.height * 20f / 120f);
@@ -387,7 +387,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     private Rectangle getCardArea(int number, Rectangle2D.Float area) {
         var handArea = getHandArea(area);
-        var cardDimension = getCardDimension(area);
+        var cardDimension = getCardDimension(area.width / DEFAULT_WIDTH);
         var hand = players.get(PlayerPosition.MYSELF).getHand();
         assert number < hand.size();
 
@@ -398,7 +398,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     private Rectangle2D.Float getTeamDrawingArea(Rectangle2D.Float renderingArea) {
         var centerArea = getCenterArea(renderingArea);
-        var cardDimension = getCardDimension(renderingArea);
+        var cardDimension = getCardDimension(renderingArea.width / DEFAULT_WIDTH);
         return new Rectangle2D.Float(centerArea.x + centerArea.width / 10f,
                 centerArea.y + (centerArea.height - cardDimension.height) / 2,
                 centerArea.width * .8f,
@@ -539,8 +539,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         g2.setColor(color);
 
         if (gameMode == GameMode.TEAM_DRAWING) {
-            /*
-            TODO: fix
+            var cardDimension = getCardDimension(centerArea.width / DEFAULT_CENTER_WIDTH);
             for (int i = 0; i < Card.DECK_SIZE; i++) {
                 float card_x_offset = centerArea.width / 10f;
                 float card_x_step = (centerArea.width - 2 * card_x_offset - cardDimension.width) / 35.0f;
@@ -550,7 +549,6 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                             card_y_offset, cardDimension.width, cardDimension.height, this);
                 }
             }
-             */
         } else if (gameMode == GameMode.GAME) {
             for (var entry : playedCards.entrySet()) {
                 paintPlayedCard(g2, entry.getKey(), centerArea, scale);
@@ -719,7 +717,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var renderingArea = getRenderingDimension();
         float scale = renderingArea.height / DEFAULT_HEIGHT;
 
-        var cardDimension = getCardDimension(renderingArea);
+        var cardDimension = getCardDimension(scale);
 
         var centerArea = getCenterArea(renderingArea);
         if (g2.getClip().intersects(centerArea)) {
@@ -838,7 +836,6 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
         statusPanel.setBounds(round(area.x), round(area.y + 490 / scale),
                 round(400 / scale), round(40 / scale));
-        // TODO: resize cards positions and animation steps
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
@@ -847,10 +844,6 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     Rectangle2D.Float getPlayerArea(PlayerPosition position) {
         var renderingArea = getRenderingDimension();
-        return getPlayerArea(position, renderingArea);
-    }
-
-    Rectangle2D.Float getPlayerArea(PlayerPosition position, Rectangle2D.Float renderingArea) {
         switch (position) {
             case MYSELF:
                 return getPlayerArea(renderingArea);

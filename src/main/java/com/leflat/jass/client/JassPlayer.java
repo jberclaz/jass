@@ -197,8 +197,8 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             System.exit(1);
         }
         int position = playersPositions.get(player.getId());
-        frame.removeCardFromPlayerHand(position);
         frame.setPlayedCard(card, position);
+        frame.removeCardFromPlayerHand(position);
     }
 
     @Override
