@@ -18,21 +18,20 @@ Make sure `JAVA_HOME` is defined. Then:
 
 If you make the jar file executable, you can double-click on the file to launch the client.
 
-## Computer player
-The latest version has now a computer player, which can help if you cannot find four participants. The strategy is clearly not state-of-the-art, but it is loosely based on Monte-Carlo sampling and does not play too badly.
-
-You can connect a computer player with
-```bash
-java -cp target/jass-2.1.3.jar com.leflat.jass.client.ArtificialClient <server_host> <game_id> [<name>]
-```
-Note that the computer player name is optional.
-
 ## How to run on Windows
 The game uses Java 11. Unfortunately, Oracle abandoned the JRE
 starting from version 11. You will need to install the
 [full JDK](https://www.oracle.com/java/technologies/javase-jdk14-downloads.html#license-lightbox).
 
+### Classic UI
 ![Jass client screenshot](doc/screenjass.jpg)
 
 ### Modern UI
 ![Modern UI screenshot](doc/modern_ui.png)
+
+## Development
+
+- Compile and test: `mvn package`
+- Compile without tests: `mvn -Dmaven.test.skip=true package`
+- Update dependencies: `mvn versions:use-latest-releases`
+- Create new release: `mvn release:prepare` and `mvn release:perform`
