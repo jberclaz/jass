@@ -4,7 +4,7 @@
 
     <groupId>com.leflat</groupId>
     <artifactId>jass</artifactId>
-    <version>2.2.3</version>
+    <version>2.2.4-SNAPSHOT</version>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -12,7 +12,7 @@
 
     <scm>
         <developerConnection>scm:git:git@github.com:jberclaz/jass.git</developerConnection>
-        <tag>jass-2.2.3</tag>
+        <tag>jass-2.2.1</tag>
     </scm>
 
     <distributionManagement>
