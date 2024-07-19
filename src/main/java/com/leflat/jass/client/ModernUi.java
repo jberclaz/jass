@@ -18,7 +18,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
     private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
 
-    private final IRemotePlayer myself;
+    private final IConnectable myself;
     private ModernGamePanel gamePanel;
     private Lock lock;
     private Condition condition;
@@ -28,7 +28,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private Card playedCard;
 
 
-    public ModernUi(IRemotePlayer player) {
+    public ModernUi(IConnectable player) {
         this.myself = player;
         initComponents();
         loadLogos();

@@ -1,6 +1,6 @@
 package com.leflat.jass.common;
 
-public interface IRemotePlayer {
+public interface IConnectable {
     int connect(String name, String host, int gameId);
 
     boolean disconnect();

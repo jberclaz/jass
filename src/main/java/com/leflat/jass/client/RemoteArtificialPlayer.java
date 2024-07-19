@@ -5,7 +5,7 @@ import com.leflat.jass.server.ArtificialPlayer;
 
 import java.util.logging.Level;
 
-public class RemoteArtificialPlayer extends ArtificialPlayer implements IRemotePlayer {
+public class RemoteArtificialPlayer extends ArtificialPlayer implements IConnectable {
     private final IClientNetworkFactory networkFactory;
     private IClientNetwork network = null;
     private IController controller = null;
@@ -13,9 +13,9 @@ public class RemoteArtificialPlayer extends ArtificialPlayer implements IRemoteP
 
 
 
-    public RemoteArtificialPlayer(IClientNetworkFactory networkFactor ) {
+    public RemoteArtificialPlayer(IClientNetworkFactory networkFactory) {
         super();
-        this.networkFactory = networkFactor;
+        this.networkFactory = networkFactory;
     }
 
     @Override

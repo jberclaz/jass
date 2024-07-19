@@ -11,13 +11,13 @@ import java.util.concurrent.locks.Lock;
 public class MockUi implements IJassUi {
     private final Random rand = new Random();
     private List<Card> hand;
-    private final IRemotePlayer player;
+    private final IConnectable player;
     private float delaySeconds = 0;
     private final List<Integer> drawnCards = new ArrayList<>();
     private int nbrGames;
     private int playedGames = 0;
 
-    public MockUi(IRemotePlayer player, float delaySeconds, int nbrGames) {
+    public MockUi(IConnectable player, float delaySeconds, int nbrGames) {
         this.player = player;
         this.delaySeconds = delaySeconds;
         this.nbrGames = nbrGames;

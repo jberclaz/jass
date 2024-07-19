@@ -33,7 +33,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
 
     // Autres variables
-    private final IRemotePlayer myself;
+    private final IConnectable myself;
     private int drawnCardPosition = -1;
     private Card playedCard = null;
     private boolean announcementPressed = false;
@@ -45,7 +45,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     /**
      * Creates new form ClientFrame
      */
-    public OriginalUi(IRemotePlayer player) {
+    public OriginalUi(IConnectable player) {
         this.myself = player;
 
         initComponents();

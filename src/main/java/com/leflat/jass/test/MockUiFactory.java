@@ -2,7 +2,7 @@ package com.leflat.jass.test;
 
 import com.leflat.jass.common.IJassUi;
 import com.leflat.jass.common.IJassUiFactory;
-import com.leflat.jass.common.IRemotePlayer;
+import com.leflat.jass.common.IConnectable;
 
 public class MockUiFactory implements IJassUiFactory {
     private float delaySeconds = 0;
@@ -20,7 +20,7 @@ public class MockUiFactory implements IJassUiFactory {
     public MockUiFactory() {}
 
     @Override
-    public IJassUi getUi(IRemotePlayer remotePlayer) {
+    public IJassUi getUi(IConnectable remotePlayer) {
         return new MockUi(remotePlayer, delaySeconds, nbrGames);
     }
 }

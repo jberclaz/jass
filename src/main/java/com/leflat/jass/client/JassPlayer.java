@@ -15,7 +15,7 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
+public class JassPlayer extends AbstractRemotePlayer implements IConnectable {
     private final static Logger LOGGER = Logger.getLogger(JassPlayer.class.getName());
     private final IJassUi frame;
     private final Map<Integer, Integer> playersPositions = new HashMap<>();

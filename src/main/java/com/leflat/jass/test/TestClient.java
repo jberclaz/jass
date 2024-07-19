@@ -3,17 +3,12 @@ package com.leflat.jass.test;
 import com.leflat.jass.client.*;
 import com.leflat.jass.common.*;
 
-import java.io.*;
-import java.net.ServerSocket;
-import java.net.Socket;
-import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class TestClient {
-    class TestPlayer implements IRemotePlayer {
+    class TestPlayer implements IConnectable {
 
         @Override
         public int connect(String name, String host, int gameId) {
