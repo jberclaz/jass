@@ -58,5 +58,10 @@ public class JassServer {
         }
 
         listener.start();
+        try {
+            listener.join();
+        } catch (InterruptedException e) {
+            throw new RuntimeException(e);
+        }
     }
 }

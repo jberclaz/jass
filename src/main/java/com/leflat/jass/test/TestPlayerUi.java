@@ -1,16 +1,5 @@
 package com.leflat.jass.test;
 
-import com.leflat.jass.client.ClientPlayer;
-import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.client.ModernUiFactory;
-import com.leflat.jass.client.OriginalUiFactory;
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.Team;
-
-import java.util.Arrays;
-
-import static com.leflat.jass.test.TestClient.buildHand;
-
 public class TestPlayerUi {
     public static void main(String[] aregs) {
         System.setProperty("sun.java2d.opengl", "True");
