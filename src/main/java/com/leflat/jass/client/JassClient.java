@@ -14,7 +14,7 @@ import java.util.logging.*;
 public class JassClient {
     private static void localGame(IJassUi ui, ConnectionInfo dialogInfo) {
         ui.setPlayer(new ClientPlayer(0, dialogInfo.name), 0);
-        var player = new JassPlayer(ui, 0, dialogInfo.name, -1);
+        var player = new InteractivePlayer(ui, 0, dialogInfo.name, -1);
         var gameController = new GameController(0);
         try {
             gameController.addPlayer(player);
@@ -54,7 +54,7 @@ public class JassClient {
             }
         } else {
             ui.setPlayer(new ClientPlayer(connectionInfo.playerId, dialogInfo.name), 0);
-            var player = new JassPlayer(ui, connectionInfo.playerId, dialogInfo.name, connectionInfo.gameId);
+            var player = new InteractivePlayer(ui, connectionInfo.playerId, dialogInfo.name, connectionInfo.gameId);
 
             var gameController = new RemoteController(player, network);
             var controllerThread = new Thread(gameController, "controller-thread");
@@ -114,10 +114,8 @@ public class JassClient {
             dialogInfo = ui.showConnectDialog();
             if (dialogInfo.ok) {
                 if (dialogInfo.local) {
-                    // local game
                     localGame(ui, dialogInfo);
                 } else {
-                    // network game
                     networkGame(ui, dialogInfo);
                 }
             }

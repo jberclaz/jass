@@ -75,13 +75,10 @@ public class GameController extends Thread {
 
                 playAnotherGame = getPlayerById(0).getNewGame();
 
-                for (Team team : teams) {
-                    team.resetScore();
-                }
+                Arrays.stream(teams).forEach(Team::resetScore);
             } while (playAnotherGame);
 
             LOGGER.info("No longer playing");
-
         } catch (PlayerLeftExpection e) {
             LOGGER.log(Level.WARNING, "Player " + e.playerId + " left the game", e);
             disconnectedPlayer = getPlayerById(e.getPlayerId());
@@ -102,9 +99,9 @@ public class GameController extends Thread {
 
     void playOneGame() throws PlayerLeftExpection, BrokenRuleException {
         int firstToPlay = drawCards();
-        Plie plie;
+        boolean gameOver;
         do {
-            plie = playOneHand(firstToPlay);
+            gameOver = playOneHand(firstToPlay);
 
             setTeamsScoreAsync();
 
@@ -112,12 +109,12 @@ public class GameController extends Thread {
              * cards and the score */
             waitSec(2);
 
-            if (plie != null) {
+            if (!gameOver) {
                 firstToPlay = (firstToPlay + 1) % 4;
                 drawCards();
             }
             // répète jusqu'à ce qu'on gagne
-        } while (plie != null);
+        } while (!gameOver);
 
         // Sends the winner to all player
         var winners = teams[0].hasWon() ? teams[0] : teams[1];
@@ -127,7 +124,7 @@ public class GameController extends Thread {
         waitSec(4);
     }
 
-    Plie playOneHand(int firstToPlay) throws PlayerLeftExpection, BrokenRuleException {
+    boolean playOneHand(int firstToPlay) throws PlayerLeftExpection, BrokenRuleException {
         int nextPlayer = firstToPlay;
         Plie plie = null;
         int[] handScores = new int[2];
@@ -138,6 +135,7 @@ public class GameController extends Thread {
         for (int i = 0; i < 9; i++) {
             plie = playPlie(nextPlayer);
             if (plie == null) {
+                // game over
                 break;
             }
             nextPlayer = getPlayerPosition(plie.getOwner());
@@ -165,7 +163,7 @@ public class GameController extends Thread {
             waitSec(2);
         }
 
-        return plie;
+        return plie == null;
     }
 
     Plie playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
@@ -497,6 +495,4 @@ public class GameController extends Thread {
             throw new RuntimeException(ex.getCause());
         }
     }
-
-
 }

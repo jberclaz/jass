@@ -16,20 +16,16 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class JassPlayer extends AbstractRemotePlayer {
-    private final static Logger LOGGER = Logger.getLogger(JassPlayer.class.getName());
+public class InteractivePlayer extends AbstractRemotePlayer {
+    private final static Logger LOGGER = Logger.getLogger(InteractivePlayer.class.getName());
     private final IJassUi ui;
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
     private final Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
     private Card playedCard;
-
-    //private IController controller = null;
-    //private Thread controllerThread = null;
-    //private IClientNetwork network = null;
     private boolean hasStoeck;
 
-    public JassPlayer(IJassUi ui, int playerId, String name, int gameId) {
+    public InteractivePlayer(IJassUi ui, int playerId, String name, int gameId) {
         super(playerId);
         players.put(playerId, new ClientPlayer(playerId, name));
         playersPositions.put(playerId, 0);
@@ -67,7 +63,6 @@ public class JassPlayer extends AbstractRemotePlayer {
 
     @Override
     public int drawCard() {
-//        var lock = controller.getLock();
         var lock = new ReentrantLock();
         lock.lock();
         var condition = lock.newCondition();
@@ -291,51 +286,7 @@ public class JassPlayer extends AbstractRemotePlayer {
             ui.displayStatusMessage(String.format("Résultat de la manche: nous %d, eux %d", ourScore, theirScore));
         }
     }
-/*
-    @Override
-    public int connect(String name, String host, int gameId) {
-        network = networkFactory.getClientNetwork();
-        var connectionInfo = network.connect(host, gameId, name);
-        if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
-            network = null;
-            return connectionInfo.error;
-        }
-        id = connectionInfo.playerId;
-        playersPositions.put(id, 0);
-        controller = new RemoteController(this, network);
-        controllerThread = new Thread(controller, "controller-thread");
-        controllerThread.start();
-        try {
-            ui.setPlayer(new ClientPlayer(id, name), 0);
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error while setting player info", e);
-        }
-        return connectionInfo.gameId;
-    }
 
-    @Override
-    public boolean disconnect() {
-        if (controller != null) {
-            controller.terminate();
-        }
-        network.disconnect();
-        if (controllerThread != null) {
-            try {
-                controllerThread.join(500);
-            } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING, "Error while waiting for controller thread to die", e);
-            }
-        }
-        controller = null;
-        controllerThread = null;
-        return true;
-    }
-
-    @Override
-    public boolean isConnected() {
-        return network != null && network.isConnected();
-    }
-*/
     private int getInitialRelativePosition(BasePlayer player) {
         return (player.getId() - id + 4) % 4;
     }

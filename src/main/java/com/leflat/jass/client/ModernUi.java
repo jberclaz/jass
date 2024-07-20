@@ -18,7 +18,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
     private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
 
-    //private final IConnectable myself;
     private ModernGamePanel gamePanel;
     private Lock lock;
     private Condition condition;
@@ -29,7 +28,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
 
     public ModernUi() {
-        //this.myself = player;
         initComponents();
         loadLogos();
     }
@@ -73,8 +71,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setSize(630, 530 + insets.top);
         setMinimumSize(new Dimension(630, 530 + insets.top));
         setResizable(true);
-
-        //connectDialog();
     }
 
     public ConnectionInfo showConnectDialog() {
@@ -92,58 +88,14 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             this.dispose();
             return new ConnectionInfo(false);
         }
+        myName = dc.name;
+        serverHost = dc.host;
         if (dc.local) {
             return new ConnectionInfo(dc.name);
         }
         return new ConnectionInfo(dc.name, dc.host, dc.gameId >= 0, dc.gameId, dc.aiPlayers);
     }
 
-    /*
-    private void connectDialog() {
-        int returnCode;
-        do {
-            DialogConnection dc;
-            if (myName != null && serverHost != null) {
-                dc = new DialogConnection(this, myName, serverHost);
-            } else {
-                dc = new DialogConnection(this);
-            }
-            dc.pack();
-            dc.setLocationRelativeTo(this);
-            dc.setVisible(true);
-            if (!dc.ok) {
-                this.setVisible(false);
-                this.dispose();
-                return;
-            }
-            myName = dc.name;
-            serverHost = dc.host;
-            returnCode = myself.connect(dc.name, dc.host, dc.gameId);
-            if (returnCode >= 0) {
-                setGameId(returnCode);
-                if (dc.gameId < 0 && dc.aiPlayers > 0) {
-                    for (int i=0; i<dc.aiPlayers; ++i) {
-                        var aiName = String.format("iBerte %d", i+1);
-                        var aiPlayer = new RemoteArtificialPlayer(new ClientNetworkFactory());
-                        aiPlayer.connect(aiName, dc.host, returnCode);
-                    }
-                }
-            } else {
-                switch (returnCode) {
-                    case ConnectionError.SERVER_UNREACHABLE:
-                        JOptionPane.showMessageDialog(this, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                    case ConnectionError.GAME_FULL:
-                        JOptionPane.showMessageDialog(this, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                    case ConnectionError.UNKNOWN_GAME:
-                        JOptionPane.showMessageDialog(this, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                }
-            }
-        } while (returnCode < 0);
-    }
-*/
     void exitUi() {
         /*
         if (myself.isConnected()) {
@@ -407,19 +359,4 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     public void showMessage(String title, String message, int type) {
         JOptionPane.showMessageDialog(this, message, title, type);
     }
-
-    /*
-    private void disconnect() {
-        for (int i = 0; i < 4; i++) {
-            gamePanel.clearPlayer(intToPlayerPosition(i));
-        }
-        gamePanel.clearCards();
-        gamePanel.hideAtout();
-        gamePanel.setMode(ModernGamePanel.GameMode.IDLE);
-        setScore(0, 0);
-        setGameId(-1);
-
-        connectDialog();
-    }
-     */
 }
