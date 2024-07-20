@@ -31,10 +31,13 @@ public class JassPlayer extends AbstractRemotePlayer {
 
     public JassPlayer(IJassUi ui, int playerId, String name, int gameId) {
         super(playerId);
-        players.put(0, new ClientPlayer(playerId, name));
-        playersPositions.put(0, playerId);
+        players.put(playerId, new ClientPlayer(playerId, name));
+        playersPositions.put(playerId, 0);
         this.ui = ui;
-        ui.setGameId(gameId);
+        this.name = name;
+        if (gameId >= 0) {
+            ui.setGameId(gameId);
+        }
     }
 
     @Override

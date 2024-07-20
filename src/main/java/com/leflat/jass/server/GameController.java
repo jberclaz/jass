@@ -71,12 +71,16 @@ public class GameController extends Thread {
 
                 playOneGame();
 
+                LOGGER.info("Game done");
+
                 playAnotherGame = getPlayerById(0).getNewGame();
 
                 for (Team team : teams) {
                     team.resetScore();
                 }
             } while (playAnotherGame);
+
+            LOGGER.info("No longer playing");
 
         } catch (PlayerLeftExpection e) {
             LOGGER.log(Level.WARNING, "Player " + e.playerId + " left the game", e);
@@ -93,7 +97,7 @@ public class GameController extends Thread {
             }
         }
 
-        LOGGER.info("Game " + gameId + " ended");
+        LOGGER.info("Game room " + gameId + " ended");
     }
 
     void playOneGame() throws PlayerLeftExpection, BrokenRuleException {

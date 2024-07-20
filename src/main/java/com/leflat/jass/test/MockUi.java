@@ -12,14 +12,14 @@ import java.util.concurrent.locks.Lock;
 public class MockUi implements IJassUi {
     private final Random rand = new Random();
     private List<Card> hand;
-    private final IConnectable player;
+
     private float delaySeconds = 0;
     private final List<Integer> drawnCards = new ArrayList<>();
     private int nbrGames;
     private int playedGames = 0;
 
-    public MockUi(IConnectable player, float delaySeconds, int nbrGames) {
-        this.player = player;
+    public MockUi(float delaySeconds, int nbrGames) {
+
         this.delaySeconds = delaySeconds;
         this.nbrGames = nbrGames;
     }
@@ -31,7 +31,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public void showUi(boolean enable) {
-        player.connect("GC", "localhost", 1234);
+
     }
 
     @Override

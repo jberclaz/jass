@@ -15,7 +15,6 @@ public class JassClient {
     private static void localGame(IJassUi ui, ConnectionInfo dialogInfo) {
         ui.setPlayer(new ClientPlayer(0, dialogInfo.name), 0);
         var player = new JassPlayer(ui, 0, dialogInfo.name, -1);
-        player.setName(dialogInfo.name);
         var gameController = new GameController(0);
         try {
             gameController.addPlayer(player);
@@ -56,7 +55,7 @@ public class JassClient {
         } else {
             ui.setPlayer(new ClientPlayer(connectionInfo.playerId, dialogInfo.name), 0);
             var player = new JassPlayer(ui, connectionInfo.playerId, dialogInfo.name, connectionInfo.gameId);
-            player.setName(dialogInfo.name);
+
             var gameController = new RemoteController(player, network);
             var controllerThread = new Thread(gameController, "controller-thread");
 

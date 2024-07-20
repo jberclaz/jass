@@ -1,22 +1,24 @@
-import static org.junit.Assert.assertTrue;
+import com.leflat.jass.client.JassPlayer;
+import com.leflat.jass.server.ArtificialPlayer;
+import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.test.MockUi;
+import com.leflat.jass.server.GameController;
+
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class FunctionalTest {
-    /*
     @Test
     void functional_test() throws PlayerLeftExpection {
         var game = new GameController(0);
         game.setNoWait(true);
 
-        var clientNetworkFactory = new MockNetworkFactory();
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player3.setName("Pischus");
-        var player4 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player4.setName("Wein");
+        var player1 = new JassPlayer(new MockUi(0, 1), 0, "Berte", 0);
+        var player2 = new JassPlayer(new MockUi(0, 1), 1, "GC", 0);
+        var player3 = new JassPlayer(new MockUi(0, 1), 2, "Pischus", 0);
+        var player4 = new JassPlayer(new MockUi(0, 1), 3, "Wein", 0);
 
         game.addPlayer(player1);
         game.addPlayer(player2);
@@ -25,9 +27,10 @@ public class FunctionalTest {
 
         Assertions.assertTrue(game.isGameFull());
 
-        game.setNoWait(true);
-
-        assertDoesNotThrow(() -> {game.run();});
+        assertDoesNotThrow(() -> {
+            game.start();
+            game.join();
+        });
     }
 
     @Test
@@ -35,14 +38,10 @@ public class FunctionalTest {
         var game = new GameController(0);
         game.setNoWait(true);
 
-        var clientNetworkFactory = new MockNetworkFactory();
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player3.setName("Pischus");
-        var player4 = new ArtificialPlayer(3, "Wein", 20);
+        var player1 = new JassPlayer(new MockUi(0, 1), 0, "Berte", 0);
+        var player2 = new JassPlayer(new MockUi(0, 1), 1, "GC", 0);
+        var player3 = new ArtificialPlayer(2, "iWein");
+        var player4 = new ArtificialPlayer(3, "iPischus");
 
         game.addPlayer(player1);
         game.addPlayer(player2);
@@ -53,8 +52,11 @@ public class FunctionalTest {
 
         game.setNoWait(true);
 
-        assertDoesNotThrow(() -> {game.run();});
+        assertDoesNotThrow(() -> {
+            game.start();
+            game.join();
+        });
     }
 
-     */
+
 }
