@@ -8,12 +8,14 @@ import com.leflat.jass.server.PlayerLeftExpection;
 
 import javax.swing.*;
 import java.io.IOException;
-import java.util.LinkedList;
+import java.util.*;
 import java.util.logging.*;
 
+
 public class JassClient {
+    private static final List<String> AI_PLAYER_NAMES = new ArrayList<>(Arrays.asList("iBerte", "iPischus", "iGC", "iWein", "iPatcor", "iJB"));
+
     private static void localGame(IJassUi ui, ConnectionInfo dialogInfo) {
-        ui.setPlayer(new ClientPlayer(0, dialogInfo.name), 0);
         var player = new InteractivePlayer(ui, 0, dialogInfo.name, -1);
         var gameController = new GameController(0);
         try {
@@ -21,8 +23,9 @@ public class JassClient {
         } catch (PlayerLeftExpection e) {
             throw new RuntimeException(e);
         }
+        Collections.shuffle(AI_PLAYER_NAMES);
         for (int i = 1; i < 4; ++i) {
-            var aip = new ArtificialPlayer(i, "iBerte" + i);
+            var aip = new ArtificialPlayer(i, AI_PLAYER_NAMES.get(i));
             try {
                 gameController.addPlayer(aip);
             } catch (PlayerLeftExpection e) {
@@ -53,7 +56,6 @@ public class JassClient {
                     break;
             }
         } else {
-            ui.setPlayer(new ClientPlayer(connectionInfo.playerId, dialogInfo.name), 0);
             var player = new InteractivePlayer(ui, connectionInfo.playerId, dialogInfo.name, connectionInfo.gameId);
 
             var gameController = new RemoteController(player, network);
@@ -61,8 +63,9 @@ public class JassClient {
 
             var aiControllerThreads = new LinkedList<Thread>();
             if (!dialogInfo.joinExistingGame && dialogInfo.nbrArtificialPlayers > 0) {
+                Collections.shuffle(AI_PLAYER_NAMES);
                 for (int p=1; p<= dialogInfo.nbrArtificialPlayers; ++p) {
-                    var aiName = "iBerte" + p;
+                    var aiName = AI_PLAYER_NAMES.get(p);
                     var aiPlayer = new ArtificialPlayer(p, aiName);
                     var aiNetwork = new ClientNetwork();
                     aiNetwork.connect(dialogInfo.hostname, connectionInfo.gameId, aiName);

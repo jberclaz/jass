@@ -27,9 +27,10 @@ public class InteractivePlayer extends AbstractRemotePlayer {
 
     public InteractivePlayer(IJassUi ui, int playerId, String name, int gameId) {
         super(playerId);
+        this.ui = ui;
         players.put(playerId, new ClientPlayer(playerId, name));
         playersPositions.put(playerId, 0);
-        this.ui = ui;
+        ui.setPlayer(new ClientPlayer(playerId, name), 0);
         this.name = name;
         if (gameId >= 0) {
             ui.setGameId(gameId);
