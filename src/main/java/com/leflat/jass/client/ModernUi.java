@@ -95,7 +95,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         if (dc.local) {
             return new ConnectionInfo(dc.name);
         }
-        return new ConnectionInfo(dc.name, dc.host, dc.gameId < 0, dc.gameId, dc.aiPlayers);
+        return new ConnectionInfo(dc.name, dc.host, dc.gameId >= 0, dc.gameId, dc.aiPlayers);
     }
 
     /*

@@ -6,20 +6,20 @@ import com.leflat.jass.server.ArtificialPlayer;
 import java.util.logging.Level;
 
 public class RemoteArtificialPlayer extends ArtificialPlayer implements IConnectable {
-    private final IClientNetworkFactory networkFactory;
+
     private IClientNetwork network = null;
     private IController controller = null;
     private Thread controllerThread = null;
 
-    public RemoteArtificialPlayer(IClientNetworkFactory networkFactory) {
+    public RemoteArtificialPlayer() {
         super();
-        this.networkFactory = networkFactory;
+
     }
 
     @Override
     public int connect(String name, String host, int gameId) {
         this.name = name;
-        network = networkFactory.getClientNetwork();
+        //network = networkFactory.getClientNetwork();
         var connectionInfo = network.connect(host, gameId, name);
         if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
             network = null;
