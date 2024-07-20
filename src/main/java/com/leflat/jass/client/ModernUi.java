@@ -18,7 +18,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
     private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
 
-    private final IConnectable myself;
+    //private final IConnectable myself;
     private ModernGamePanel gamePanel;
     private Lock lock;
     private Condition condition;
@@ -28,8 +28,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private Card playedCard;
 
 
-    public ModernUi(IConnectable player) {
-        this.myself = player;
+    public ModernUi() {
+        //this.myself = player;
         initComponents();
         loadLogos();
     }
@@ -37,7 +37,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private void initComponents() {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
+                 UnsupportedLookAndFeelException e) {
             LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
         }
         gamePanel = new ModernGamePanel();
@@ -73,9 +74,31 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setMinimumSize(new Dimension(630, 530 + insets.top));
         setResizable(true);
 
-        connectDialog();
+        //connectDialog();
     }
 
+    public ConnectionInfo showConnectDialog() {
+        DialogConnection dc;
+        if (myName != null && serverHost != null) {
+            dc = new DialogConnection(this, myName, serverHost);
+        } else {
+            dc = new DialogConnection(this);
+        }
+        dc.pack();
+        dc.setLocationRelativeTo(this);
+        dc.setVisible(true);
+        if (!dc.ok) {
+            this.setVisible(false);
+            this.dispose();
+            return new ConnectionInfo(false);
+        }
+        if (dc.local) {
+            return new ConnectionInfo(dc.name);
+        }
+        return new ConnectionInfo(dc.name, dc.host, dc.gameId < 0, dc.gameId, dc.aiPlayers);
+    }
+
+    /*
     private void connectDialog() {
         int returnCode;
         do {
@@ -120,8 +143,9 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             }
         } while (returnCode < 0);
     }
-
+*/
     void exitUi() {
+        /*
         if (myself.isConnected()) {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
             if (choice != 0) {
@@ -129,6 +153,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             }
             myself.disconnect();
         }
+         */
         setVisible(false);
         dispose();
     }
@@ -288,7 +313,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void lostServerConnection() {
         JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
-        disconnect();
+        //disconnect();
     }
 
     @Override
@@ -371,13 +396,19 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     }
 
-    private void setGameId(int gameId) {
+    public void setGameId(int gameId) {
         int lowId = gameId % 1000;
         int highId = gameId / 1000;
         String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
         setTitle(title);
     }
 
+    @Override
+    public void showMessage(String title, String message, int type) {
+        JOptionPane.showMessageDialog(this, message, title, type);
+    }
+
+    /*
     private void disconnect() {
         for (int i = 0; i < 4; i++) {
             gamePanel.clearPlayer(intToPlayerPosition(i));
@@ -390,4 +421,5 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
         connectDialog();
     }
+     */
 }

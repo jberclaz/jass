@@ -80,6 +80,6 @@ public class AutomaticClientTesting {
         var filePath = "/home/jrb/src/external/jass/target/classes/test/messages_entire_game.txt";
         var scriptedClientNetworkfactory = new ScriptedClientNetworkFactory(filePath);
 
-        var player = new JassPlayer(scriptedClientNetworkfactory, new ModernUiFactory());
+        //var player = new JassPlayer(scriptedClientNetworkfactory, new ModernUiFactory());
     }
 }

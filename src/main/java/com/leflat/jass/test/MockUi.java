@@ -1,5 +1,6 @@
 package com.leflat.jass.test;
 
+import com.leflat.jass.client.ConnectionInfo;
 import com.leflat.jass.common.*;
 
 import java.util.ArrayList;
@@ -198,6 +199,21 @@ public class MockUi implements IJassUi {
     @Override
     public void displayMatch(Team team, boolean us) {
 
+    }
+
+    @Override
+    public void setGameId(int gameId) {
+
+    }
+
+    @Override
+    public void showMessage(String title, String message, int type) {
+
+    }
+
+    @Override
+    public ConnectionInfo showConnectDialog() {
+        return null;
     }
 
     private void waitSec(float seconds) {

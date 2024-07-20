@@ -1,5 +1,6 @@
 package com.leflat.jass.server;
 
+import com.leflat.jass.client.ClientPlayer;
 import com.leflat.jass.common.*;
 
 import java.util.*;
@@ -30,8 +31,8 @@ public class GameController extends Thread {
     public void addPlayer(AbstractRemotePlayer newPlayer) throws PlayerLeftExpection {
         assert players.size() < 4;
         for (var p : players) {
-            p.setPlayerInfo(newPlayer);
-            newPlayer.setPlayerInfo(p);
+            p.setPlayerInfo(new ClientPlayer(newPlayer.getId(), newPlayer.getName()));
+            newPlayer.setPlayerInfo(new ClientPlayer(p.getId(), p.getName()));
         }
         players.add(newPlayer);
     }

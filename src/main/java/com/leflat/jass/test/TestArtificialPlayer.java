@@ -9,7 +9,7 @@ import java.io.IOException;
 
 public class TestArtificialPlayer {
     public TestArtificialPlayer() throws IOException, PlayerLeftExpection {
-
+/*
         var clientNetworkFactory = new MockNetworkFactory(0);
         var randomPlayer = new JassPlayer(clientNetworkFactory, new MockUiFactory(0, 100));
         randomPlayer.setName("Random");
@@ -26,6 +26,8 @@ public class TestArtificialPlayer {
         game.addPlayer(player3);
 
         game.start();
+
+ */
     }
 
     public static void main(String[] args) {

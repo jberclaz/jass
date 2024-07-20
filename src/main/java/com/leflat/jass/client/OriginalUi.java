@@ -33,7 +33,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     private static final String APP_TITLE = "Jass by FLAT®";
 
     // Autres variables
-    private final IConnectable myself;
+    //private final IConnectable myself;
     private int drawnCardPosition = -1;
     private Card playedCard = null;
     private boolean announcementPressed = false;
@@ -45,8 +45,8 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     /**
      * Creates new form ClientFrame
      */
-    public OriginalUi(IConnectable player) {
-        this.myself = player;
+    public OriginalUi() {
+
 
         initComponents();
 
@@ -120,7 +120,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
         jButtonAnounce.addActionListener(this::jButtonAnounceActionPerformed);
 
         jButtonConnect.setText("Connexion");
-        jButtonConnect.addActionListener(this::jButtonConnectActionPerformed);
+        //jButtonConnect.addActionListener(this::jButtonConnectActionPerformed);
 
         var panelButtons = new JPanel();
         panelButtons.add(jButtonConnect, new AbsoluteConstraints(10, 10, -1, -1));
@@ -128,6 +128,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
         getContentPane().add(panelButtons, new AbsoluteConstraints(400, 490, 230, 40));
     }//GEN-END:initComponents
 
+    /*
     private void jButtonConnectActionPerformed(java.awt.event.ActionEvent evt) {
         //GEN-FIRST:event_jButtonConnectActionPerformed
         if (!myself.isConnected()) {
@@ -170,7 +171,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
             }
         }
     }//GEN-LAST:event_jButtonConnectActionPerformed
-
+*/
 
     private void jButtonAnounceActionPerformed(java.awt.event.ActionEvent evt) {
 //GEN-FIRST:event_jButtonAnounceActionPerformed
@@ -183,6 +184,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
      * Exit the Application
      */
     private void exitForm(java.awt.event.WindowEvent evt) {//GEN-FIRST:event_exitForm
+        /*
         if (myself.isConnected()) {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
             if (choice != 0) {
@@ -190,6 +192,8 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
             }
             myself.disconnect();
         }
+
+         */
         setVisible(false);
         dispose();
     }//GEN-LAST:event_exitForm
@@ -489,11 +493,21 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
         setIconImages(images);
     }
 
-    private void setGameId(int gameId) {
+    public void setGameId(int gameId) {
         int lowId = gameId % 1000;
         int highId = gameId / 1000;
         String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
         setTitle(title);
+    }
+
+    @Override
+    public void showMessage(String title, String message, int type) {
+
+    }
+
+    @Override
+    public ConnectionInfo showConnectDialog() {
+        return null;
     }
 
     private void clearLastPlie() {

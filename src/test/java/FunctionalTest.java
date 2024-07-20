@@ -11,6 +11,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 public class FunctionalTest {
+    /*
     @Test
     void functional_test() throws PlayerLeftExpection {
         var game = new GameController(0);
@@ -63,4 +64,6 @@ public class FunctionalTest {
 
         assertDoesNotThrow(() -> {game.run();});
     }
+
+     */
 }

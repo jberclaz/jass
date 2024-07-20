@@ -9,9 +9,7 @@ public class RemoteArtificialPlayer extends ArtificialPlayer implements IConnect
     private final IClientNetworkFactory networkFactory;
     private IClientNetwork network = null;
     private IController controller = null;
-        private Thread controllerThread = null;
-
-
+    private Thread controllerThread = null;
 
     public RemoteArtificialPlayer(IClientNetworkFactory networkFactory) {
         super();
@@ -36,7 +34,7 @@ public class RemoteArtificialPlayer extends ArtificialPlayer implements IConnect
 
     @Override
     public boolean disconnect() {
-          if (controller != null) {
+        if (controller != null) {
             controller.terminate();
         }
         network.disconnect();

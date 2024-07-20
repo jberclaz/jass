@@ -7,6 +7,6 @@ import com.leflat.jass.common.IJassUiFactory;
 public class ModernUiFactory implements IJassUiFactory {
     @Override
     public IJassUi getUi(IConnectable remotePlayer) {
-        return new ModernUi(remotePlayer);
+        return new ModernUi();
     }
 }
