@@ -1,12 +1,3 @@
-import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.server.ArtificialPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.test.MockNetworkFactory;
-import com.leflat.jass.test.MockUiFactory;
-import org.junit.jupiter.api.Assertions;
-import org.junit.jupiter.api.Test;
-
 import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 

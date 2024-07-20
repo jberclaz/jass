@@ -14,7 +14,7 @@ import static com.leflat.jass.test.TestClient.buildHand;
 public class TestPlayerUi {
     public static void main(String[] aregs) {
         System.setProperty("sun.java2d.opengl", "True");
-        var clientNetworkFactory = new MockNetworkFactory();
+
         /*
         var player = new JassPlayer(clientNetworkFactory, new ModernUiFactory());
         player.setName("me");

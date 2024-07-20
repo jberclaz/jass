@@ -30,7 +30,7 @@ public class TestSingleClient {
 
         mainPlayer = new RemotePlayer(0, new ServerNetwork(clientSocket));
 
-        var clientNetworkFactory = new MockNetworkFactory(1);
+
         //var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory(.8f));
         var player1 = new ArtificialPlayer(1, "Berte");
         //player1.setName("Berte");

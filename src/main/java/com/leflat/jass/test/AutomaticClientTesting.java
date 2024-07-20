@@ -4,8 +4,6 @@ import com.leflat.jass.client.ServerDisconnectedException;
 import com.leflat.jass.common.ClientConnectionInfo;
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IClientNetwork;
-import com.leflat.jass.common.IClientNetworkFactory;
-import com.leflat.jass.client.*;
 
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
@@ -62,23 +60,11 @@ class ScriptedClientNetwork implements IClientNetwork {
     }
 }
 
-class ScriptedClientNetworkFactory implements IClientNetworkFactory {
-    private String scriptPath;
-    public ScriptedClientNetworkFactory(String scriptPath) {
-        this.scriptPath = scriptPath;
-    }
-
-    @Override
-    public IClientNetwork getClientNetwork() {
-        return new ScriptedClientNetwork(scriptPath);
-    }
-}
-
 public class AutomaticClientTesting {
     public static void main(String[] aregs) {
         //var filePath = AutomaticClientTesting.class.getClassLoader().getResource("test/messages_entire_game.txt");
         var filePath = "/home/jrb/src/external/jass/target/classes/test/messages_entire_game.txt";
-        var scriptedClientNetworkfactory = new ScriptedClientNetworkFactory(filePath);
+
 
         //var player = new JassPlayer(scriptedClientNetworkfactory, new ModernUiFactory());
     }
