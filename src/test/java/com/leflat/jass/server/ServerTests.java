@@ -256,7 +256,7 @@ public class ServerTests {
 
         serverThread.start();
 
-        var clientNetwork = new LocalClientNetwork(clientInput, clientOutput);
+        var clientNetwork = new LocalClientNetwork(clientInput, clientOutput, "Berte");
         var remoteController = new RemoteController(mockedPlayer, clientNetwork);
         var remoteThread = new Thread(remoteController);
         remoteThread.start();

@@ -89,10 +89,10 @@ public class CommonTests {
     public void find_suit_test() {
         var annoucements = Announcement.findAnouncements(buildHand(5, 9, 12, 13, 14, 19, 20, 21, 22, 24, 32));
         assertEquals(2, annoucements.size());
-        var firstAnouncement = annoucements.get(0);
+        var firstAnouncement = annoucements.get(1);
         assertEquals(firstAnouncement.getType(), Announcement.THREE_CARDS);
         assertEquals(firstAnouncement.getCard().getNumber(), 14);
-        var secondAnouncement = annoucements.get(1);
+        var secondAnouncement = annoucements.get(0);
         assertEquals(secondAnouncement.getType(), Announcement.FIFTY);
         assertEquals(secondAnouncement.getCard().getNumber(), 22);
 
@@ -108,6 +108,13 @@ public class CommonTests {
         assertEquals(1, annoucements.size());
         assertEquals(annoucements.get(0).getType(), Announcement.HUNDRED);
         assertEquals(annoucements.get(0).getCard().getNumber(), 5);
+
+        annoucements = Announcement.findAnouncements(buildHand(0, 1, 2, 3, 4, 5, 6, 7, 8));
+        assertEquals(2, annoucements.size());
+        assertEquals(Announcement.HUNDRED, annoucements.get(0).getType());
+        assertEquals(8, annoucements.get(0).getCard().getNumber());
+        assertEquals(Announcement.FIFTY, annoucements.get(1).getType());
+        assertEquals(3, annoucements.get(1).getCard().getNumber());
     }
 
     @Test

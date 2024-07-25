@@ -13,10 +13,16 @@ public class ConnectionListener extends Thread {
     private ServerSocket serverSocket;
     private Map<Integer, GameController> games = new HashMap<>();
     private boolean running = false;
+    private boolean testMode = false;
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
 
     public ConnectionListener(int port) throws IOException {
         serverSocket = new ServerSocket(port);
+    }
+
+    public ConnectionListener(int port, boolean testMode) throws IOException {
+        this(port);
+        this.testMode = testMode;
     }
 
     public void terminate() {
@@ -34,6 +40,13 @@ public class ConnectionListener extends Thread {
                 handleNewConnection(clientSocket);
             } catch (IOException e) {
                 LOGGER.log(Level.SEVERE, "Error while handling connection", e);
+            }
+        }
+        for (var game : games.values()) {
+            try {
+                game.join();
+            } catch (InterruptedException e) {
+                LOGGER.log(Level.SEVERE, "Error while terminating game", e);
             }
         }
     }
@@ -66,6 +79,9 @@ public class ConnectionListener extends Thread {
             int newGameId = getRandomGameId();
             network.sendMessage(String.valueOf(newGameId));
             game = new GameController(newGameId);
+            if (testMode) {
+                game.setNoWait(true);
+            }
             games.put(newGameId, game);
         } else {
             if (!games.containsKey(gameId)) {

@@ -31,7 +31,7 @@ public class JassServer {
     public static void main(String[] args) {
         System.out.println("Jass Server");
         System.out.println("Version " + getVersion());
-        System.out.println("(c) 2000-2020 by FLAT(r)");
+        System.out.println("(c) 2000-2024 by FLAT(r)");
         System.out.println();
 
         Logger rootLogger = LogManager.getLogManager().getLogger("");

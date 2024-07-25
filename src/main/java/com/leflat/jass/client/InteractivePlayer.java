@@ -39,14 +39,10 @@ public class InteractivePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setPlayerInfo(BasePlayer player) {
-        try {
-            var relativePosition = getInitialRelativePosition(player);
-            playersPositions.put(player.getId(), relativePosition);
-            players.put(player.getId(), player);
-            ui.setPlayer(player, relativePosition);
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error while receiving player info", e);
-        }
+        var relativePosition = getInitialRelativePosition(player);
+        playersPositions.put(player.getId(), relativePosition);
+        players.put(player.getId(), player);
+        ui.setPlayer(player, relativePosition);
     }
 
     @Override
@@ -83,16 +79,17 @@ public class InteractivePlayer extends AbstractRemotePlayer {
 
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) {
-        try {
-            var relativePosition = playersPositions.get(player.getId());
-            ui.setDrawnCard(relativePosition, cardPosition, card);
-        } catch (IndexOutOfBoundsException e) {
-            LOGGER.log(Level.WARNING, "Unknown player", e);
+        var relativePosition = playersPositions.get(player.getId());
+        if (relativePosition == null) {
+            LOGGER.severe("Error: unknown player " + player.getId());
+            return;
         }
+        ui.setDrawnCard(relativePosition, cardPosition, card);
     }
 
     @Override
     public void setPlayersOrder(List<Integer> playerIds) {
+        assert playerIds.size() == 4;
         int ownPosition = playerIds.indexOf(id);
         playersPositions.clear();
         for (int i = 0; i < playerIds.size(); i++) {
@@ -100,11 +97,7 @@ public class InteractivePlayer extends AbstractRemotePlayer {
             playersPositions.put(playerId, (i - ownPosition + 4) % 4);
         }
         for (var player : players.values()) {
-            try {
-                ui.setPlayer(player, playersPositions.get(player.getId()));
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error while reordering players", e);
-            }
+            ui.setPlayer(player, playersPositions.get(player.getId()));
         }
     }
 
