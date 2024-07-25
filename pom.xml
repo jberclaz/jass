@@ -106,6 +106,7 @@
                 <configuration>
                     <excludes>
                         <exclude>com/leflat/jass/test/**</exclude>
+S                        <exclude>com/intellij/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

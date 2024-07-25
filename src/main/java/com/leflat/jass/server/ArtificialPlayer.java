@@ -28,10 +28,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         setName(name);
     }
 
-    public ArtificialPlayer() {
-        super(0);
-    }
-
     public ArtificialPlayer(int id, String name, int strength) {
         this(id, name);
         this.strength = strength;

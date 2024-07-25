@@ -28,7 +28,7 @@ public class ArtificialPlayerTests {
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
-        player = new ArtificialPlayer(1, "name");
+        player = new ArtificialPlayer(1, "name", 10);
         playersPositionField = ArtificialPlayer.class.getDeclaredField("positionsByIds");
         playersPositionField.setAccessible(true);
         gameViewField = ArtificialPlayer.class.getDeclaredField("gameView");
@@ -97,6 +97,7 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_choose_atout() throws PlayerLeftExpection {
+        var player = new ArtificialPlayer(1, "AI", 100);
         var thirdPlayer = new ArtificialPlayer(3, "GC");
         var fourthPlayer = new ArtificialPlayer(0, "Mono");
         player.setPlayerInfo(otherPlayer);
