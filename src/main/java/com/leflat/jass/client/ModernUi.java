@@ -265,7 +265,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void lostServerConnection() {
         JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
-        //disconnect();
     }
 
     @Override
