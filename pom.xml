@@ -77,7 +77,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <version>3.3.0</version>
                 <configuration>
-                    <argLine>-XX:+EnableDynamicAgentLoading</argLine>
+                    <argLine>@{argLine} -XX:+EnableDynamicAgentLoading</argLine>
                 </configuration>
             </plugin>
 
@@ -106,6 +106,7 @@
                 <configuration>
                     <excludes>
                         <exclude>com/leflat/jass/test/**</exclude>
+S                        <exclude>com/intellij/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

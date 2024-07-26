@@ -1,41 +1,31 @@
-import com.leflat.jass.client.JassPlayer;
-import com.leflat.jass.server.ArtificialPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
-import com.leflat.jass.test.MockNetworkFactory;
-import com.leflat.jass.test.MockUiFactory;
+import com.leflat.jass.client.InteractivePlayer;
+import com.leflat.jass.server.*;
+import com.leflat.jass.test.MockUi;
+
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 
-import static org.junit.Assert.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
+
 public class FunctionalTest {
+    private static final String[] names = {"Berte", "GC", "Pischus", "Wein"};
+
     @Test
     void functional_test() throws PlayerLeftExpection {
         var game = new GameController(0);
         game.setNoWait(true);
 
-        var clientNetworkFactory = new MockNetworkFactory();
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player3.setName("Pischus");
-        var player4 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player4.setName("Wein");
-
-        game.addPlayer(player1);
-        game.addPlayer(player2);
-        game.addPlayer(player3);
-        game.addPlayer(player4);
-
+        for (int i = 0; i < 4; ++i) {
+            var player = new InteractivePlayer(new MockUi(0, 1), i, names[i], 0);
+            game.addPlayer(player);
+        }
         Assertions.assertTrue(game.isGameFull());
 
-        game.setNoWait(true);
-
-        assertDoesNotThrow(() -> {game.run();});
+        assertDoesNotThrow(() -> {
+            game.start();
+            game.join();
+        });
     }
 
     @Test
@@ -43,24 +33,16 @@ public class FunctionalTest {
         var game = new GameController(0);
         game.setNoWait(true);
 
-        var clientNetworkFactory = new MockNetworkFactory();
-        var player1 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player1.setName("Berte");
-        var player2 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player2.setName("GC");
-        var player3 = new JassPlayer(clientNetworkFactory, new MockUiFactory());
-        player3.setName("Pischus");
-        var player4 = new ArtificialPlayer(3, "Wein", 20);
-
-        game.addPlayer(player1);
-        game.addPlayer(player2);
-        game.addPlayer(player3);
-        game.addPlayer(player4);
+        for (int i = 0; i < 3; ++i) {
+            game.addPlayer(new InteractivePlayer(new MockUi(0, 1), i, names[i], 0));
+        }
+        game.addPlayer(new ArtificialPlayer(3, "iPischus", 10, true));
 
         Assertions.assertTrue(game.isGameFull());
 
-        game.setNoWait(true);
-
-        assertDoesNotThrow(() -> {game.run();});
+        assertDoesNotThrow(() -> {
+            game.start();
+            game.join();
+        });
     }
 }

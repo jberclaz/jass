@@ -1,5 +1,6 @@
 package com.leflat.jass.test;
 
+import com.leflat.jass.client.ConnectionInfo;
 import com.leflat.jass.common.*;
 
 import java.util.ArrayList;
@@ -11,14 +12,14 @@ import java.util.concurrent.locks.Lock;
 public class MockUi implements IJassUi {
     private final Random rand = new Random();
     private List<Card> hand;
-    private final IRemotePlayer player;
+
     private float delaySeconds = 0;
     private final List<Integer> drawnCards = new ArrayList<>();
     private int nbrGames;
     private int playedGames = 0;
 
-    public MockUi(IRemotePlayer player, float delaySeconds, int nbrGames) {
-        this.player = player;
+    public MockUi(float delaySeconds, int nbrGames) {
+
         this.delaySeconds = delaySeconds;
         this.nbrGames = nbrGames;
     }
@@ -30,7 +31,7 @@ public class MockUi implements IJassUi {
 
     @Override
     public void showUi(boolean enable) {
-        player.connect("GC", "localhost", 1234);
+
     }
 
     @Override
@@ -198,6 +199,21 @@ public class MockUi implements IJassUi {
     @Override
     public void displayMatch(Team team, boolean us) {
 
+    }
+
+    @Override
+    public void setGameId(int gameId) {
+
+    }
+
+    @Override
+    public void showMessage(String title, String message, int type) {
+
+    }
+
+    @Override
+    public ConnectionInfo showConnectDialog() {
+        return null;
     }
 
     private void waitSec(float seconds) {

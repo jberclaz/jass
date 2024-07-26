@@ -11,64 +11,60 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
-    private final static Logger LOGGER = Logger.getLogger(JassPlayer.class.getName());
-    private final IJassUi frame;
+public class InteractivePlayer extends AbstractRemotePlayer {
+    private final static Logger LOGGER = Logger.getLogger(InteractivePlayer.class.getName());
+    private final IJassUi ui;
     private final Map<Integer, Integer> playersPositions = new HashMap<>();
     private final Map<Integer, BasePlayer> players = new HashMap<>();
     private Plie plie;
     private Card playedCard;
-
-    private IController controller = null;
-    private Thread controllerThread = null;
-    private IClientNetwork network = null;
-    private final IClientNetworkFactory networkFactory;
     private boolean hasStoeck;
 
-    public JassPlayer(IClientNetworkFactory networkFactory, IJassUiFactory uiFactory) {
-        super(-1);
-        this.networkFactory = networkFactory;
-        frame = uiFactory.getUi(this);
-
-        frame.showUi(true);
-    }
-
-    @Override
-    public void setPlayerInfo(BasePlayer player) {
-        try {
-            var relativePosition = getInitialRelativePosition(player);
-            playersPositions.put(player.getId(), relativePosition);
-            players.put(player.getId(), player);
-            frame.setPlayer(player, relativePosition);
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error while receiving player info", e);
+    public InteractivePlayer(IJassUi ui, int playerId, String name, int gameId) {
+        super(playerId);
+        this.ui = ui;
+        players.put(playerId, new ClientPlayer(playerId, name));
+        playersPositions.put(playerId, 0);
+        ui.setPlayer(new ClientPlayer(playerId, name), 0);
+        this.name = name;
+        if (gameId >= 0) {
+            ui.setGameId(gameId);
         }
     }
 
     @Override
+    public void setPlayerInfo(BasePlayer player) {
+        var relativePosition = getInitialRelativePosition(player);
+        playersPositions.put(player.getId(), relativePosition);
+        players.put(player.getId(), player);
+        ui.setPlayer(player, relativePosition);
+    }
+
+    @Override
     public TeamSelectionMethod chooseTeamSelectionMethod() {
-        return frame.chooseTeamSelectionMethod();
+        return ui.chooseTeamSelectionMethod();
     }
 
     @Override
     public void prepareTeamDrawing(boolean firstAttempt) {
-        frame.prepareTeamDrawing();
+        ui.prepareTeamDrawing();
         if (!firstAttempt) {
-            frame.displayStatusMessage("Le tirage des équipes a échoué. On recommence.");
+            ui.displayStatusMessage("Le tirage des équipes a échoué. On recommence.");
         }
     }
 
     @Override
     public int drawCard() {
-        var lock = controller.getLock();
+        var lock = new ReentrantLock();
         lock.lock();
         var condition = lock.newCondition();
-        frame.displayStatusMessage("Veuillez choisir une carte");
-        frame.drawCard(lock, condition);
+        ui.displayStatusMessage("Veuillez choisir une carte");
+        ui.drawCard(lock, condition);
         try {
             condition.await();
 
@@ -77,22 +73,23 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         }
         lock.unlock();
 
-        frame.displayStatusMessage("");
-        return frame.getDrawnCardPosition();
+        ui.displayStatusMessage("");
+        return ui.getDrawnCardPosition();
     }
 
     @Override
     public void setCard(BasePlayer player, int cardPosition, Card card) {
-        try {
-            var relativePosition = playersPositions.get(player.getId());
-            frame.setDrawnCard(relativePosition, cardPosition, card);
-        } catch (IndexOutOfBoundsException e) {
-            LOGGER.log(Level.WARNING, "Unknown player", e);
+        var relativePosition = playersPositions.get(player.getId());
+        if (relativePosition == null) {
+            LOGGER.severe("Error: unknown player " + player.getId());
+            return;
         }
+        ui.setDrawnCard(relativePosition, cardPosition, card);
     }
 
     @Override
     public void setPlayersOrder(List<Integer> playerIds) {
+        assert playerIds.size() == 4;
         int ownPosition = playerIds.indexOf(id);
         playersPositions.clear();
         for (int i = 0; i < playerIds.size(); i++) {
@@ -100,11 +97,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             playersPositions.put(playerId, (i - ownPosition + 4) % 4);
         }
         for (var player : players.values()) {
-            try {
-                frame.setPlayer(player, playersPositions.get(player.getId()));
-            } catch (Exception e) {
-                LOGGER.log(Level.WARNING, "Error while reordering players", e);
-            }
+            ui.setPlayer(player, playersPositions.get(player.getId()));
         }
     }
 
@@ -113,7 +106,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         var partners = players.values().stream()
                 .filter(p -> p.getId() != id)
                 .collect(Collectors.toList());
-        return frame.choosePartner(partners).getId();
+        return ui.choosePartner(partners).getId();
     }
 
     @Override
@@ -123,21 +116,21 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             super.setHand(cards);
         } catch (PlayerLeftExpection ignored) {
         }
-        frame.prepareGame();
-        frame.setPlayerHand(cards);
-        frame.setOtherPlayersHands(9);
+        ui.prepareGame();
+        ui.setPlayerHand(cards);
+        ui.setOtherPlayersHands(9);
         plie = new Plie();
     }
 
     @Override
     public int chooseAtout(boolean first) {
-        return frame.chooseAtout(first);
+        return ui.chooseAtout(first);
     }
 
     @Override
     public void setAtout(int color, BasePlayer firstToPlay) {
         Card.atout = color;
-        frame.setAtout(color, playersPositions.get(firstToPlay.getId()));
+        ui.setAtout(color, playersPositions.get(firstToPlay.getId()));
         if (color != Card.COLOR_NONE) {
             announcements = Announcement.findAnouncements(hand);
             hasStoeck = Announcement.findStoeck(hand);
@@ -146,20 +139,20 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
 
     @Override
     public Card play() {
-        frame.displayStatusMessage("A vous de jouer...");
-        frame.setAnnouncementEnabled(true);
-        var lock = controller.getLock();
+        ui.displayStatusMessage("A vous de jouer...");
+        ui.setAnnouncementEnabled(true);
+        var lock = new ReentrantLock(); //= controller.getLock();
         lock.lock();
         var condition = lock.newCondition();
 
         do {
-            frame.chooseCard(lock, condition);
+            ui.chooseCard(lock, condition);
             try {
                 condition.await();
             } catch (InterruptedException e) {
                 LOGGER.log(Level.WARNING, "Error while waiting for player", e);
             }
-            var card = frame.getChosenCard();
+            var card = ui.getChosenCard();
             try {
                 plie.playCard(card, this, hand);
                 playedCard = card;
@@ -167,10 +160,10 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             } catch (BrokenRuleException e) {
                 switch (e.getBrokenRule()) {
                     case Rules.RULES_MUST_FOLLOW:
-                        frame.displayStatusMessage("Il faut suivre!");
+                        ui.displayStatusMessage("Il faut suivre!");
                         break;
                     case Rules.RULES_CANNOT_UNDERCUT:
-                        frame.displayStatusMessage("Vous ne pouvez pas sous-couper!");
+                        ui.displayStatusMessage("Vous ne pouvez pas sous-couper!");
                         break;
                     default:
                         LOGGER.severe("Unknown rule " + e.getBrokenRule());
@@ -181,10 +174,10 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         lock.unlock();
 
         removeCard(playedCard);
-        frame.setAnnouncementEnabled(false);
-        frame.setPlayerHand(hand);
-        frame.setPlayedCard(playedCard, 0);
-        frame.displayStatusMessage("");
+        ui.setAnnouncementEnabled(false);
+        ui.setPlayerHand(hand);
+        ui.setPlayedCard(playedCard, 0);
+        ui.displayStatusMessage("");
         return playedCard;
     }
 
@@ -197,25 +190,25 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             System.exit(1);
         }
         int position = playersPositions.get(player.getId());
-        frame.setPlayedCard(card, position);
-        frame.removeCardFromPlayerHand(position);
+        ui.setPlayedCard(card, position);
+        ui.removeCardFromPlayerHand(position);
     }
 
     @Override
     public void collectPlie(BasePlayer player) {
         int position = playersPositions.get(player.getId());
-        frame.collectPlie(position);
+        ui.collectPlie(position);
         plie = new Plie();
     }
 
     @Override
     public void setScores(int score, int opponentScore) {
-        frame.setScore(score, opponentScore);
+        ui.setScore(score, opponentScore);
     }
 
     @Override
     public List<Announcement> getAnnouncements() {
-        if (!frame.hasPlayerAnnounced()) {
+        if (!ui.hasPlayerAnnounced()) {
             return Collections.emptyList();
         }
         if (hand.size() == 8) {
@@ -240,7 +233,7 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
         for (int i = 1; i < announcements.size(); i++) {
             sb.append(" et ").append(announcements.get(i));
         }
-        frame.displayStatusMessage(sb.toString());
+        ui.displayStatusMessage(sb.toString());
     }
 
     @Override
@@ -252,24 +245,22 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
             var p1 = winningTeam.getPlayer(1);
             p1.setName(players.get(p1.getId()).getName());
         }
-        frame.displayGameResult(winningTeam, won);
+        ui.displayGameResult(winningTeam, won);
     }
 
     @Override
     public boolean getNewGame() {
-        return frame.getNewGame();
+        return ui.getNewGame();
     }
 
     @Override
     public void playerLeft(BasePlayer player) {
-        frame.canceledGame(playersPositions.get(player.getId()));
-        disconnect();
+        ui.canceledGame(playersPositions.get(player.getId()));
     }
 
     @Override
     public void lostServerConnection() {
-        disconnect();
-        frame.lostServerConnection();
+        ui.lostServerConnection();
     }
 
     @Override
@@ -282,54 +273,10 @@ public class JassPlayer extends AbstractRemotePlayer implements IRemotePlayer {
                 var p1 = match.getPlayer(1);
                 p1.setName(players.get(p1.getId()).getName());
             }
-            frame.displayMatch(match, us);
+            ui.displayMatch(match, us);
         } else {
-            frame.displayStatusMessage(String.format("Résultat de la manche: nous %d, eux %d", ourScore, theirScore));
+            ui.displayStatusMessage(String.format("Résultat de la manche: nous %d, eux %d", ourScore, theirScore));
         }
-    }
-
-    @Override
-    public int connect(String name, String host, int gameId) {
-        network = networkFactory.getClientNetwork();
-        var connectionInfo = network.connect(host, gameId, name);
-        if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {
-            network = null;
-            return connectionInfo.error;
-        }
-        id = connectionInfo.playerId;
-        playersPositions.put(id, 0);
-        controller = new RemoteController(this, network);
-        controllerThread = new Thread(controller, "controller-thread");
-        controllerThread.start();
-        try {
-            frame.setPlayer(new ClientPlayer(id, name), 0);
-        } catch (Exception e) {
-            LOGGER.log(Level.WARNING, "Error while setting player info", e);
-        }
-        return connectionInfo.gameId;
-    }
-
-    @Override
-    public boolean disconnect() {
-        if (controller != null) {
-            controller.terminate();
-        }
-        network.disconnect();
-        if (controllerThread != null) {
-            try {
-                controllerThread.join(500);
-            } catch (InterruptedException e) {
-                LOGGER.log(Level.WARNING, "Error while waiting for controller thread to die", e);
-            }
-        }
-        controller = null;
-        controllerThread = null;
-        return true;
-    }
-
-    @Override
-    public boolean isConnected() {
-        return network != null && network.isConnected();
     }
 
     private int getInitialRelativePosition(BasePlayer player) {

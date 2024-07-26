@@ -192,7 +192,7 @@ public class ServerTests {
 
     @Test
     void test_client_server_transmission() throws IOException, PlayerLeftExpection, InterruptedException, ServerDisconnectedException {
-        IPlayer mockedPlayer = mock(JassPlayer.class);
+        IPlayer mockedPlayer = mock(InteractivePlayer.class);
         var hand = RulesTests.buildHand(1, 2, 3, 4, 5, 6, 7, 8, 9);
         var otherPlayer = new ClientPlayer(2, null);
         var playerWithSpace = new ClientPlayer(1, "Pat Cor");
@@ -256,7 +256,7 @@ public class ServerTests {
 
         serverThread.start();
 
-        var clientNetwork = new LocalClientNetwork(clientInput, clientOutput);
+        var clientNetwork = new LocalClientNetwork(clientInput, clientOutput, "Berte");
         var remoteController = new RemoteController(mockedPlayer, clientNetwork);
         var remoteThread = new Thread(remoteController);
         remoteThread.start();

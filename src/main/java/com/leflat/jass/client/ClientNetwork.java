@@ -91,6 +91,7 @@ public class ClientNetwork implements IClientNetwork {
             LOGGER.log(Level.WARNING, "Error during reception", e);
         }
         if (message == null) {
+            os.close();
             throw new ServerDisconnectedException("Server has left unexpectedly");
         }
         LOGGER.info("Received : " + message);

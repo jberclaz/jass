@@ -1,11 +1,14 @@
 package com.leflat.jass.common;
 
+import com.leflat.jass.client.ConnectionInfo;
+
+import javax.swing.*;
 import java.util.List;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.Lock;
 
 public interface IJassUi {
-    void setPlayer(BasePlayer player, int relativePosition) throws Exception;
+    void setPlayer(BasePlayer player, int relativePosition);
 
     void showUi(boolean enable);
 
@@ -58,5 +61,11 @@ public interface IJassUi {
     void lostServerConnection();
 
     void displayMatch(Team team, boolean us);
+
+    void setGameId(int gameId);
+
+    void showMessage(String title, String message, int type);
+
+    ConnectionInfo showConnectDialog();
 }
 

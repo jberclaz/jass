@@ -55,6 +55,7 @@ public class ServerNetwork implements IServerNetwork {
             LOGGER.log(Level.SEVERE, "Error during reception", e);
         }
         if (message == null) {
+            os.close();
             throw new PlayerLeftExpection(playerId);
         }
         LOGGER.info("Received from " + playerId + " : " + message);

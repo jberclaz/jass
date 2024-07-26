@@ -8,11 +8,11 @@ import java.util.Collections;
 
 public class LocalClientNetwork extends ClientNetwork {
 
-    public LocalClientNetwork(PipedInputStream input, PipedOutputStream output) throws ServerDisconnectedException {
+    public LocalClientNetwork(PipedInputStream input, PipedOutputStream output, String name) throws ServerDisconnectedException {
         is = new BufferedReader(new InputStreamReader(input));
         os = new PrintWriter(output, true);
         playerId = Integer.parseInt(receiveRawMessage());
-        sendMessage(Collections.singletonList("Berte"));
+        sendMessage(Collections.singletonList(name));
     }
 
     @Override

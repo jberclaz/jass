@@ -5,6 +5,8 @@ import java.util.Collection;
 import java.util.List;
 import java.util.stream.Collectors;
 
+import static java.lang.Math.min;
+
 public class Announcement implements Comparable<Announcement> {
     public static final int STOECK = 0;
     public static final int THREE_CARDS = 1;
@@ -65,7 +67,7 @@ public class Announcement implements Comparable<Announcement> {
                     sb.append(" au ");
                     break;
             }
-            sb.append(card.toString());
+            sb.append(card);
         }
         return sb.toString();
     }
@@ -146,20 +148,23 @@ public class Announcement implements Comparable<Announcement> {
 
     private static Collection<Announcement> findSuits(List<Card> hand) {
         var announcements = new ArrayList<Announcement>();
-        for (int i = 0; i < hand.size() - 2; i++) {
+        for (int i = hand.size() - 1; i>=2; --i) {
             var firstCard = hand.get(i);
             int color = firstCard.getColor();
-            int j = i + 1;
+            int j = i - 1;
             int nbrCards = 1;
-            while ((j < hand.size()) && (hand.get(j).getColor() == color)) {
-                if (hand.get(j).getNumber() == (firstCard.getNumber() + j - i)) // si les cartes se suivent
+            while ((j >= 0) && (hand.get(j).getColor() == color)) {
+                if (hand.get(j).getNumber() == (firstCard.getNumber() + j - i)) { // si les cartes se suivent
                     nbrCards++;
-                j++;
+                }else {
+                    break;
+                }
+                --j;
             }
-            if (nbrCards >= 3 && nbrCards <= 5) {   // on a trouvé une suite
-                // if the number of cards is greater than 6, it means that there is another higher suite of five cards
-                announcements.add(new Announcement(nbrCards - 2, hand.get(i + nbrCards - 1)));
-                i = j - 1;
+            if (nbrCards >= 3) {   // on a trouvé une suite
+                nbrCards = min(nbrCards, 5);
+                announcements.add(new Announcement(nbrCards - 2, hand.get(i)));
+                i -= nbrCards - 1;
             }
         }
         return announcements;

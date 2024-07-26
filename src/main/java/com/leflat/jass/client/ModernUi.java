@@ -18,7 +18,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private static final String APP_TITLE = "Jass by FLAT®";
     private static final Logger LOGGER = Logger.getLogger(OriginalUi.class.getName());
 
-    private final IRemotePlayer myself;
     private ModernGamePanel gamePanel;
     private Lock lock;
     private Condition condition;
@@ -28,8 +27,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private Card playedCard;
 
 
-    public ModernUi(IRemotePlayer player) {
-        this.myself = player;
+    public ModernUi() {
         initComponents();
         loadLogos();
     }
@@ -37,7 +35,8 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     private void initComponents() {
         try {
             UIManager.setLookAndFeel(UIManager.getSystemLookAndFeelClassName());
-        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException | UnsupportedLookAndFeelException e) {
+        } catch (ClassNotFoundException | InstantiationException | IllegalAccessException |
+                 UnsupportedLookAndFeelException e) {
             LOGGER.log(Level.WARNING, "Unable to set look and feel", e);
         }
         gamePanel = new ModernGamePanel();
@@ -72,56 +71,33 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setSize(630, 530 + insets.top);
         setMinimumSize(new Dimension(630, 530 + insets.top));
         setResizable(true);
-
-        connectDialog();
     }
 
-    private void connectDialog() {
-        int returnCode;
-        do {
-            DialogConnection dc;
-            if (myName != null && serverHost != null) {
-                dc = new DialogConnection(this, myName, serverHost);
-            } else {
-                dc = new DialogConnection(this);
-            }
-            dc.pack();
-            dc.setLocationRelativeTo(this);
-            dc.setVisible(true);
-            if (!dc.ok) {
-                this.setVisible(false);
-                this.dispose();
-                return;
-            }
-            myName = dc.name;
-            serverHost = dc.host;
-            returnCode = myself.connect(dc.name, dc.host, dc.gameId);
-            if (returnCode >= 0) {
-                setGameId(returnCode);
-                if (dc.gameId < 0 && dc.aiPlayers > 0) {
-                    for (int i=0; i<dc.aiPlayers; ++i) {
-                        var aiName = String.format("iBerte %d", i+1);
-                        var aiPlayer = new RemoteArtificialPlayer(new ClientNetworkFactory());
-                        aiPlayer.connect(aiName, dc.host, returnCode);
-                    }
-                }
-            } else {
-                switch (returnCode) {
-                    case ConnectionError.SERVER_UNREACHABLE:
-                        JOptionPane.showMessageDialog(this, "La connection a échoué.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                    case ConnectionError.GAME_FULL:
-                        JOptionPane.showMessageDialog(this, "Ce jeu est déja complet.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                    case ConnectionError.UNKNOWN_GAME:
-                        JOptionPane.showMessageDialog(this, "Le jeu " + dc.gameId + " n'existe pas.", "Erreur", JOptionPane.ERROR_MESSAGE);
-                        break;
-                }
-            }
-        } while (returnCode < 0);
+    public ConnectionInfo showConnectDialog() {
+        DialogConnection dc;
+        if (myName != null && serverHost != null) {
+            dc = new DialogConnection(this, myName, serverHost);
+        } else {
+            dc = new DialogConnection(this);
+        }
+        dc.pack();
+        dc.setLocationRelativeTo(this);
+        dc.setVisible(true);
+        if (!dc.ok) {
+            this.setVisible(false);
+            this.dispose();
+            return new ConnectionInfo(false);
+        }
+        myName = dc.name;
+        serverHost = dc.host;
+        if (dc.local) {
+            return new ConnectionInfo(dc.name);
+        }
+        return new ConnectionInfo(dc.name, dc.host, dc.gameId >= 0, dc.gameId, dc.aiPlayers);
     }
 
     void exitUi() {
+        /*
         if (myself.isConnected()) {
             int choice = JOptionPane.showConfirmDialog(this, "Voulez-vous vraiment quitter le jeu?", "Déconnexion", JOptionPane.YES_NO_OPTION);
             if (choice != 0) {
@@ -129,6 +105,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             }
             myself.disconnect();
         }
+         */
         setVisible(false);
         dispose();
     }
@@ -288,7 +265,6 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void lostServerConnection() {
         JOptionPane.showMessageDialog(this, "Le connexion au serveur a échoué. La partie est terminée.", "Serveur déconnecté", JOptionPane.ERROR_MESSAGE);
-        disconnect();
     }
 
     @Override
@@ -371,23 +347,15 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     }
 
-    private void setGameId(int gameId) {
+    public void setGameId(int gameId) {
         int lowId = gameId % 1000;
         int highId = gameId / 1000;
         String title = gameId >= 0 ? APP_TITLE + String.format(" - Jeu %03d %03d", highId, lowId) : APP_TITLE;
         setTitle(title);
     }
 
-    private void disconnect() {
-        for (int i = 0; i < 4; i++) {
-            gamePanel.clearPlayer(intToPlayerPosition(i));
-        }
-        gamePanel.clearCards();
-        gamePanel.hideAtout();
-        gamePanel.setMode(ModernGamePanel.GameMode.IDLE);
-        setScore(0, 0);
-        setGameId(-1);
-
-        connectDialog();
+    @Override
+    public void showMessage(String title, String message, int type) {
+        JOptionPane.showMessageDialog(this, message, title, type);
     }
 }
