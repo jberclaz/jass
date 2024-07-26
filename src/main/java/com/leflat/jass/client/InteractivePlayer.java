@@ -256,12 +256,10 @@ public class InteractivePlayer extends AbstractRemotePlayer {
     @Override
     public void playerLeft(BasePlayer player) {
         ui.canceledGame(playersPositions.get(player.getId()));
-        //disconnect();
     }
 
     @Override
     public void lostServerConnection() {
-        //disconnect();
         ui.lostServerConnection();
     }
 
