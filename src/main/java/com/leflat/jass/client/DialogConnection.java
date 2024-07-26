@@ -158,6 +158,9 @@ public class DialogConnection extends JDialog {
     }
 
     private void onJoinCheckBox() {
+        if (!networkGameCheckBox.isSelected()) {
+            return;
+        }
         boolean joinGame = joinExistingGameCheckBox.isSelected();
         textFieldGameNumber.setEnabled(joinGame);
         labelGameId.setEnabled(joinGame);

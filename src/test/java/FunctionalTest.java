@@ -28,41 +28,6 @@ public class FunctionalTest {
         });
     }
 
-    /*
-    @Test
-    void functional_test_over_network() throws PlayerLeftExpection, IOException, ServerDisconnectedException, InterruptedException {
-        var listener = new ConnectionListener(23107, true);
-        listener.start();
-
-        int gameId = -1;
-        var controllers = new LinkedList<RemoteController>();
-        var controllerThreads = new LinkedList<Thread>();
-        for (int i = 0; i < 4; ++i) {
-            var player = new InteractivePlayer(new MockUi(0, 1), i, names[i], 0);
-            var network = new ClientNetwork();
-            var connectionInfo = network.connect("localhost", gameId, names[i]);
-            assert(connectionInfo.error == ConnectionError.CONNECTION_SUCCESSFUL);
-            var gameController = new RemoteController(player, network);
-            controllers.add(gameController);
-            controllerThreads.add(new Thread(gameController, "controller-thread" + i));
-            controllerThreads.getLast().start();
-            gameId = connectionInfo.gameId;
-            if (i > 2) {
-                listener.terminate();
-            }
-        }
-
-        listener.join();
-        for (var controller: controllers) {
-            controller.terminate();
-        }
-        for (var thread: controllerThreads) {
-            thread.join();
-        }
-
-    }
-     */
-
     @Test
     void functional_test_with_artificial_player() throws PlayerLeftExpection {
         var game = new GameController(0);
