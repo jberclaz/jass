@@ -36,7 +36,7 @@ public class FunctionalTest {
         for (int i = 0; i < 3; ++i) {
             game.addPlayer(new InteractivePlayer(new MockUi(0, 1), i, names[i], 0));
         }
-        game.addPlayer(new ArtificialPlayer(3, "iPischus", 10));
+        game.addPlayer(new ArtificialPlayer(3, "iPischus", 10, true));
 
         Assertions.assertTrue(game.isGameFull());
 

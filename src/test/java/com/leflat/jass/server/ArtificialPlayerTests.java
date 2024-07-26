@@ -28,7 +28,7 @@ public class ArtificialPlayerTests {
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
-        player = new ArtificialPlayer(1, "name", 10);
+        player = new ArtificialPlayer(1, "name", 10, true);
         playersPositionField = ArtificialPlayer.class.getDeclaredField("positionsByIds");
         playersPositionField.setAccessible(true);
         gameViewField = ArtificialPlayer.class.getDeclaredField("gameView");
@@ -40,7 +40,7 @@ public class ArtificialPlayerTests {
         playersPosition = (Map<Integer, Integer>) playersPositionField.get(player);
         gameView = (GameView) gameViewField.get(player);
         hand = (List<Card>) handField.get(player);
-        otherPlayer = new ArtificialPlayer(2, "Pischus");
+        otherPlayer = new ArtificialPlayer(2, "Pischus", 10, true);
         Field unknownCardsInGameField = GameView.class.getDeclaredField("unknownCardsInGame");
         Field knownCardsInHandsField = GameView.class.getDeclaredField("knownCardsInHands");
         unknownCardsInGameField.setAccessible(true);
@@ -97,7 +97,7 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_choose_atout() throws PlayerLeftExpection {
-        var player = new ArtificialPlayer(1, "AI", 100);
+        var player = new ArtificialPlayer(1, "AI", 100, true);
         var thirdPlayer = new ArtificialPlayer(3, "GC");
         var fourthPlayer = new ArtificialPlayer(0, "Mono");
         player.setPlayerInfo(otherPlayer);
