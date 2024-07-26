@@ -67,7 +67,7 @@ public class Announcement implements Comparable<Announcement> {
                     sb.append(" au ");
                     break;
             }
-            sb.append(card.toString());
+            sb.append(card);
         }
         return sb.toString();
     }

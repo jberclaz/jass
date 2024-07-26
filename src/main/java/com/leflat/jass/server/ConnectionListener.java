@@ -10,8 +10,8 @@ import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class ConnectionListener extends Thread {
-    private ServerSocket serverSocket;
-    private Map<Integer, GameController> games = new HashMap<>();
+    private final ServerSocket serverSocket;
+    private final Map<Integer, GameController> games = new HashMap<>();
     private boolean running = false;
     private boolean testMode = false;
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
