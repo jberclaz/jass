@@ -22,6 +22,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private int theirScore = 0;
     private int numberOfPliesWonByOwnTeam;
     private int strength = 1000;
+    private boolean noWait = false;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -31,6 +32,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public ArtificialPlayer(int id, String name, int strength) {
         this(id, name);
         this.strength = strength;
+    }
+
+    public ArtificialPlayer(int id, String name, int strength, boolean noWait) {
+        this(id, name, strength);
+        this.noWait = noWait;
     }
 
     @Override
@@ -56,6 +62,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public int drawCard() {
+        waitSec(0.5f);
         int randomPosition = rand.nextInt(remainingCardsToDraw.size());
         return remainingCardsToDraw.get(randomPosition);
     }
@@ -111,6 +118,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public Card play() {
+        long startTime = System.currentTimeMillis();
         playedCard = chooseBestCard();
         try {
             currentPlie.playCard(playedCard, this, hand);
@@ -118,6 +126,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             e.printStackTrace();
         }
         removeCard(playedCard);
+        long endTime = System.currentTimeMillis();
+        float elapsedTime = (endTime - startTime) / 1000f;
+        if (elapsedTime < 1) {
+            waitSec(1 - elapsedTime);
+        }
         return playedCard;
     }
 
@@ -367,5 +380,15 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             }
         }
         return bestScore < 0 && canPass ? Card.COLOR_NONE : bestAtout;
+    }
+
+    void waitSec(float seconds) {
+        if (noWait) {
+            return;
+        }
+        try {
+            Thread.sleep((long) (seconds * 1000));
+        } catch (InterruptedException ignored) {
+        }
     }
 }

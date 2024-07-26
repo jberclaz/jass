@@ -107,7 +107,7 @@ public class GameController extends Thread {
 
             /* waits a few seconds so that the players can see the last
              * cards and the score */
-            waitSec(2);
+            waitSec(3);
 
             if (!gameOver) {
                 firstToPlay = (firstToPlay + 1) % 4;
@@ -183,14 +183,14 @@ public class GameController extends Thread {
 
         // choix et comptabilisation des annonces
         if (processAnnouncements()) {
-            waitSec(2f);
+            waitSec(4f);
         }
 
         // comptabilisation des points
         plie.getOwner().getTeam().addScore(plie.getScore());
 
         /* waits a few seconds so that the players can see all the cards */
-        waitSec(2f);
+        waitSec(2.5f);
 
         if (teams[0].hasWon() || teams[1].hasWon()) {
             return null;
@@ -312,13 +312,13 @@ public class GameController extends Thread {
                 oneWayAsync(p -> p.setCard(player, cardNumber, cards.get(cardNumber)));
             }
             // delay to allow players to watch cards
-            waitSec(2);
+            waitSec(3);
 
             // détermine les équipes
             drawingSuccessful = calculateTeam(cardsDrawn);
             if (!drawingSuccessful) {
                 oneWayAsync(p -> p.prepareTeamDrawing(false));
-                waitSec(2);
+                waitSec(1);
             }
         } while (!drawingSuccessful);
     }
