@@ -15,9 +15,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     protected final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
     private final List<Integer> remainingCardsToDraw = new ArrayList<>();
     private final GameView gameView = new GameView();
-    protected final Map<Integer, Integer> positionsByIds = new HashMap<>();
+    protected final Map<Integer, PlayerPosition> positionsByIds = new HashMap<>();
     private final Map<Integer, BasePlayer> playersByIds = new HashMap<>();
-    private final Map<Integer, BasePlayer> playersByPosition = new HashMap<>();
+    private final Map<PlayerPosition, BasePlayer> playersByPosition = new HashMap<>();
     private Plie currentPlie;
     private Card playedCard;
     private boolean hasStoeck;
@@ -86,11 +86,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         playersByPosition.clear();
         for (int i = 0; i < playerIds.size(); i++) {
             int playerId = playerIds.get(i);
-            int position = (i - ownPosition + 4) % 4;
+            var position = PlayerPosition.fromCode((i - ownPosition + 4) % 4);
             positionsByIds.put(playerId, position);
-            if (position > 0) {
-                playersByPosition.put(position, playersByIds.get(playerId));
-            }
+            playersByPosition.put(position, playersByIds.get(playerId));
         }
     }
 
@@ -119,7 +117,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             return;
         }
         // TODO: change opponent card probabilities
-        var position = PlayerPosition.fromCode(positionsByIds.get(firstToPlay.getId()));
+        var position = positionsByIds.get(firstToPlay.getId());
         gameView.setTrump(chosenOnFirstTurn ? position : position.opposite(), chosenOnFirstTurn);
         announcements = Announcement.findAnouncements(hand);
         hasStoeck = Announcement.findStoeck(hand);
@@ -160,7 +158,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     @Override
     public void setPlayedCard(BasePlayer player, Card card) {
-        var position = positionsByIds.get(player.getId()) - 1;
+        var position = positionsByIds.get(player.getId());
         // if player doesn't follow, we know he doesn't have this color
         if (currentPlie.getSize() > 0 && card.getColor() != Card.atout && card.getColor() != currentPlie.getColor()) {
             var bourg = new Card(Card.RANK_BOURG, Card.atout);
@@ -182,7 +180,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     @Override
     public void collectPlie(BasePlayer player) {
-        if (positionsByIds.get(player.getId()) % 2 == 0) {
+        if (positionsByIds.get(player.getId()).ourTeam()) {
             numberOfPliesWonByOwnTeam++;
         }
         gameView.setCompletedTrick(currentPlie);
@@ -214,14 +212,14 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     @Override
     public void setAnnouncements(BasePlayer player, List<Announcement> announcements) {
-        var ourTeam = positionsByIds.get(player.getId()) % 2 == 0;
+        var ourTeam = positionsByIds.get(player.getId()).ourTeam();
         for (var announcement : announcements) {
             gameView.addAnnouncementScore(announcement.getValue(), ourTeam);
         }
         if (player.getId() == this.id) {
             return;
         }
-        var position = positionsByIds.get(player.getId()) - 1;
+        var position = positionsByIds.get(player.getId());
         for (var announcement : announcements) {
             if (announcement.getType() == Announcement.STOECK) {
                 // currently we can only announce stoeck when we play the last card => by then, cards have already been played
@@ -276,8 +274,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     }
 
-    private int getInitialRelativePosition(BasePlayer player) {
-        return (player.getId() - id + 4) % 4;
+    private PlayerPosition getInitialRelativePosition(BasePlayer player) {
+        return PlayerPosition.fromCode((player.getId() - id + 4) % 4);
     }
 
     private Card chooseBestCard() {
@@ -322,7 +320,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             }
             hands[0].remove(move);
             int gameScore = 0;
-            int plieWinnerPosition;
+            PlayerPosition plieWinnerPosition;
             do {
                 while (plie.getSize() < 4) {
                     int currentPlayer = (startPlayer + plie.getSize()) % 4;
@@ -345,7 +343,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                     hands[currentPlayer].remove(randomMove);
                 }
                 plieWinnerPosition = positionsByIds.get(plie.getOwner().getId());
-                if (plieWinnerPosition % 2 == 0) {
+                if (plieWinnerPosition.ourTeam()) {
                     gameScore += plie.getScore();
                     pliesCollected++;
                 } else {
@@ -354,7 +352,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                 plie = new Plie();
             } while (!hands[0].isEmpty());
             int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-            gameScore += plieWinnerPosition % 2 == 0 ? cinqDeDer : -cinqDeDer;
+            gameScore += plieWinnerPosition.ourTeam() ? cinqDeDer : 0;
             int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
             if (pliesCollected == 9) {
                 gameScore += match;

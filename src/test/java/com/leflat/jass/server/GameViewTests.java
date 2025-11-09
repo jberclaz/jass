@@ -46,74 +46,74 @@ public class GameViewTests {
 
     @Test
     public void test_card_played() {
-        gameView.cardPlayed(0, new Card(0));
+        gameView.cardPlayed(PlayerPosition.RIGHT, new Card(0));
         assertEquals(unknownCardsInGame.size(), 26);
 
-        gameView.playerHasCard(2, 10);
+        gameView.playerHasCard(PlayerPosition.LEFT, 10);
         assertEquals(unknownCardsInGame.size(), 25);
         assertEquals(knownCardsInHands[2].size(), 1);
 
-        gameView.cardPlayed(2, new Card(10));
+        gameView.cardPlayed(PlayerPosition.LEFT, new Card(10));
         assertEquals(unknownCardsInGame.size(), 25);
         assertEquals(knownCardsInHands[2].size(), 0);
 
         // play same card twice
-        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(2, new Card(10)));
+        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(PlayerPosition.LEFT, new Card(10)));
 
         //
         knownCardsInHands[0].add(new Card(2));
-        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(0, new Card(2)));
+        assertThrows(RuntimeException.class, () -> gameView.cardPlayed(PlayerPosition.RIGHT, new Card(2)));
     }
 
     @Test
     public void test_player_has_card() {
-        gameView.playerHasCard(2, 10);
+        gameView.playerHasCard(PlayerPosition.LEFT, 10);
         assertEquals(unknownCardsInGame.size(), 26);
         assertEquals(knownCardsInHands[2].size(), 1);
         assertEquals(knownCardsInHands[2].get(0), new Card(10));
 
-        gameView.playerHasCard(2, new Card(12));
+        gameView.playerHasCard(PlayerPosition.LEFT, new Card(12));
         assertEquals(unknownCardsInGame.size(), 25);
         assertEquals(knownCardsInHands[2].size(), 2);
 
         assertDoesNotThrow(() -> {
-            gameView.playerHasCard(2, new Card(12));
+            gameView.playerHasCard(PlayerPosition.LEFT, new Card(12));
         });
-        assertDoesNotThrow(() -> gameView.playerHasCard(1, new Card(12)));
+        assertDoesNotThrow(() -> gameView.playerHasCard(PlayerPosition.ACROSS, new Card(12)));
     }
 
     @Test
     public void test_player_doesnot_have_card() {
-        gameView.playerDoesNotHaveCard(0, 14);
+        gameView.playerDoesNotHaveCard(PlayerPosition.RIGHT, 14);
         assertEquals(unknownCardsInGame.size(), 27);
         assertEquals(unknownCardsInGame.get(14)[0], 0f);
         assertEquals(unknownCardsInGame.get(14)[1], 0.5f);
         assertEquals(unknownCardsInGame.get(14)[2], 0.5f);
 
-        gameView.playerDoesNotHaveCard(2, 14);
+        gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, 14);
         assertEquals(unknownCardsInGame.size(), 26);
         assertEquals(knownCardsInHands[1].size(), 1);
         assertEquals(knownCardsInHands[1].get(0), new Card(14));
 
-        assertThrows(RuntimeException.class, () -> gameView.playerDoesNotHaveCard(1, 14));
+        assertThrows(RuntimeException.class, () -> gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 14));
 
-        gameView.playerDoesNotHaveCard(2, 1);
+        gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, 1);
         assertEquals(unknownCardsInGame.size(), 26);
     }
 
     @Test
     public void test_to_string() {
         for (int i = 0; i < 20; i += 2) {
-            gameView.cardPlayed((i / 2) % 3, new Card(i));
+            gameView.cardPlayed(PlayerPosition.fromCode((i / 2) % 3 + 1), new Card(i));
         }
         for (int i = 19; i < 30; i++) {
-            gameView.cardPlayed(i % 3, new Card(i));
+            gameView.cardPlayed(PlayerPosition.fromCode(i % 3 + 1), new Card(i));
         }
-        gameView.playerHasCard(0, 30);
-        gameView.playerHasCard(1, 31);
-        gameView.playerHasCard(2, 32);
-        gameView.playerHasCard(2, 33);
-        gameView.playerDoesNotHaveCard(0, 34);
+        gameView.playerHasCard(PlayerPosition.RIGHT, 30);
+        gameView.playerHasCard(PlayerPosition.ACROSS, 31);
+        gameView.playerHasCard(PlayerPosition.LEFT, 32);
+        gameView.playerHasCard(PlayerPosition.LEFT, 33);
+        gameView.playerDoesNotHaveCard(PlayerPosition.RIGHT, 34);
         assertEquals(gameView.toString(), String.join("\n", "roi de carreau : 0.0, 0.5, 0.5",
                 "as de carreau : 0.33333334, 0.33333334, 0.33333334",
                 "0: nell de carreau ",
@@ -125,15 +125,15 @@ public class GameViewTests {
     public void test_get_number_cads_in_game() {
         assertEquals(gameView.getNumberCardsInGame(), 27);
         for (int i = 20; i < 25; i++) {
-            gameView.playerHasCard(i % 3, i);
+            gameView.playerHasCard(PlayerPosition.fromCode(i % 3 + 1), i);
             assertEquals(gameView.getNumberCardsInGame(), 27);
         }
         for (int i = 20; i < 30; i++) {
-            gameView.cardPlayed(i % 3, new Card(i));
+            gameView.cardPlayed(PlayerPosition.fromCode(i % 3 + 1), new Card(i));
             assertEquals(gameView.getNumberCardsInGame(), 27 - i + 19);
         }
         for (int i = 30; i < Card.DECK_SIZE; i++) {
-            gameView.playerHasCard(i % 3, new Card(i));
+            gameView.playerHasCard(PlayerPosition.fromCode(i % 3 + 1), new Card(i));
             assertEquals(gameView.getNumberCardsInGame(), 17);
         }
     }
@@ -146,13 +146,13 @@ public class GameViewTests {
             assertEquals(hands[h].size(), 9);
         }
 
-        gameView.cardPlayed(0, new Card(30));
+        gameView.cardPlayed(PlayerPosition.RIGHT, new Card(30));
         hands = gameView.getRandomHands();
         assertEquals(hands[0].size(), 8);
 
-        gameView.playerHasCard(0, 31);
-        gameView.playerHasCard(0, 32);
-        gameView.playerHasCard(1, 33);
+        gameView.playerHasCard(PlayerPosition.RIGHT, 31);
+        gameView.playerHasCard(PlayerPosition.RIGHT, 32);
+        gameView.playerHasCard(PlayerPosition.ACROSS, 33);
         hands = gameView.getRandomHands();
         assertTrue(hands[0].contains(new Card(31)));
         assertTrue(hands[0].contains(new Card(32)));
@@ -160,9 +160,9 @@ public class GameViewTests {
         assertTrue(hands[1].contains(new Card(33)));
         assertEquals(hands[1].size(), 9);
 
-        gameView.playerDoesNotHaveCard(2, 20);
-        gameView.playerDoesNotHaveCard(2, 21);
-        gameView.playerDoesNotHaveCard(2, 22);
+        gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, 20);
+        gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, 21);
+        gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, 22);
         hands = gameView.getRandomHands();
         assertFalse(hands[2].contains(new Card(20)));
         assertFalse(hands[2].contains(new Card(21)));
@@ -172,12 +172,12 @@ public class GameViewTests {
       @Test
     public void test_encode_state_for_transformers() {
         gameView.setTrump(PlayerPosition.ACROSS, true);
-        gameView.cardPlayed(1, new Card(30));
-        gameView.cardPlayed(2, new Card(20));
-        gameView.playerHasCard(0, 31);
-          gameView.playerHasCard(1, 32);
-          gameView.playerHasCard(2, 33);
-          gameView.playerDoesNotHaveCard(1, 12);
+        gameView.cardPlayed(PlayerPosition.ACROSS, new Card(30));
+        gameView.cardPlayed(PlayerPosition.LEFT, new Card(20));
+        gameView.playerHasCard(PlayerPosition.RIGHT, 31);
+          gameView.playerHasCard(PlayerPosition.ACROSS, 32);
+          gameView.playerHasCard(PlayerPosition.LEFT, 33);
+          gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 12);
         var tokens = gameView.encodeStateForTransformer();
         assertEquals(95, tokens.length);
       }

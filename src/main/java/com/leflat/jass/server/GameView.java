@@ -31,7 +31,7 @@ public class GameView {
         }
     }
 
-    public void reset(List<Card> ownHand, Map<Integer, Integer> positionsByIds) {
+    public void reset(List<Card> ownHand, Map<Integer, PlayerPosition> positionsByIds) {
         unknownCardsInGame.clear();
         for (int p = 0; p < 3; p++) {
             knownCardsInHands[p].clear();
@@ -46,63 +46,67 @@ public class GameView {
         }
         this.ownHand = ownHand;
         assert getNumberCardsInGame() == 27;
-        for (var entry : positionsByIds.entrySet()) {
-            this.positionsByIds.put(entry.getKey(), PlayerPosition.fromCode(entry.getValue()));
-        }
+        this.positionsByIds.putAll(positionsByIds);
         ourGameScore = 0;
         opponentGameScore = 0;
     }
 
-    public void cardPlayed(int player, Card card) {
+    public void cardPlayed(PlayerPosition position, Card card) {
+        assert position != PlayerPosition.SELF;
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removedCardFromGame = unknownCardsInGame.remove(card.getNumber());
-        var removedCardFromHand = knownCardsInHands[player].remove(card);
+        var removedCardFromHand = knownCardsInHands[positionIndex].remove(card);
         if ((removedCardFromGame != null) == removedCardFromHand) {
-            throw new RuntimeException("Card " + card + " played by player " + player + " was not properly accounted for in GameView");
+            throw new RuntimeException("Card " + card + " played by player " + position + " was not properly accounted for in GameView");
         }
-        handSizes[player] --;
+        handSizes[positionIndex] --;
         assert getNumberCardsInGame() == (previousNumberCardsInGame - 1);
         if (currentTrick.isEmpty()) {
-            firstToPlayTrick = PlayerPosition.fromCode(player + 1);
+            firstToPlayTrick = position;
         }
         currentTrick.add(card);
     }
 
-    public void playerHasCard(int player, int cardNumber) {
-        playerHasCard(player, new Card(cardNumber));
+    public void playerHasCard(PlayerPosition position, int cardNumber) {
+        playerHasCard(position, new Card(cardNumber));
     }
 
-    public void playerHasCard(int player, Card card) {
+    public void playerHasCard(PlayerPosition position, Card card) {
+        assert position != PlayerPosition.SELF;
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
         if (!unknownCardsInGame.containsKey(card.getNumber())) {
             return;
         }
-        if (knownCardsInHands[player].contains(card)) {
-            throw new RuntimeException("We already know player " + player + " has card " + card);
+        if (knownCardsInHands[positionIndex].contains(card)) {
+            throw new RuntimeException("We already know player " + position + " has card " + card);
         }
         unknownCardsInGame.remove(card.getNumber());
-        knownCardsInHands[player].add(card);
+        knownCardsInHands[positionIndex].add(card);
         assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
-    public void playerDoesNotHaveCard(int player, int cardNumber) {
+    public void playerDoesNotHaveCard(PlayerPosition position, int cardNumber) {
+        assert position != PlayerPosition.SELF;
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
-        if (knownCardsInHands[player].contains(new Card(cardNumber))) {
-            throw new RuntimeException("Contradictory game view: strategy believes that player " + player + " has card " + cardNumber);
+        if (knownCardsInHands[positionIndex].contains(new Card(cardNumber))) {
+            throw new RuntimeException("Contradictory game view: strategy believes that player " + position + " has card " + cardNumber);
         }
         var prob = unknownCardsInGame.get(cardNumber);
         if (prob == null) {
             return;
         }
-        if (prob[player] > 0) {
-            prob[player] = 0f;
+        if (prob[positionIndex] > 0) {
+            prob[positionIndex] = 0f;
             normalizeCardsProbabilities(cardNumber);
         }
         assert getNumberCardsInGame() == previousNumberCardsInGame;
     }
 
-    public void playerDoesNotHaveCard(int player, Card card) {
-        playerDoesNotHaveCard(player, card.getNumber());
+    public void playerDoesNotHaveCard(PlayerPosition position, Card card) {
+        playerDoesNotHaveCard(position, card.getNumber());
     }
 
     public void setTrump(PlayerPosition position, boolean chosenOnFirstTurn) {
@@ -134,16 +138,16 @@ public class GameView {
         if (sum == 0) {
             throw new RuntimeException("Probabilities should not sum to zero");
         }
-        int unique = -1;
+        int uniqueIndex = -1;
         for (int p = 0; p < 3; p++) {
             if (prob[p] == sum) {
-                unique = p;
+                uniqueIndex = p;
                 break;
             }
             prob[p] /= sum;
         }
-        if (unique >= 0) {
-            playerHasCard(unique, cardNumber);
+        if (uniqueIndex >= 0) {
+            playerHasCard(PlayerPosition.fromCode(uniqueIndex + 1), cardNumber);
         }
     }
 
