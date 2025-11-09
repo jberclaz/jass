@@ -153,6 +153,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (elapsedTime < 1) {
             waitSec(1 - elapsedTime);
         }
+        gameView.cardPlayed(PlayerPosition.SELF, playedCard);
         return playedCard;
     }
 
@@ -312,7 +313,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                 hands[i++] = h;
             }
             var plie = new Plie(currentPlie);
-            int startPlayer = (4 - plie.getSize()) % 4;
+            PlayerPosition startPosition = PlayerPosition.fromCode((4 - plie.getSize()) % 4);
             try {
                 plie.playCard(move, this, hands[0]);
             } catch (BrokenRuleException e) {
@@ -323,9 +324,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             PlayerPosition plieWinnerPosition;
             do {
                 while (plie.getSize() < 4) {
-                    int currentPlayer = (startPlayer + plie.getSize()) % 4;
+                    var currentPosition = startPosition.add(plie.getSize());
                     final var finalPlie = new Plie(plie);
-                    var validMoves = hands[currentPlayer].stream().filter(c -> finalPlie.canPlay(c, hands[currentPlayer])).collect(Collectors.toList());
+                    var validMoves = hands[currentPosition.getCode()].stream().filter(c -> finalPlie.canPlay(c, hands[currentPosition.getCode()])).collect(Collectors.toList());
                     if (validMoves.isEmpty()) {
                         throw new RuntimeException("No valid move!");
                     }
@@ -336,11 +337,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                         randomMove = validMoves.get(rand.nextInt(validMoves.size()));
                     }
                     try {
-                        plie.playCard(randomMove, currentPlayer == 0 ? this : playersByPosition.get(currentPlayer), hands[currentPlayer]);
+                        plie.playCard(randomMove, currentPosition == PlayerPosition.SELF ? this : playersByPosition.get(currentPosition), hands[currentPosition.getCode()]);
                     } catch (BrokenRuleException e) {
                         e.printStackTrace();
                     }
-                    hands[currentPlayer].remove(randomMove);
+                    hands[currentPosition.getCode()].remove(randomMove);
                 }
                 plieWinnerPosition = positionsByIds.get(plie.getOwner().getId());
                 if (plieWinnerPosition.ourTeam()) {

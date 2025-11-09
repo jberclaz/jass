@@ -1,9 +1,6 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.common.Announcement;
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.Plie;
+import com.leflat.jass.common.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +14,7 @@ public class ArtificialPlayerTests {
     ArtificialPlayer player;
     Field playersPositionField, gameViewField, currentPlieField, handField;
     ArtificialPlayer otherPlayer;
-    Map<Integer, Integer> playersPosition;
+    Map<Integer, PlayerPosition> playersPosition;
     GameView gameView;
     Plie currentPlie;
     List<Card> hand;
@@ -37,7 +34,7 @@ public class ArtificialPlayerTests {
         currentPlieField.setAccessible(true);
         handField = BasePlayer.class.getDeclaredField("hand");
         handField.setAccessible(true);
-        playersPosition = (Map<Integer, Integer>) playersPositionField.get(player);
+        playersPosition = (Map<Integer, PlayerPosition>) playersPositionField.get(player);
         gameView = (GameView) gameViewField.get(player);
         hand = (List<Card>) handField.get(player);
         otherPlayer = new ArtificialPlayer(2, "Pischus", 10, true);
@@ -54,9 +51,9 @@ public class ArtificialPlayerTests {
     @Test
     public void test_set_player_info() {
         player.setPlayerInfo(otherPlayer);
-        assertEquals(playersPosition.size(), 1);
+        assertEquals(1, playersPosition.size());
         assertTrue(playersPosition.containsKey(2));
-        assertEquals(playersPosition.get(2), 1);
+        assertEquals(PlayerPosition.RIGHT, playersPosition.get(2));
     }
 
     @Test
@@ -77,13 +74,13 @@ public class ArtificialPlayerTests {
         player.setPlayerInfo(otherPlayer);
         player.setPlayerInfo(thirdPlayer);
         player.setPlayerInfo(fourthPlayer);
-        assertEquals(playersPosition.size(), 3);
-        assertEquals(playersPosition.get(0), 3);
+        assertEquals(3, playersPosition.size() );
+        assertEquals(PlayerPosition.LEFT, playersPosition.get(0));
 
         player.setPlayersOrder(Arrays.asList(3, 2, 0, 1));
-        assertEquals(playersPosition.get(3), 1);
-        assertEquals(playersPosition.get(2), 2);
-        assertEquals(playersPosition.get(0), 3);
+        assertEquals(PlayerPosition.RIGHT, playersPosition.get(3) );
+        assertEquals(PlayerPosition.ACROSS, playersPosition.get(2));
+        assertEquals(PlayerPosition.LEFT, playersPosition.get(0));
     }
 
     @Test

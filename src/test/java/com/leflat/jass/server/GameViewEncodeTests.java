@@ -59,12 +59,6 @@ public class GameViewEncodeTests {
         positionsMap.put(12, PlayerPosition.ACROSS); // Partner
         positionsMap.put(13, PlayerPosition.LEFT); // OppL
 
-        // Configure mock player IDs
-//        when(player0.getId()).thenReturn(10);
-//        when(player1.getId()).thenReturn(11);
-//        when(player2.getId()).thenReturn(12);
-//        when(player3.getId()).thenReturn(13);
-
         // A common setup: 9 cards in hand, at start of game
         for (int i = 0; i < 9; i++) {
             ownHand.add(new Card(i)); // Cards 0 through 8
@@ -154,17 +148,21 @@ public class GameViewEncodeTests {
     @Test
     void testEncodeState_PartialHand() {
         // Arrange
-        //gameView.cardPlayed();
+        for (int i=0; i<4; i++) {
+            gameView.cardPlayed(PlayerPosition.SELF, new Card(i));
+        }
 
         // Act
         int[] tokens = toIntArray(gameView.encodeStateForTransformer());
 
         // Assert
         assertEquals(Tokens.SECTION_HAND, tokens[9]);
-        assertEquals(Tokens.cardToken(5), tokens[10]);  // Sorted hand
-        assertEquals(Tokens.cardToken(10), tokens[11]);
-        assertEquals(Tokens.cardToken(20), tokens[12]);
-        for (int i = 13; i <= 18; i++) {
+        assertEquals(Tokens.cardToken(4), tokens[10]);  // Sorted hand
+        assertEquals(Tokens.cardToken(5), tokens[11]);
+        assertEquals(Tokens.cardToken(6), tokens[12]);
+        assertEquals(Tokens.cardToken(7), tokens[13]);
+        assertEquals(Tokens.cardToken(8), tokens[14]);
+        for (int i = 15; i <= 18; i++) {
             assertEquals(Tokens.PAD, tokens[i], "Hand padding token " + i + " should be PAD");
         }
     }
@@ -194,6 +192,10 @@ public class GameViewEncodeTests {
 
     @Test
     void testEncodeState_History() {
+        // Configure mock player IDs
+        when(player2.getId()).thenReturn(12);
+        when(player3.getId()).thenReturn(13);
+
         // Arrange
         // Trick 1: Cards 20-23, won by Partner (Pos 2)
         when(trick1.getCards()).thenReturn(List.of(new Card(20), new Card(21), new Card(22), new Card(23)));
@@ -232,7 +234,7 @@ public class GameViewEncodeTests {
     @Test
     void testEncodeState_BeliefKnownCards() {
         // Arrange
-        gameView.playerHasCard(PlayerPosition.RIGHT, new Card(30)); // Partner (Pos 2, idx 1) has Card 30
+        gameView.playerHasCard(PlayerPosition.ACROSS, new Card(30)); // Partner (Pos 2, idx 1) has Card 30
         gameView.playerHasCard(PlayerPosition.ACROSS, new Card(31)); // Partner (Pos 2, idx 1) has Card 31
         gameView.playerHasCard(PlayerPosition.LEFT, new Card(32)); // OppL (Pos 3, idx 2) has Card 32
 

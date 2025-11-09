@@ -44,7 +44,7 @@ public class GameView {
             }
             unknownCardsInGame.put(i, new Float[]{1 / 3f, 1 / 3f, 1 / 3f});
         }
-        this.ownHand = ownHand;
+        this.ownHand = new ArrayList<>(ownHand);
         assert getNumberCardsInGame() == 27;
         this.positionsByIds.putAll(positionsByIds);
         ourGameScore = 0;
@@ -52,7 +52,10 @@ public class GameView {
     }
 
     public void cardPlayed(PlayerPosition position, Card card) {
-        assert position != PlayerPosition.SELF;
+        if (position == PlayerPosition.SELF) {
+            ownHand.remove(card);
+            return;
+        }
         int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removedCardFromGame = unknownCardsInGame.remove(card.getNumber());
