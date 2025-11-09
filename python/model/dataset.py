@@ -1,11 +1,11 @@
 # dataset.py
-import torch
-from torch.utils.data import Dataset
-import numpy as np
-import os
 from glob import glob
 
-SAMPLE_LENGTH = 103
+import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+SAMPLE_LENGTH = 96
 TOKEN_LENGTH = 95
 VOCABULARY_SIZE =128
 
@@ -33,7 +33,7 @@ class JassBinaryDataset(Dataset):
         # Binary search file
         file_idx = np.searchsorted(self.offsets, idx, side='right') - 1
         local_idx = idx - self.offsets[file_idx]
-        offset = local_idx * SAMPLE_LENGTH + 4  # skip num_tokens
+        offset = local_idx * SAMPLE_LENGTH
 
         data = self.mmaps[file_idx]
         tokens = torch.from_numpy(data[offset:offset + TOKEN_LENGTH].astype(np.int64))

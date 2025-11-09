@@ -82,3 +82,10 @@ class TestJassBinaryDataset(unittest.TestCase):
             self.assertEqual(action.item(), exp)
 
         os.remove(f"{self.DATA_DIR}/zactions.dat")
+
+    def test_real_dataset(self):
+        dataset = JassBinaryDataset("training_data/")
+        self.assertEqual(len(dataset), 33744)
+        for i in range(100):
+            tokens, action = dataset[i]
+            print("hello")

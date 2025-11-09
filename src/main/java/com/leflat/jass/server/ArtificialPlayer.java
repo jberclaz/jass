@@ -139,9 +139,8 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         removeCard(playedCard);
         if (tokensDos != null) {
             try {
-                tokensDos.writeInt(tokens.length);
                 tokensDos.write(tokens);
-                tokensDos.writeInt(playedCard.getNumber());
+                tokensDos.write((byte)playedCard.getNumber());
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
