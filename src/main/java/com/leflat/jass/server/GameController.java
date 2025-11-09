@@ -20,6 +20,8 @@ public class GameController extends Thread {
     private final Team[] teams = new Team[2];       // les 2 équipes
     private boolean noWait = false;
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
+    private boolean teamSelectionEnabled = true;
+    private int playKGames = -1;
 
     public GameController(int id) {
         this.gameId = id;
@@ -73,7 +75,13 @@ public class GameController extends Thread {
 
                 LOGGER.info("Game done");
 
-                playAnotherGame = getPlayerById(0).getNewGame();
+                if (playKGames < 0) {
+                    playAnotherGame = getPlayerById(0).getNewGame();
+                }
+                else {
+                    playKGames--;
+                    playAnotherGame = playKGames > 0;
+                }
 
                 Arrays.stream(teams).forEach(Team::resetScore);
             } while (playAnotherGame);
@@ -282,17 +290,23 @@ public class GameController extends Thread {
     }
 
     void chooseTeam() throws PlayerLeftExpection {
-        Arrays.stream(teams).forEach(Team::reset);
+        if (teamSelectionEnabled) {
+            Arrays.stream(teams).forEach(Team::reset);
 
-        var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
-        if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
-            chooseTeamsRandomly();
-        } else {       // choisir son partenaire
-            pickTeamMates();
+            var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
+            if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
+                chooseTeamsRandomly();
+            } else {       // choisir son partenaire
+                pickTeamMates();
+            }
+
+            reorderPlayers();
         }
-
-        reorderPlayers();
-
+        else {
+            for (int i=0; i<4; i++) {
+                teams[i %2].addPlayer(players.get(i));
+            }
+        }
         var order = players.stream().map(BasePlayer::getId).collect(Collectors.toList());
         oneWayAsync(p -> p.setPlayersOrder(order));
     }
@@ -495,5 +509,13 @@ public class GameController extends Thread {
             }
             throw new RuntimeException(ex.getCause());
         }
+    }
+
+    public void enableTeamSelection(boolean enable) {
+        teamSelectionEnabled = enable;
+    }
+
+    public void playKGames(int k) {
+        playKGames = k;
     }
 }

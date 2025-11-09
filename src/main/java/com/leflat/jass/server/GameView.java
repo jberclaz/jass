@@ -49,6 +49,8 @@ public class GameView {
         for (var entry : positionsByIds.entrySet()) {
             this.positionsByIds.put(entry.getKey(), PlayerPosition.fromCode(entry.getValue()));
         }
+        ourGameScore = 0;
+        opponentGameScore = 0;
     }
 
     public void cardPlayed(int player, Card card) {
@@ -110,6 +112,20 @@ public class GameView {
 
     public void setCompletedTrick(Plie lastTrick) {
         lastCompletedTricks.add(lastTrick);
+        var ownerPosition = positionsByIds.get(lastTrick.getOwner().getId());
+        if (ownerPosition.ourTeam()) {
+            ourGameScore += lastTrick.getScore();
+        } else {
+            opponentGameScore += lastTrick.getScore();
+        }
+    }
+
+    public void addAnnouncementScore(int score, boolean ourTeam) {
+        if (ourTeam) {
+            ourGameScore += score;
+        } else {
+            opponentGameScore += score;
+        }
     }
 
     private void normalizeCardsProbabilities(int cardNumber) {
@@ -248,7 +264,7 @@ public class GameView {
                 .toList();
     }
 
-    public int[] encodeStateForTransformer() {
+    public byte[] encodeStateForTransformer() {
         List<Integer> tokens = new ArrayList<>();
 
         // === 0: CLS ===
@@ -323,9 +339,11 @@ public class GameView {
                 tokens.add(Tokens.PAD);
             }
         }
-
-        return tokens.stream().mapToInt(i -> i).toArray();
-
+        byte[] result = new byte[tokens.size()];
+        for (int i = 0; i < tokens.size(); i++) {
+            result[i] = (byte) (tokens.get(i) & 0xFF);
+        }
+        return result;
     }
 
 

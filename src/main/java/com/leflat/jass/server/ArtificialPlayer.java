@@ -2,12 +2,16 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
 
+import java.io.DataOutputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.IOException;
 import java.util.*;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
 
-public class ArtificialPlayer extends AbstractRemotePlayer {
+public class ArtificialPlayer extends AbstractRemotePlayer implements AutoCloseable {
     protected final static Logger LOGGER = Logger.getLogger(ArtificialPlayer.class.getName());
     private final List<Integer> remainingCardsToDraw = new ArrayList<>();
     private final GameView gameView = new GameView();
@@ -18,11 +22,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     private Card playedCard;
     private boolean hasStoeck;
     private final Random rand = new Random();
-    private int ourScore = 0;
-    private int theirScore = 0;
     private int numberOfPliesWonByOwnTeam;
     private int strength = 1000;
     private boolean noWait = false;
+    private DataOutputStream tokensDos = null;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -37,6 +40,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public ArtificialPlayer(int id, String name, int strength, boolean noWait) {
         this(id, name, strength);
         this.noWait = noWait;
+    }
+
+    public void extractTransformersTokens(String filename) throws FileNotFoundException {
+        this.tokensDos = new DataOutputStream(new FileOutputStream(filename, false));
     }
 
     @Override
@@ -121,6 +128,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     @Override
     public Card play() {
         long startTime = System.currentTimeMillis();
+        byte[] tokens = new byte[0];
+        if (tokensDos != null) {
+            tokens = gameView.encodeStateForTransformer();
+        }
         playedCard = chooseBestCard();
         try {
             currentPlie.playCard(playedCard, this, hand);
@@ -128,6 +139,17 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
             e.printStackTrace();
         }
         removeCard(playedCard);
+        if (tokensDos != null) {
+            try {
+                tokensDos.writeInt(tokens.length);
+                // 2. Write the raw byte data of the state
+                tokensDos.write(tokens);
+                // 3. Write the label (the chosen card) as a 4-byte integer
+                tokensDos.writeInt(playedCard.getNumber());
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
         long endTime = System.currentTimeMillis();
         float elapsedTime = (endTime - startTime) / 1000f;
         if (elapsedTime < 1) {
@@ -169,8 +191,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setScores(int score, int opponentScore) {
-        ourScore = score;
-        theirScore = opponentScore;
         gameView.updateMatchScore(score, opponentScore);
     }
 
@@ -194,6 +214,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
 
     @Override
     public void setAnnouncements(BasePlayer player, List<Announcement> announcements) {
+        var ourTeam = positionsByIds.get(player.getId()) % 2 == 0;
+        for (var announcement : announcements) {
+            gameView.addAnnouncementScore(announcement.getValue(), ourTeam);
+        }
         if (player.getId() == this.id) {
             return;
         }
@@ -393,6 +417,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         try {
             Thread.sleep((long) (seconds * 1000));
         } catch (InterruptedException ignored) {
+        }
+    }
+
+    @Override
+    public void close() throws Exception {
+        if (tokensDos != null) {
+            tokensDos.close();
         }
     }
 }
