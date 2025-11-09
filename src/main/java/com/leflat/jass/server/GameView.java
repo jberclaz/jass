@@ -49,6 +49,7 @@ public class GameView {
         this.positionsByIds.putAll(positionsByIds);
         ourGameScore = 0;
         opponentGameScore = 0;
+        lastCompletedTricks.clear();
     }
 
     public void cardPlayed(PlayerPosition position, Card card) {
@@ -125,6 +126,7 @@ public class GameView {
         } else {
             opponentGameScore += lastTrick.getScore();
         }
+        currentTrick.clear();
     }
 
     public void addAnnouncementScore(int score, boolean ourTeam) {
@@ -291,6 +293,7 @@ public class GameView {
         tokens.add(Tokens.globalScoreToken(ourMatchScore));                   // 7
         tokens.add(Tokens.globalScoreToken(opponentMatchScore));                 // 8
 
+        assert tokens.size() == 9;
         // === 9-18: HAND (9 cards + pad) ===
         tokens.add(Tokens.SECTION_HAND);
         List<Card> sorted = new ArrayList<>(ownHand);
@@ -298,6 +301,7 @@ public class GameView {
         for (int i = 0; i < 9; i++) {
             tokens.add(i < sorted.size() ? Tokens.cardToken(sorted.get(i)) : Tokens.PAD);
         }
+        assert tokens.size() == 19;
 
         // === 19-24: CURRENT TRICK (≤3 cards → 6 tokens) ===
         tokens.add(Tokens.SECTION_TRICK);
@@ -309,6 +313,8 @@ public class GameView {
             tokens.add(Tokens.cardToken(c));
         }
         while (tokens.size() < 26) tokens.add(Tokens.PAD);  // pad to 6
+
+        assert tokens.size() == 26;
 
         // === 25-64: HISTORY (5 tricks × 5 tokens = 40) ===
         tokens.add(Tokens.SECTION_HISTORY);
@@ -322,6 +328,8 @@ public class GameView {
         for (int i=0; i<(8 - lastCompletedTricks.size()); i++) {
             for (int j = 0; j < 5; j++) tokens.add(Tokens.PAD);
         }
+
+        assert tokens.size() == 67;
 
         // === 65-94: BELIEF (10 × 3 = 30 tokens) ===
         tokens.add(Tokens.SECTION_BELIEF);
@@ -346,6 +354,7 @@ public class GameView {
                 tokens.add(Tokens.PAD);
             }
         }
+        assert tokens.size() == 95;
         byte[] result = new byte[tokens.size()];
         for (int i = 0; i < tokens.size(); i++) {
             result[i] = (byte) (tokens.get(i) & 0xFF);

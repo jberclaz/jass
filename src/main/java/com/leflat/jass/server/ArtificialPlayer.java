@@ -140,9 +140,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (tokensDos != null) {
             try {
                 tokensDos.writeInt(tokens.length);
-                // 2. Write the raw byte data of the state
                 tokensDos.write(tokens);
-                // 3. Write the label (the chosen card) as a 4-byte integer
                 tokensDos.writeInt(playedCard.getNumber());
             } catch (IOException e) {
                 throw new RuntimeException(e);
@@ -287,7 +285,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             validCards = hand.stream().filter(c -> currentPlie.canPlay(c, hand)).collect(Collectors.toList());
         }
         if (validCards.size() == 1) {
-            return validCards.get(0);
+            return validCards.getFirst();
         }
         Card bestCard = null;
         float bestScore = -1000;
