@@ -50,6 +50,7 @@ public class GameView {
         ourGameScore = 0;
         opponentGameScore = 0;
         lastCompletedTricks.clear();
+        currentTrick.clear();
     }
 
     public void cardPlayed(PlayerPosition position, Card card) {

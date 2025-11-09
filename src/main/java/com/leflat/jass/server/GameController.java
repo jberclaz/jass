@@ -290,9 +290,8 @@ public class GameController extends Thread {
     }
 
     void chooseTeam() throws PlayerLeftExpection {
+        Arrays.stream(teams).forEach(Team::reset);
         if (teamSelectionEnabled) {
-            Arrays.stream(teams).forEach(Team::reset);
-
             var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
             if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
                 chooseTeamsRandomly();

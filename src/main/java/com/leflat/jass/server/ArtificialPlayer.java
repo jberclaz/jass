@@ -195,12 +195,12 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     public List<Announcement> getAnnouncements() {
         if (hand.size() == 8) {
             // can announce only on first plie
-            if (!announcements.isEmpty()) {
-                LOGGER.info(name + " has " + announcements.size() + " announcements");
-            }
-            for (var a : announcements) {
-                LOGGER.info(name + " announces " + a);
-            }
+//            if (!announcements.isEmpty()) {
+//                LOGGER.info(name + " has " + announcements.size() + " announcements");
+//            }
+//            for (var a : announcements) {
+//                LOGGER.info(name + " announces " + a);
+//            }
             return announcements;
         }
         if (playedStoeck()) {
@@ -296,7 +296,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                 bestCard = validCard;
             }
         }
-        LOGGER.info(name + " : best move is " + bestCard);
+        //LOGGER.info(name + " : best move is " + bestCard);
         return bestCard;
     }
 
