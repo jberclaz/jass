@@ -238,7 +238,7 @@ public class GameView {
                     return new CardProbability(cardId, probs[playerIndex]);
                 })
                 // 2. Filter out any cards this player has a 0% chance of holding
-                .filter(cp -> cp.probability() > 0)
+                .filter(cp -> cp.probability() > threshold)
                 // 3. Sort by probability, descending.
                 // We use .reversed() to flip the natural ascending order.
                 .sorted(Comparator.comparingDouble(CardProbability::probability).reversed())
@@ -312,7 +312,7 @@ public class GameView {
                 cardsCount++;
             }
             if (cardsCount < maxCardsPerPlayer) {
-                for (var items : getKMostProbableCards(pos - 1, maxCardsPerPlayer - cardsCount, 0.33f)) {
+                for (var items : getKMostProbableCards(pos - 1, maxCardsPerPlayer - cardsCount, 0.34f)) {
                     tokens.add(Tokens.cardToken(items.cardId));
                     tokens.add(Tokens.confidenceToken(items.probability));
                     cardsCount++;

@@ -2,6 +2,7 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.PlayerPosition;
+import com.leflat.jass.common.Plie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -171,7 +172,12 @@ public class GameViewTests {
       @Test
     public void test_encode_state_for_transformers() {
         gameView.setTrump(PlayerPosition.ACROSS, true);
-        gameView.cardPlayed(0, new Card(30));
+        gameView.cardPlayed(1, new Card(30));
+        gameView.cardPlayed(2, new Card(20));
+        gameView.playerHasCard(0, 31);
+          gameView.playerHasCard(1, 32);
+          gameView.playerHasCard(2, 33);
+          gameView.playerDoesNotHaveCard(1, 12);
         var tokens = gameView.encodeStateForTransformer();
         assertEquals(95, tokens.length);
       }
