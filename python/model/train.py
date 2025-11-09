@@ -3,7 +3,7 @@ import torch
 import torch.nn.functional as F
 from torch.utils.data import DataLoader, random_split
 from model import JassFormer
-from dataset import JassBinaryDataset
+from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
 import argparse
 from tqdm import tqdm
 import os
@@ -96,7 +96,7 @@ def train():
     print(f"Training complete! Best val acc: {best_acc * 100:.2f}%")
     torch.onnx.export(
         model,
-        torch.randint(0, 110, (1, 99)).cuda(),
+        torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH)).cuda(),
         "jassformer.onnx",
         opset_version=17,
         input_names=["tokens"],

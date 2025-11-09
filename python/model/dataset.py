@@ -7,6 +7,7 @@ from glob import glob
 
 SAMPLE_LENGTH = 103
 TOKEN_LENGTH = 95
+VOCABULARY_SIZE =128
 
 class JassBinaryDataset(Dataset):
     def __init__(self, data_dir: str):

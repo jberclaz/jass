@@ -16,13 +16,10 @@ class JassFormer(nn.Module):
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.policy_head = nn.Linear(d_model, 36)  # 36 cards
-        self.value_head = nn.Linear(d_model, 1)  # optional
 
     def forward(self, x, legal_mask=None):
-        # x: [B, 99]
-        mask = (x == 0)  # PAD tokens
         x = self.embedding(x) + self.pos_embedding
-        x = self.transformer(x, src_key_padding_mask=mask)
+        x = self.transformer(x)
 
         cls = x[:, 0]  # [CLS] token
         logits = self.policy_head(cls)  # [B, 36]

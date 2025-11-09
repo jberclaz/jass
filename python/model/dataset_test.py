@@ -7,7 +7,7 @@ from dataset import JassBinaryDataset, TOKEN_LENGTH
 
 
 class TestJassBinaryDataset(unittest.TestCase):
-    DATA_DIR = "data"
+    DATA_DIR = "test_data"
     SAMPLE_FILE = f"{DATA_DIR}/sample.dat"
 
     @classmethod
