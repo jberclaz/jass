@@ -230,7 +230,7 @@ public class ServerTests {
                 assertEquals(3, remotePlayer.choosePartner());
                 remotePlayer.setHand(hand);
                 assertEquals(4, remotePlayer.chooseAtout(true));
-                remotePlayer.setAtout(Card.COLOR_HEART, otherPlayer);
+                remotePlayer.setTrump(Card.COLOR_HEART, otherPlayer, true);
                 assertEquals(card, remotePlayer.play());
                 remotePlayer.setPlayedCard(otherPlayer, card);
                 remotePlayer.collectPlie(otherPlayer);
@@ -273,7 +273,7 @@ public class ServerTests {
         verify(mockedPlayer, times(1)).choosePartner();
         verify(mockedPlayer, times(1)).setHand(hand);
         verify(mockedPlayer, times(1)).chooseAtout(true);
-        verify(mockedPlayer, times(1)).setAtout(Card.COLOR_HEART, otherPlayer);
+        verify(mockedPlayer, times(1)).setTrump(Card.COLOR_HEART, otherPlayer, true);
         verify(mockedPlayer, times(1)).play();
         verify(mockedPlayer, times(1)).setPlayedCard(otherPlayer, card);
         verify(mockedPlayer, times(1)).collectPlie(otherPlayer);

@@ -80,7 +80,7 @@ public class MockRemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) {
+    public void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) {
 
     }
 

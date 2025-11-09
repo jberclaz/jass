@@ -12,7 +12,7 @@ public abstract class RemoteCommand {
     public static final int SET_HAND = 10;
     public static final int CHOOSE_ATOUT = 11;
     public static final int CHOOSE_ATOUT_SECOND = 12;
-    public static final int SET_ATOUT = 13;
+    public static final int SET_TRUMP = 13;
     public static final int PLAY = 14;
     public static final int SET_PLAYED_CARD = 15;
     public static final int COLLECT_PLIE = 16;

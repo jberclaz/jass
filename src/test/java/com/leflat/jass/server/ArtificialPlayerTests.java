@@ -169,7 +169,7 @@ public class ArtificialPlayerTests {
 
         var originalHand = buildHand(1, 4, 9, 10, 12, 20, 22, 30, 33);
         player.setHand(originalHand);
-        player.setAtout(Card.COLOR_HEART, otherPlayer);
+        player.setTrump(Card.COLOR_HEART, otherPlayer, true);
         var card = player.play();
         assertEquals(8, hand.size());
         assertFalse(hand.contains(card));
@@ -185,7 +185,7 @@ public class ArtificialPlayerTests {
         player.setPlayerInfo(fourthPlayer);
         player.setPlayersOrder(Arrays.asList(1, 3, 0, 2));
         player.setHand(buildHand(1, 2, 3, 9, 10, 11, 12, 21, 30));
-        player.setAtout(Card.COLOR_HEART, otherPlayer);
+        player.setTrump(Card.COLOR_HEART, otherPlayer, true);
         player.play();
         assertEquals(8, hand.size());
         var an = player.getAnnouncements();
@@ -221,9 +221,10 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_stoeck() throws PlayerLeftExpection, IllegalAccessException {
+        player.setPlayerInfo(otherPlayer);
         Card.atout = Card.COLOR_DIAMOND;
         player.setHand(buildHand(0, 2, 4, 29, 30, 8, 33, 34, 6));
-        player.setAtout(Card.atout, otherPlayer);
+        player.setTrump(Card.atout, otherPlayer, true);
         hand.remove(new Card(6));
         var an = player.getAnnouncements();
         assertTrue(an.isEmpty());

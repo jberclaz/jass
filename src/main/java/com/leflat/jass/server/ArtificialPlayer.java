@@ -96,7 +96,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
         Card.sort(cards);
         super.setHand(cards);
-        gameView.reset(cards);
+        gameView.reset(cards, positionsByIds);
         currentPlie = new Plie();
         numberOfPliesWonByOwnTeam = 0;
     }
@@ -107,11 +107,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) {
+    public void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) {
         if (color == Card.COLOR_NONE) {
             return;
         }
         // TODO: change opponent card probabilities
+        var position = PlayerPosition.fromCode(positionsByIds.get(firstToPlay.getId()));
+        gameView.setTrump(chosenOnFirstTurn ? position : position.opposite(), chosenOnFirstTurn);
         announcements = Announcement.findAnouncements(hand);
         hasStoeck = Announcement.findStoeck(hand);
     }
@@ -161,6 +163,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
         if (positionsByIds.get(player.getId()) % 2 == 0) {
             numberOfPliesWonByOwnTeam++;
         }
+        gameView.setCompletedTrick(currentPlie);
         currentPlie = new Plie();
     }
 
@@ -168,6 +171,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer {
     public void setScores(int score, int opponentScore) {
         ourScore = score;
         theirScore = opponentScore;
+        gameView.updateMatchScore(score, opponentScore);
     }
 
     @Override

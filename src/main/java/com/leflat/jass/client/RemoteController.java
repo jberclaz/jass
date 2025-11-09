@@ -3,7 +3,6 @@ package com.leflat.jass.client;
 import com.leflat.jass.common.*;
 import com.leflat.jass.server.PlayerLeftExpection;
 
-import java.io.UnsupportedEncodingException;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -105,10 +104,11 @@ public class RemoteController implements IController, Runnable {
                     int atout = player.chooseAtout(command == RemoteCommand.CHOOSE_ATOUT);
                     answer = Collections.singletonList(String.valueOf(atout));
                     break;
-                case RemoteCommand.SET_ATOUT:
+                case RemoteCommand.SET_TRUMP:
                     atout = Integer.parseInt(message[1]);
                     var firstToPlay = new ClientPlayer(Integer.parseInt(message[2]));
-                    player.setAtout(atout, firstToPlay);
+                    var chosenOnFirstTurn = Integer.parseInt(message[3]) == 1;
+                    player.setTrump(atout, firstToPlay, chosenOnFirstTurn);
                     break;
                 case RemoteCommand.PLAY:
                     var card = player.play();

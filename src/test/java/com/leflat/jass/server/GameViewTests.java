@@ -1,10 +1,12 @@
 package com.leflat.jass.server;
 
 import com.leflat.jass.common.Card;
+import com.leflat.jass.common.PlayerPosition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -30,7 +32,7 @@ public class GameViewTests {
         handSizes = (int[]) handSizesField.get(gameView);
         unknownCardsInGame = (Map<Integer, Float[]>) unknownCardsInGameField.get(gameView);
         knownCardsInHands = (List<Card>[]) knownCardsInHandsField.get(gameView);
-        gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17));
+        gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17), new HashMap<>());
     }
 
     @Test
@@ -165,4 +167,12 @@ public class GameViewTests {
         assertFalse(hands[2].contains(new Card(21)));
         assertFalse(hands[2].contains(new Card(22)));
     }
+
+      @Test
+    public void test_encode_state_for_transformers() {
+        gameView.setTrump(PlayerPosition.ACROSS, true);
+        gameView.cardPlayed(0, new Card(30));
+        var tokens = gameView.encodeStateForTransformer();
+        assertEquals(95, tokens.length);
+      }
 }

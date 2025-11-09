@@ -254,14 +254,15 @@ public class GameController extends Thread {
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
         var playerToChooseAtout = players.get(playerNumber);
-        oneWayAsync(p -> p.setAtout(Card.COLOR_NONE, playerToChooseAtout));
+        oneWayAsync(p -> p.setTrump(Card.COLOR_NONE, playerToChooseAtout, true));
         var choice = playerToChooseAtout.chooseAtout(true);   // demande de faire atout en premier
+        var chosenOnFirstTurn = choice != Card.COLOR_NONE;
         if (choice == Card.COLOR_NONE) {     // si on passe
             var second = players.get((playerNumber + 2) % 4);
             choice = second.chooseAtout(false);   // demande de faire atout en second
         }
         int finalChoice = choice;
-        oneWayAsync(p -> p.setAtout(finalChoice, playerToChooseAtout));
+        oneWayAsync(p -> p.setTrump(finalChoice, playerToChooseAtout, chosenOnFirstTurn));
         return choice;
     }
 

@@ -34,7 +34,7 @@ public class InteractivePlayerTests {
 
         var atout = player.chooseAtout(true);
         atout = player.chooseAtout(false);
-        player.setAtout(2, new ClientPlayer(0, "GC"));
+        player.setTrump(2, new ClientPlayer(0, "GC"), true);
 
         var cardPlayed = player.play();
         player.setPlayedCard(new ClientPlayer(1, "Berte"), new Card(10));
