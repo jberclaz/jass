@@ -11,7 +11,7 @@ public class TokenExtractor {
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
-        game.playKGames(100);
+        game.playKGames(2000);
          for (int i=0; i<4; i++) {
              var player = new ArtificialPlayer(i, String.valueOf(i), 10, true);
              player.extractTransformersTokens("tokens_file" + i + ".dat");
