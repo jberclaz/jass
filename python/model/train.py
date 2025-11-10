@@ -1,12 +1,14 @@
 # train.py
+import argparse
+
 import torch
 import torch.nn.functional as F
+from torch.export import Dim  # <-- 1. Import Dim
 from torch.utils.data import DataLoader, random_split
-from model import JassFormer
-from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
-import argparse
 from tqdm import tqdm
-import os
+
+from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
+from model import JassFormer
 
 
 def get_legal_mask(hand_tokens):
@@ -96,12 +98,12 @@ def train():
     print(f"Training complete! Best val acc: {best_acc * 100:.2f}%")
     torch.onnx.export(
         model,
-        torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH)).cuda(),
+(torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH)).cuda(),),
         "jassformer.onnx",
-        opset_version=17,
+        opset_version=18,
         input_names=["tokens"],
         output_names=["logits"],
-        dynamic_axes={"tokens": {0: "batch", 1: "seq"}}
+        dynamic_shapes=({0: Dim("batch", min=1)},)
     )
     print("Exported to jassformer.onnx")
 
