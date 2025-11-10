@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>com.leflat</groupId>
@@ -59,11 +60,21 @@
             <artifactId>forms_rt</artifactId>
             <version>7.0.3</version>
         </dependency>
-         <dependency>
+        <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-junit-jupiter</artifactId>
             <version>5.12.0</version>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.microsoft.onnxruntime</groupId>
+            <artifactId>onnxruntime</artifactId>
+            <version>1.19.2</version>  <!-- Latest as of Nov 2025 -->
+        </dependency>
+        <dependency>
+            <groupId>org.nd4j</groupId>
+            <artifactId>nd4j-arrow</artifactId>
+            <version>1.0.0-M2.1</version>  <!-- Keep for INDArray if needed -->
         </dependency>
     </dependencies>
 
@@ -112,7 +123,8 @@
                 <configuration>
                     <excludes>
                         <exclude>com/leflat/jass/test/**</exclude>
-S                        <exclude>com/intellij/**</exclude>
+                        S
+                        <exclude>com/intellij/**</exclude>
                     </excludes>
                 </configuration>
                 <executions>

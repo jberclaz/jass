@@ -32,10 +32,13 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private int strength = 1000;
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
+    private final JassModelLoader modelLoader;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
         setName(name);
+        var modelPath = ArtificialPlayer.class.getClassLoader().getResource("model/jassformer.onnx");
+        modelLoader = new JassModelLoader(modelPath.getPath());
     }
 
     public ArtificialPlayer(int id, String name, int strength) {
@@ -282,6 +285,37 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         return PlayerPosition.fromCode((player.getId() - id + 4) % 4);
     }
 
+    private Card chooseBestCardNn(List<Card> validCards) {
+
+        if (modelLoader == null) {
+            // Fallback to MC
+            return chooseBestCardMc(validCards);
+        }
+
+        // Transformer inference
+        byte[] tokens = gameView.encodeStateForTransformer();  // Your 95-byte array
+        float[] logits = modelLoader.predict(tokens);
+        Card bestCard = modelLoader.chooseBestCard(logits, validCards);
+
+        LOGGER.info(name + " : Transformer chose " + bestCard);
+        return bestCard;
+    }
+
+    // Rename old method as fallback
+    private Card chooseBestCardMc(List<Card> validCards) {
+        Card bestCard = null;
+        float bestScore = -1000;
+        for (Card validCard : validCards) {
+            var score = evaluateMoveReward(hand, validCard, strength * 10);
+            if (score > bestScore) {
+                bestScore = score;
+                bestCard = validCard;
+            }
+        }
+        LOGGER.info(name + " : MC fallback chose " + bestCard);
+        return bestCard;
+    }
+
     private Card chooseBestCard() {
         List<Card> validCards;
         if (currentPlie.getSize() == 0) {
@@ -292,17 +326,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (validCards.size() == 1) {
             return validCards.getFirst();
         }
-        Card bestCard = null;
-        float bestScore = -1000;
-        for (Card validCard : validCards) {
-            var score = evaluateMoveRewardParallel(hand, validCard, strength * 10);
-            if (score > bestScore) {
-                bestScore = score;
-                bestCard = validCard;
-            }
-        }
-        //LOGGER.info(name + " : best move is " + bestCard);
-        return bestCard;
+        return chooseBestCardNn(validCards);
     }
 
     private float evaluateMoveRewardParallel(List<Card> hand, Card move, int numberOfGames) {
