@@ -33,6 +33,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
     private final JassModelLoader modelLoader;
+    private boolean useNn = false;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
@@ -43,7 +44,11 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     public ArtificialPlayer(int id, String name, int strength) {
         this(id, name);
-        this.strength = strength;
+        if (strength < 0) {
+         useNn = true;
+        } else {
+            this.strength = strength;
+        }
     }
 
     public ArtificialPlayer(int id, String name, int strength, boolean noWait) {
@@ -289,6 +294,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
         if (modelLoader == null) {
             // Fallback to MC
+            LOGGER.warning("No NN model loaded: falling back on MC");
             return chooseBestCardMc(validCards);
         }
 
@@ -297,7 +303,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         float[] logits = modelLoader.predict(tokens);
         Card bestCard = modelLoader.chooseBestCard(logits, validCards);
 
-        LOGGER.info(name + " : Transformer chose " + bestCard);
+        LOGGER.info(name + " (Transformer) : chose " + bestCard);
         return bestCard;
     }
 
@@ -312,7 +318,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                 bestCard = validCard;
             }
         }
-        LOGGER.info(name + " : MC fallback chose " + bestCard);
+        LOGGER.info(name + " (MC) : chose " + bestCard);
         return bestCard;
     }
 
@@ -326,7 +332,12 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (validCards.size() == 1) {
             return validCards.getFirst();
         }
-        return chooseBestCardNn(validCards);
+        if (useNn) {
+            return chooseBestCardNn(validCards);
+        }
+        else {
+            return chooseBestCardMc(validCards);
+        }
     }
 
     private float evaluateMoveRewardParallel(List<Card> hand, Card move, int numberOfGames) {

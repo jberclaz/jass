@@ -22,6 +22,7 @@ public class GameController extends Thread {
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
     private boolean teamSelectionEnabled = true;
     private int playKGames = -1;
+    private Map<Integer, Integer> matchWinCount = new HashMap<>();
 
     public GameController(int id) {
         this.gameId = id;
@@ -86,6 +87,11 @@ public class GameController extends Thread {
                 Arrays.stream(teams).forEach(Team::resetScore);
             } while (playAnotherGame);
 
+            if (!teamSelectionEnabled) {
+                LOGGER.info("Scores: team 0 (" + teams[0].getPlayer(0).getName() + " - " + teams[0].getPlayer(1).getName() + " won " + matchWinCount.get(teams[0].getId()) + " matches.");
+                LOGGER.info("team 1 (" + teams[1].getPlayer(0).getName() + " - " + teams[1].getPlayer(1).getName() + " won " + matchWinCount.get(teams[1].getId()) + " matches.");
+            }
+
             LOGGER.info("No longer playing");
         } catch (PlayerLeftExpection e) {
             LOGGER.log(Level.WARNING, "Player " + e.playerId + " left the game", e);
@@ -127,6 +133,7 @@ public class GameController extends Thread {
         // Sends the winner to all player
         var winners = teams[0].hasWon() ? teams[0] : teams[1];
         oneWayAsync(p -> p.setGameResult(winners));
+        matchWinCount.put(winners.getId(), matchWinCount.getOrDefault(winners.getId(), 0) + 1);
 
         /* waits a few seconds so that the players can see all the cards */
         waitSec(4);
