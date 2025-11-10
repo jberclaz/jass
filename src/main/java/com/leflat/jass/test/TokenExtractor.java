@@ -13,7 +13,7 @@ public class TokenExtractor {
         game.enableTeamSelection(false);
         game.playKGames(100);
          for (int i=0; i<4; i++) {
-             var player = new ArtificialPlayer(i, String.valueOf(i), 10, true);
+             var player = new ArtificialPlayer(i, String.valueOf(i), 100, true);
              player.extractTransformersTokens("tokens_file" + i + ".dat");
              game.addPlayer(player);
          }
