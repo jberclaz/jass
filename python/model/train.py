@@ -67,6 +67,102 @@ def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
         mask[card_id] = False
     return mask
 
+@torch.no_grad()
+def get_legal_mask_fast(tokens: torch.Tensor) -> torch.Tensor:
+    """
+    Ultra-fast Jass legal mask.
+    Input: tokens [B, 95], int64
+    Output: legal_mask [B, 36], bool
+    """
+    B = tokens.shape[0]
+    device = tokens.device
+
+    # === 1. Constants (match your encoding) ===
+    TRUMP_POS = 4
+    TRUMP_OFFSET = 56
+    HAND_START, HAND_END = 10, 19
+    LEAD_POS = 21              # leading card token
+    PLIE_POS = [21, 23, 25] # up to 4 cards in plie (adjust if needed)
+
+    # === 2. Extract hand ===
+    hand_tokens = tokens[:, HAND_START:HAND_END]           # [B,9]
+    hand_valid = hand_tokens != 0                          # [B,9]
+    hand_cards = hand_tokens - 10                          # [B,9], -10..26 or 0
+    hand_cards = hand_cards.masked_fill(~hand_valid, -1)   # invalid = -1
+
+    # Flatten hand cards: [B*9]
+    flat_hand = hand_cards.view(B, -1)                     # [B,9]
+    valid_mask = hand_valid.view(B, -1)                    # [B,9]
+    flat_cards = flat_hand[valid_mask]                     # [N_valid]
+
+    # Base mask: only cards in hand
+    mask = torch.zeros(B, 36, dtype=torch.bool, device=device)
+    if flat_cards.numel() > 0:
+        mask.view(-1).scatter_(1, flat_cards.unsqueeze(0), True)
+
+    # === 3. First to play? ===
+    lead_token = tokens[:, LEAD_POS]
+    is_first = lead_token == 0
+    if is_first.any():
+        mask[is_first] = hand_valid[is_first]
+
+    # === 4. Trump & leading suit ===
+    trump = tokens[:, TRUMP_POS] - TRUMP_OFFSET            # [B], 0..3
+    lead_suit = ((lead_token - 10) // 9).clamp(0, 3)       # [B]
+
+    # === 5. Plie trumps (for undercut) ===
+    plie_tokens = tokens[:, PLIE_POS]                      # [B,4]
+    plie_cards = plie_tokens - 10
+    plie_valid = plie_tokens != 0
+    plie_suits = (plie_cards // 9).clamp(0, 3)
+    plie_ranks = plie_cards % 9
+
+    is_trump_played = (plie_suits == trump.unsqueeze(1)) & plie_valid
+    has_trump_in_plie = is_trump_played.any(dim=1)         # [B]
+    highest_trump_rank = torch.where(
+        is_trump_played,
+        plie_ranks,
+        torch.full_like(plie_ranks, -1)
+    ).max(dim=1).values                                    # [B]
+
+    # === 6. Player has leading suit? ===
+    hand_suits = (hand_cards // 9).clamp(0, 3)             # [B,9]
+    has_leading_suit = ((hand_suits == lead_suit.unsqueeze(1)) & hand_valid).any(dim=1)
+
+    # === 7. Build final mask (vectorized!) ===
+    card_ids = torch.arange(36, device=device)
+    card_suit = card_ids // 9
+    card_rank = card_ids % 9
+
+    # Expand to [B,36]
+    suit_b = card_suit.unsqueeze(0).expand(B, -1)
+    rank_b = card_rank.unsqueeze(0).expand(B, -1)
+    in_hand = mask.clone()
+
+    # Rule 1: Must follow suit
+    must_follow = ~is_first.unsqueeze(1) & has_leading_suit.unsqueeze(1)
+    follow_ok = suit_b == lead_suit.unsqueeze(1)
+    mask = mask & (~must_follow | follow_ok)
+
+    # Rule 2: Trump undercut
+    can_trump = ~is_first.unsqueeze(1) & ~has_leading_suit.unsqueeze(1)
+    trump_card = suit_b == trump.unsqueeze(1)
+    higher_trump = rank_b > highest_trump_rank.unsqueeze(1)
+
+    # Can undercut OR no trump in plie OR all trumps case
+    undercut_ok = has_trump_in_plie.unsqueeze(1) & higher_trump
+    no_trump_in_plie = ~has_trump_in_plie.unsqueeze(1)
+    all_trumps_case = can_trump & ~has_leading_suit.unsqueeze(1)
+
+    mask = mask | (can_trump & trump_card & (undercut_ok | no_trump_in_plie | all_trumps_case))
+
+    # Rule 3: Off-suit only if no leading suit
+    off_suit_ok = ~has_leading_suit.unsqueeze(1) & ~is_first.unsqueeze(1)
+    off_suit = (suit_b != lead_suit.unsqueeze(1)) & (suit_b != trump.unsqueeze(1))
+    mask = mask | (off_suit_ok & off_suit & in_hand)
+
+    return mask & in_hand  # final: only cards in hand
+
 def train():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default='data/')
