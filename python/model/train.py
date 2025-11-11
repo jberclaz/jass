@@ -307,20 +307,26 @@ def train():
 
             scheduler.step()
 
+        onnx_model = "jassformer.onnx"
+        onnx_model_data = onnx_model + ".data"
         print(f"Training complete! Best val acc: {best_acc * 100:.2f}%")
         torch.onnx.export(
             model,
     (torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH)).cuda(),),
-            "jassformer.onnx",
+            onnx_model,
             opset_version=18,
             input_names=["tokens"],
             output_names=["logits"],
             dynamic_shapes=({0: Dim("batch", min=1)},)
         )
-        print("Exported to jassformer.onnx")
+        print(f"Exported to {onnx_model}")
         mlflow.log_metric("final/best_acc", best_acc)
         mlflow.pytorch.log_model(model, "final_model")
-        mlflow.log_artifact("jassformer.onnx")
+        mlflow.log_artifact(onnx_model)
+        if Path(onnx_model_data).exists():
+            data_size = Path(onnx_model_data).stat().st_size / (1024 * 1024)  # MB
+            if data_size > 1.0:  # only if external
+                mlflow.log_artifact(onnx_model_data)
 
 if __name__ == "__main__":
     train()
