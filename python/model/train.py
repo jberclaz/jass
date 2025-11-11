@@ -184,6 +184,7 @@ def train():
     parser.add_argument('--batch', type=int, default=512)
     parser.add_argument('--epochs', type=int, default=10)
     parser.add_argument('--lr', type=float, default=3e-4)
+    parser.add_argument('--description', '-d', type=str, default='')
     args = parser.parse_args()
 
     cfg = Config()
@@ -197,7 +198,7 @@ def train():
         cfg.lr = args.lr
     mlflow.set_experiment(cfg.mlflow_experiment)
 
-    with mlflow.start_run(run_name=cfg.mlflow_run_name):
+    with mlflow.start_run(run_name=cfg.mlflow_run_name) as run:
         mlflow.log_params({
             "batch_size": cfg.batch_size,
             "epochs": cfg.epochs,
@@ -220,6 +221,14 @@ def train():
         model = JassFormer().to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
+
+        run_description = f"""
+            ## Run: `{run.info.run_id}`
+            - **Data**: `{cfg.data_path}` ({len(dataset)} samples)
+            - **Legal Mask**: `get_legal_mask_fast` (vectorized)
+            - **Description**: `{args.description}`
+        """
+        mlflow.set_tag("mlflow.note.content", run_description)
 
         step = 0
         best_acc = 0
