@@ -180,6 +180,22 @@ def get_legal_mask_fast(tokens: torch.Tensor) -> torch.Tensor:
 
     return mask & in_hand  # final: only cards in hand
 
+def evaluate(val_loader, model, device) -> float:
+    model.eval()
+    val_correct = 0
+    val_total = 0
+    with torch.no_grad():
+        for tokens, action in tqdm(val_loader, desc="Validating"):
+            tokens = tokens.to(device)
+            action = action.to(device)
+            legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+            log_probs = model(tokens, legal_mask)
+            pred = log_probs.argmax(dim=-1)
+            val_correct += (pred == action).sum().item()
+            val_total += action.size(0)
+    model.train()
+    return val_correct / val_total
+
 def train():
     parser = argparse.ArgumentParser()
     parser.add_argument('--data', type=str, default='data/')
@@ -270,7 +286,7 @@ def train():
 
                 # === EVAL & SAVE ===
                 if step % cfg.eval_every == 0:
-                    val_acc = evaluate(model, loader, cfg.device)
+                    val_acc = evaluate(val_loader, model, device)
                     mlflow.log_metric("val/acc", val_acc, step=step)
                     print(f"Step {step} | Val Acc: {val_acc:.4f}")
 
@@ -294,20 +310,7 @@ def train():
             mlflow.log_metric("epoch/acc", acc, step=step)
 
             # Validation
-            model.eval()
-            val_correct = 0
-            val_total = 0
-            with torch.no_grad():
-                for tokens, action in tqdm(val_loader, desc="Validating"):
-                    tokens = tokens.to(device)
-                    action = action.to(device)
-                    legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
-                    log_probs = model(tokens, legal_mask)
-                    pred = log_probs.argmax(dim=-1)
-                    val_correct += (pred == action).sum().item()
-                    val_total += action.size(0)
-
-            val_acc = val_correct / val_total
+            val_acc = evaluate(val_loader, model, device)
             print(f"Val Acc: {val_acc * 100:.2f}%")
 
             if val_acc > best_acc:
