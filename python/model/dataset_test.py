@@ -18,6 +18,7 @@ class TestJassBinaryDataset(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         import shutil
+
         shutil.rmtree(cls.DATA_DIR)
 
     @classmethod
@@ -32,7 +33,7 @@ class TestJassBinaryDataset(unittest.TestCase):
             data.extend(np.array(tokens, dtype=np.uint8).tobytes())
             # action: card token 25 → index 15
             data.extend(np.int32(20 + i).tobytes())
-        with open(cls.SAMPLE_FILE, 'wb') as f:
+        with open(cls.SAMPLE_FILE, "wb") as f:
             f.write(data)
 
     def test_load_correct_number(self):
@@ -44,8 +45,8 @@ class TestJassBinaryDataset(unittest.TestCase):
         tokens, action = dataset[0]
         self.assertEqual(tokens.shape, (TOKEN_LENGTH,))
         for i in range(TOKEN_LENGTH):
-            self.assertEqual(tokens[i].item(), i+1)        # CLS
-        self.assertEqual(action.item(), 20)          # 25 - 10 = 15
+            self.assertEqual(tokens[i].item(), i + 1)  # CLS
+        self.assertEqual(action.item(), 20)  # 25 - 10 = 15
 
     def test_last_sample_correct(self):
         dataset = JassBinaryDataset(self.DATA_DIR)
@@ -59,7 +60,7 @@ class TestJassBinaryDataset(unittest.TestCase):
 
     def test_invalid_file_skipped_gracefully(self):
         # Create corrupted file
-        with open(f"{self.DATA_DIR}/corrupted.dat", 'wb') as f:
+        with open(f"{self.DATA_DIR}/corrupted.dat", "wb") as f:
             f.write(b"garbage")
         dataset = JassBinaryDataset(self.DATA_DIR)
         self.assertEqual(len(dataset), 3)  # still loads good ones
@@ -70,9 +71,9 @@ class TestJassBinaryDataset(unittest.TestCase):
         actions = [10, 20, 45, 30]  # card tokens
         for act in actions:
             data.extend(np.int32(TOKEN_LENGTH).tobytes())
-            data.extend(np.array([1] + [0]*(TOKEN_LENGTH-1), dtype=np.uint8).tobytes())
+            data.extend(np.array([1] + [0] * (TOKEN_LENGTH - 1), dtype=np.uint8).tobytes())
             data.extend(np.int32(act).tobytes())
-        with open(f"{self.DATA_DIR}/zactions.dat", 'wb') as f:
+        with open(f"{self.DATA_DIR}/zactions.dat", "wb") as f:
             f.write(data)
 
         dataset = JassBinaryDataset(self.DATA_DIR)

@@ -6,6 +6,7 @@ import torch.nn.functional as F
 from dataset import TOKEN_LENGTH, VOCABULARY_SIZE
 from model import JassFormer
 
+
 class TestJassFormer(unittest.TestCase):
     def setUp(self):
         self.model = JassFormer()

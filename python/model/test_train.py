@@ -3,6 +3,7 @@ import unittest
 import torch
 import train
 
+
 class TestLegalMaskWithRules(unittest.TestCase):
     def test_first_to_play_all_legal(self):
         # Tokens: first play, hand with 9 cards (0-8)
@@ -42,9 +43,9 @@ class TestLegalMaskWithRules(unittest.TestCase):
         tokens = torch.tensor([0] * 95)
         tokens[4] = 56 + 0  # trump spades (suit 0)
         tokens[10] = 10 + 18  # clubs 0
-        tokens[11] = 10 + 5 # spades 7
-        tokens[21] = 10  + 19# leading clubs
-        tokens[23] = 10 + 4 # plie trump rank 5
+        tokens[11] = 10 + 5  # spades 7
+        tokens[21] = 10 + 19  # leading clubs
+        tokens[23] = 10 + 4  # plie trump rank 5
         mask = train.get_legal_mask_with_rules(tokens)
         expected = torch.zeros(36, dtype=torch.bool)
         expected[5] = True

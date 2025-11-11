@@ -7,7 +7,8 @@ from torch.utils.data import Dataset
 
 SAMPLE_LENGTH = 96
 TOKEN_LENGTH = 95
-VOCABULARY_SIZE =128
+VOCABULARY_SIZE = 128
+
 
 class JassBinaryDataset(Dataset):
     def __init__(self, data_dir: str):
@@ -19,7 +20,7 @@ class JassBinaryDataset(Dataset):
         self.offsets = [0]
         self.total_samples = 0
         for f in self.files:
-            arr = np.memmap(f, dtype=np.uint8, mode='r')
+            arr = np.memmap(f, dtype=np.uint8, mode="r")
             samples = len(arr) // SAMPLE_LENGTH
             self.total_samples += samples
             self.mmaps.append(arr)
@@ -31,12 +32,12 @@ class JassBinaryDataset(Dataset):
 
     def __getitem__(self, idx):
         # Binary search file
-        file_idx = np.searchsorted(self.offsets, idx, side='right') - 1
+        file_idx = np.searchsorted(self.offsets, idx, side="right") - 1
         local_idx = idx - self.offsets[file_idx]
         offset = local_idx * SAMPLE_LENGTH
 
         data = self.mmaps[file_idx]
-        tokens = torch.from_numpy(data[offset:offset + TOKEN_LENGTH].astype(np.int64))
+        tokens = torch.from_numpy(data[offset : offset + TOKEN_LENGTH].astype(np.int64))
         action = int(data[offset + TOKEN_LENGTH])
 
         return tokens, torch.tensor(action, dtype=torch.long)

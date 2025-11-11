@@ -11,8 +11,7 @@ class JassFormer(nn.Module):
         self.pos_embedding = nn.Parameter(torch.zeros(1, seq_len, d_model))
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead, dim_feedforward=512,
-            dropout=0.1, activation='gelu', batch_first=True
+            d_model=d_model, nhead=nhead, dim_feedforward=512, dropout=0.1, activation="gelu", batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.policy_head = nn.Linear(d_model, 36)  # 36 cards
