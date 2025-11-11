@@ -59,96 +59,134 @@ def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
     return mask
 
 
-@torch.no_grad()
-def get_legal_mask_fast(tokens: torch.Tensor) -> torch.Tensor:
+
+def get_legal_mask_with_rules_batch(tokens: torch.Tensor) -> torch.Tensor:
     """
-    Ultra-fast Jass legal mask.
-    Input: tokens [B, 95], int64
-    Output: legal_mask [B, 36], bool
+    Calculates the legal card mask for a batch of game states using tensor operations.
+
+    Args:
+        tokens: A (B, L) tensor, where B is batch_size and L is token_length.
+
+    Returns:
+        A (B, 36) boolean tensor, where True indicates a legal card to play.
     """
     B = tokens.shape[0]
     device = tokens.device
 
-    # === 1. Constants (match your encoding) ===
-    TRUMP_POS = 4
-    TRUMP_OFFSET = 56
-    HAND_START, HAND_END = 10, 19
-    LEAD_POS = 21  # leading card token
-    PLIE_POS = [21, 23, 25]  # up to 4 cards in plie (adjust if needed)
+    # 1. Get trump suit
+    # Shape: (B, 1) for broadcasting
+    trump = tokens[:, 4].sub(56).unsqueeze(1)
 
-    # === 2. Extract hand ===
-    hand_tokens = tokens[:, HAND_START:HAND_END]  # [B,9]
-    hand_valid = hand_tokens != 0  # [B,9]
-    hand_cards = hand_tokens - 10  # [B,9], -10..26 or 0
-    hand_cards = hand_cards.masked_fill(~hand_valid, -1)  # invalid = -1
+    # 2. Get hand cards
+    # Shape: (B, 9)
+    hand_tokens = tokens[:, 10:19]
+    valid = hand_tokens != 0
+    # card_ids can be -10 for invalid/empty slots
+    card_ids = hand_tokens.sub(10)
 
-    # Flatten hand cards: [B*9]
-    flat_hand = hand_cards.view(B, -1)  # [B,9]
-    valid_mask = hand_valid.view(B, -1)  # [B,9]
-    flat_cards = flat_hand[valid_mask]  # [N_valid]
+    # 3. Create base mask of all cards in hand
+    # This mask is returned if it's the first player to play.
+    # Shape: (B, 36)
+    base_hand_mask_float = torch.zeros((B, 36), dtype=torch.float32, device=device)
 
-    # Base mask: only cards in hand
-    mask = torch.zeros(B, 36, dtype=torch.bool, device=device)
-    if flat_cards.numel() > 0:
-        mask.view(-1).scatter_(1, flat_cards.unsqueeze(0), True)
+    # We use clamp(min=0) to safely index. Invalid cards (id -10)
+    # will be clamped to 0, but their 'src' will be 0.0 (from valid.float()),
+    # so they won't incorrectly mark card 0 as playable.
+    index = card_ids.clamp(min=0)
+    src = valid.float()
+    base_hand_mask_float.scatter_add_(dim=1, index=index, src=src)
+    base_hand_mask = base_hand_mask_float > 0
 
-    # === 3. First to play? ===
-    lead_token = tokens[:, LEAD_POS]
-    is_first = lead_token == 0
-    if is_first.any():
-        mask[is_first] = hand_valid[is_first]
+    # 4. Check if first player to play
+    # Shape: (B, 1)
+    is_first_player = (tokens[:, 21] == 0).unsqueeze(1)
 
-    # === 4. Trump & leading suit ===
-    trump = tokens[:, TRUMP_POS] - TRUMP_OFFSET  # [B], 0..3
-    lead_suit = ((lead_token - 10) // 9).clamp(0, 3)  # [B]
+    # --- All logic below is for non-first players ---
+    # We compute it for everyone, then use torch.where at the end.
 
-    # === 5. Plie trumps (for undercut) ===
-    plie_tokens = tokens[:, PLIE_POS]  # [B,4]
-    plie_cards = plie_tokens - 10
-    plie_valid = plie_tokens != 0
-    plie_suits = (plie_cards // 9).clamp(0, 3)
-    plie_ranks = plie_cards % 9
+    # 5. Get trick state
+    # Shape: (B, 1)
+    leading_trick_suit = (tokens[:, 21] - 10).div(9, rounding_mode='floor').unsqueeze(1)
 
-    is_trump_played = (plie_suits == trump.unsqueeze(1)) & plie_valid
-    has_trump_in_plie = is_trump_played.any(dim=1)  # [B]
-    highest_trump_rank = (
-        torch.where(is_trump_played, plie_ranks, torch.full_like(plie_ranks, -1)).max(dim=1).values
-    )  # [B]
+    # Shape: (B, 2)
+    trick_cards = tokens[:, [23, 25]]
+    trick_valid = trick_cards != 0
+    trick_card_ids = trick_cards.sub(10)
+    trick_suits = trick_card_ids.div(9, rounding_mode='floor')
+    trick_ranks = trick_card_ids % 9
 
-    # === 6. Player has leading suit? ===
-    hand_suits = (hand_cards // 9).clamp(0, 3)  # [B,9]
-    has_leading_suit = ((hand_suits == lead_suit.unsqueeze(1)) & hand_valid).any(dim=1)
+    # Check which (if any) of the trick cards are valid trump cards
+    # Shape: (B, 2)
+    is_valid_trump = (trick_suits == trump) & trick_valid
 
-    # === 7. Build final mask (vectorized!) ===
-    card_ids = torch.arange(36, device=device)
-    card_suit = card_ids // 9
-    card_rank = card_ids % 9
+    # Was a cut (trump) played?
+    # Shape: (B, 1)
+    cut = is_valid_trump.any(dim=1).unsqueeze(1)
 
-    # Expand to [B,36]
-    suit_b = card_suit.unsqueeze(0).expand(B, -1)
-    rank_b = card_rank.unsqueeze(0).expand(B, -1)
-    in_hand = mask.clone()
+    # Get ranks of only the valid trump cards, else -1
+    # Shape: (B, 2)
+    valid_trump_ranks = trick_ranks.clone()
+    valid_trump_ranks[~is_valid_trump] = -1
 
-    # Rule 1: Must follow suit
-    must_follow = ~is_first.unsqueeze(1) & has_leading_suit.unsqueeze(1)
-    follow_ok = suit_b == lead_suit.unsqueeze(1)
-    mask = mask & (~must_follow | follow_ok)
+    # Get the highest trump rank played so far
+    # Shape: (B, 1)
+    highest_cut_rank = valid_trump_ranks.max(dim=1).values.unsqueeze(1)
 
-    # Rule 2: Trump undercut
-    can_trump = ~is_first.unsqueeze(1) & ~has_leading_suit.unsqueeze(1)
-    trump_card = suit_b == trump.unsqueeze(1)
-    higher_trump = rank_b > highest_trump_rank.unsqueeze(1)
+    # 6. Get hand properties (relative to trick state)
+    # Shape: (B, 9)
+    hand_suits = card_ids.div(9, rounding_mode='floor')
+    hand_ranks = card_ids % 9
 
-    # Can undercut OR no trump in plie OR all trumps case
-    undercut_ok = has_trump_in_plie.unsqueeze(1) & higher_trump
-    no_trump_in_plie = ~has_trump_in_plie.unsqueeze(1)
-    all_trumps_case = can_trump & ~has_leading_suit.unsqueeze(1)
+    # Check properties for the *entire hand* (any card)
+    # Shape: (B, 1)
+    has_suit = ((hand_suits == leading_trick_suit) & valid).any(dim=1).unsqueeze(1)
+    has_non_trump_cards = ((hand_suits != trump) & valid).any(dim=1).unsqueeze(1)
+    has_higher_trump = ((hand_ranks > highest_cut_rank) & (hand_suits == trump) & valid).any(dim=1).unsqueeze(1)
 
-    mask = mask | (can_trump & trump_card & (undercut_ok | no_trump_in_plie | all_trumps_case))
+    # 7. Compute legality for each card in hand
+    # This vectorizes the complex 'for card_id in card_ids:' loop
+    # Shape: (B, 9)
 
-    # Rule 3: Off-suit only if no leading suit
-    off_suit_ok = ~has_leading_suit.unsqueeze(1) & ~is_first.unsqueeze(1)
-    off_suit = (suit_b != lead_suit.unsqueeze(1)) & (suit_b != trump.unsqueeze(1))
-    mask = mask | (off_suit_ok & off_suit & in_hand)
+    is_lead_suit = (hand_suits == leading_trick_suit)
+    is_trump_suit = (hand_suits == trump)
 
-    return mask & in_hand  # final: only cards in hand
+    # A card is LEGAL if any of these conditions are met:
+    # 1. It matches the lead suit
+    legal_cond1 = is_lead_suit
+
+    # 2. It's trump, and no trump has been played yet
+    legal_cond2 = is_trump_suit & ~cut
+
+    # 3. It's trump, a trump has been played, and this card is higher
+    legal_cond3 = is_trump_suit & cut & (hand_ranks > highest_cut_rank)
+
+    # 4. It's an "under-trump", but it's legal because the hand
+    #    contains ONLY trump, and NONE of them are higher.
+    legal_cond4 = is_trump_suit & cut & (hand_ranks <= highest_cut_rank) & \
+                  ~has_non_trump_cards & ~has_higher_trump
+
+    # 5. It's not lead suit, not trump, and the hand doesn't have the lead suit (discarding)
+    legal_cond5 = ~is_lead_suit & ~is_trump_suit & ~has_suit
+
+    # Combine all legal conditions
+    is_legal_card = legal_cond1 | legal_cond2 | legal_cond3 | legal_cond4 | legal_cond5
+
+    # 8. Create the complex legal mask (for non-first players)
+    # We only want to mark cards as legal if they are *both* valid AND
+    # meet the legal conditions.
+    # Shape: (B, 9)
+    legal_cards_in_hand = valid & is_legal_card
+
+    # Build the final (B, 36) mask using scatter_add_
+    complex_mask_float = torch.zeros((B, 36), dtype=torch.float32, device=device)
+    # index is the same as from step 3
+    src = legal_cards_in_hand.float()
+    complex_mask_float.scatter_add_(dim=1, index=index, src=src)
+    complex_legal_mask = complex_mask_float > 0
+
+    # 9. Final selection
+    # If first_player, use the simple 'base_hand_mask'.
+    # Otherwise, use the 'complex_legal_mask' we just built.
+    final_mask = torch.where(is_first_player, base_hand_mask, complex_legal_mask)
+
+    return final_mask

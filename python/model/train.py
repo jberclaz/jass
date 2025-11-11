@@ -11,9 +11,9 @@ from tqdm import tqdm
 import mlflow
 import mlflow.pytorch
 
-from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE, SAMPLE_LENGTH
+from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
 from model import JassFormer
-from legal_mask import get_legal_mask_with_rules
+from legal_mask import get_legal_mask_with_rules, get_legal_mask_with_rules_batch
 
 
 class Config:
@@ -39,7 +39,8 @@ def evaluate(val_loader, model, device) -> float:
         for tokens, action in tqdm(val_loader, desc="Validating"):
             tokens = tokens.to(device)
             action = action.to(device)
-            legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+            #legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+            legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
             log_probs = model(tokens, legal_mask)
             pred = log_probs.argmax(dim=-1)
             val_correct += (pred == action).sum().item()
@@ -114,7 +115,8 @@ def train():
                 tokens = tokens.to(device)
                 action = action.to(device)
 
-                legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+                #legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+                legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
 
                 log_probs = model(tokens, legal_mask)
                 loss = F.nll_loss(log_probs, action)
@@ -154,12 +156,6 @@ def train():
             if val_acc > best_acc:
                 best_acc = val_acc
                 torch.save(model.state_dict(), "jassformer_best.pt")
-                checkpoint = {
-                    "model": model.state_dict(),
-                    "opt": optimizer.state_dict(),
-                    "step": step,
-                    "acc": val_acc,
-                }
                 mlflow.pytorch.log_state_dict(model.state_dict(), f"best_model_step{step}")
                 mlflow.log_artifact("jassformer_best.pt")
                 print("SAVED BEST MODEL")
