@@ -20,6 +20,52 @@ def get_legal_mask(hand_tokens):
     mask[card_ids] = True
     return mask
 
+def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
+    trump = tokens[4] - 56
+    hand_tokens = tokens[10:19]
+    valid = (hand_tokens != 0)
+    card_ids = (hand_tokens[valid] - 10)
+
+    mask = torch.zeros(36, dtype=torch.bool)
+    mask[card_ids] = True
+    if tokens[21] == 0:
+        # first card to play, anything is legal
+        return mask
+
+    leading_trick_suit = (tokens[21] - 10) // 9
+    cut = False
+    highest_cut_rank = -1
+    for t in (23, 25):
+        if tokens[t] == 0:
+            break
+        card_suit = (tokens[t] - 10) // 9
+        if card_suit == trump:
+            cut = True
+            rank = (tokens[t] - 10) % 9
+            if rank > highest_cut_rank:
+                highest_cut_rank = rank
+
+    has_suit = any((c // 9) == leading_trick_suit for c in card_ids)
+
+    for card_id in card_ids:
+        suit = card_id // 9
+        if suit == leading_trick_suit:
+            continue
+        if suit == trump:
+            if not cut:
+                continue
+            rank = card_id % 9
+            if rank > highest_cut_rank:
+                continue
+            has_non_trump_cards = any((c // 9) != trump for c in card_ids)
+            if not has_non_trump_cards:
+                has_higher_trump = any((c % 9) > highest_cut_rank for c in card_ids)
+                if not has_higher_trump:
+                    continue
+        elif not has_suit:
+            continue
+        mask[card_id] = False
+    return mask
 
 def train():
     parser = argparse.ArgumentParser()
@@ -53,7 +99,7 @@ def train():
             tokens = tokens.to(device)
             action = action.to(device)
 
-            legal_mask = torch.stack([get_legal_mask(t) for t in tokens]).to(device)
+            legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
 
             log_probs = model(tokens, legal_mask)
             loss = F.nll_loss(log_probs, action)
@@ -79,7 +125,7 @@ def train():
             for tokens, action in tqdm(val_loader, desc="Validating"):
                 tokens = tokens.to(device)
                 action = action.to(device)
-                legal_mask = torch.stack([get_legal_mask(t) for t in tokens]).to(device)
+                legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
                 log_probs = model(tokens, legal_mask)
                 pred = log_probs.argmax(dim=-1)
                 val_correct += (pred == action).sum().item()
