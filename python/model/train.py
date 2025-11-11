@@ -11,7 +11,7 @@ from tqdm import tqdm
 import mlflow
 import mlflow.pytorch
 
-from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
+from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE, SAMPLE_LENGTH
 from model import JassFormer
 
 class Config:
@@ -201,16 +201,6 @@ def train():
     mlflow.set_experiment(cfg.mlflow_experiment)
 
     with mlflow.start_run(run_name=cfg.mlflow_run_name) as run:
-        mlflow.log_params({
-            "batch_size": cfg.batch_size,
-            "epochs": cfg.epochs,
-            "lr": cfg.lr,
-            "weight_decay": cfg.weight_decay,
-            "device": cfg.device,
-            "data_samples": Path(cfg.data_path).stat().st_size // 132,
-            "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
-        })
-
         dataset = JassBinaryDataset(cfg.data_path)
         train_size = int(0.95 * len(dataset))
         val_size = len(dataset) - train_size
@@ -224,6 +214,15 @@ def train():
         optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
 
+        mlflow.log_params({
+            "batch_size": cfg.batch_size,
+            "epochs": cfg.epochs,
+            "lr": cfg.lr,
+            "weight_decay": cfg.weight_decay,
+            "device": cfg.device,
+            "data_samples": dataset.total_samples,
+            "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
+        })
         run_description = f"""
             ## Run: `{run.info.run_id}`
             - **Data**: `{cfg.data_path}` ({len(dataset)} samples)

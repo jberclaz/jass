@@ -17,14 +17,14 @@ class JassBinaryDataset(Dataset):
         # Memory-map all files
         self.mmaps = []
         self.offsets = [0]
-        total_samples = 0
+        self.total_samples = 0
         for f in self.files:
             arr = np.memmap(f, dtype=np.uint8, mode='r')
             samples = len(arr) // SAMPLE_LENGTH
-            total_samples += samples
+            self.total_samples += samples
             self.mmaps.append(arr)
             self.offsets.append(self.offsets[-1] + samples)
-        print(f"Total samples: {total_samples:,}")
+        print(f"Total samples: {self.total_samples:,}")
 
     def __len__(self):
         return self.offsets[-1]
