@@ -32,20 +32,20 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private int strength = 1000;
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
-    private final JassModelLoader modelLoader;
+    private JassModelLoader modelLoader;
     private boolean useNn = false;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
         setName(name);
-        var modelPath = ArtificialPlayer.class.getClassLoader().getResource("model/jassformer.onnx");
-        modelLoader = new JassModelLoader(modelPath.getPath());
     }
 
     public ArtificialPlayer(int id, String name, int strength) {
         this(id, name);
         if (strength < 0) {
          useNn = true;
+         var modelPath = ArtificialPlayer.class.getClassLoader().getResource("model/jassformer.onnx");
+         modelLoader = new JassModelLoader(modelPath.getPath());
         } else {
             this.strength = strength;
         }
