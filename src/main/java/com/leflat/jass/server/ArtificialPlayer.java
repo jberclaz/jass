@@ -29,18 +29,17 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private boolean hasStoeck;
     private final Random rand = new Random();
     private int numberOfPliesWonByOwnTeam;
-    private int strength = 1000;
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
-    private JassModelLoader modelLoader;
-    private boolean useNn = false;
+    private final IJassPolicy cardPolicy;
 
     public ArtificialPlayer(int id, String name) {
         super(id);
         setName(name);
+        cardPolicy = MonteCarloPolicy(1000, this, )
     }
 
-    public ArtificialPlayer(int id, String name, int strength) {
+    public ArtificialPlayer(int id, String name) {
         this(id, name);
         if (strength < 0) {
          useNn = true;
