@@ -152,6 +152,7 @@ def train():
 
             # Validation
             val_acc = evaluate(val_loader, model, device)
+            mlflow.log_metric("val/acc", val_acc, step=step)
             print(f"Val Acc: {val_acc * 100:.2f}%")
             if val_acc > best_acc:
                 best_acc = val_acc
