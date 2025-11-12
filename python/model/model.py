@@ -3,12 +3,14 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+from dataset import VOCABULARY_SIZE, TOKEN_LENGTH
+
 
 class JassFormer(nn.Module):
-    def __init__(self, vocab_size=128, seq_len=95, d_model=128, nhead=8, num_layers=6):
+    def __init__(self, vocab_size=VOCABULARY_SIZE, seq_len=TOKEN_LENGTH, d_model=128, nhead=8, num_layers=6):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, d_model, padding_idx=0)
-        self.pos_embedding = nn.Parameter(torch.zeros(1, seq_len, d_model))
+        self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
 
         encoder_layer = nn.TransformerEncoderLayer(
             d_model=d_model, nhead=nhead, dim_feedforward=512, dropout=0.1, activation="gelu", batch_first=True
