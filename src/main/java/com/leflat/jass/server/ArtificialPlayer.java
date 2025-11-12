@@ -312,7 +312,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         Card bestCard = null;
         float bestScore = -1000;
         for (Card validCard : validCards) {
-            var score = evaluateMoveReward(hand, validCard, strength * 10);
+            var score = evaluateMoveRewardParallel(hand, validCard, strength * 10);
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCard;
