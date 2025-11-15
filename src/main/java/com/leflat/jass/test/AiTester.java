@@ -11,8 +11,8 @@ public class AiTester {
         game.enableTeamSelection(false);
         game.playKGames(10);
         for (int i = 0; i < 4; i++) {
-            String name = i % 2 == 0 ? "mc-" + i : "nn-" + i;
-            var player = new ArtificialPlayer(i, name, i % 2 == 0 ? new MonteCarloStrategy(1000) : new TransformersStrategy(), true);
+            String name = i % 2 == 0 ? "former-" + i : "mc-" + i;
+            var player = new ArtificialPlayer(i, name, i % 2 == 0 ? new TransformersStrategy() : new MonteCarloStrategy(1000), true);
             player.extractTransformersTokens("tokens_file" + i + ".dat");
             game.addPlayer(player);
         }

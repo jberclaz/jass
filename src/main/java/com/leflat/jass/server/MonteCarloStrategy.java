@@ -19,7 +19,7 @@ public class MonteCarloStrategy implements IJassStrategy {
     private static final int OUR_TEAM_ID = 0;
 
     public MonteCarloStrategy(int strength) {
-        this.strength = (strength > 0) ? strength : 1000;
+        this.strength = strength;
     }
 
     @Override
