@@ -32,7 +32,7 @@ public class MonteCarloStrategy implements IJassStrategy {
         float bestScore = -1000;
 
         for (Card validCard : validCards) {
-            var score = evaluateMoveReward(
+            var score = evaluateMoveRewardParallel(
                     gameView, currentPlie, hand, validCard, pliesWonByTeam, strength * 10
             );
             if (score > bestScore) {
