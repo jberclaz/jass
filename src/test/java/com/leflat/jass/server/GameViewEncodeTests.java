@@ -63,7 +63,7 @@ public class GameViewEncodeTests {
         for (int i = 0; i < 9; i++) {
             ownHand.add(new Card(i)); // Cards 0 through 8
         }
-        gameView.reset(ownHand, positionsMap);
+        gameView.reset(ownHand);
 
         // Set a default trump and score for basic tests
         Card.atout = Card.COLOR_SPADE; // Assuming 1 = SPADES
@@ -192,21 +192,12 @@ public class GameViewEncodeTests {
 
     @Test
     void testEncodeState_History() {
-        // Configure mock player IDs
-        when(player2.getId()).thenReturn(12);
-        when(player3.getId()).thenReturn(13);
-
-        // Arrange
-        // Trick 1: Cards 20-23, won by Partner (Pos 2)
-        when(trick1.getCards()).thenReturn(List.of(new Card(20), new Card(21), new Card(22), new Card(23)));
-        when(trick1.getOwner()).thenReturn(player2); // player2 ID is 12
-
-        // Trick 2: Cards 24-27, won by OppL (Pos 3)
-        when(trick2.getCards()).thenReturn(List.of(new Card(24), new Card(25), new Card(26), new Card(27)));
-        when(trick2.getOwner()).thenReturn(player3); // player3 ID is 13
-
-        gameView.setCompletedTrick(trick1);
-        gameView.setCompletedTrick(trick2);
+        for (int i=12; i>=9; i--) {
+            gameView.cardPlayed(PlayerPosition.fromCode(i % 4), new Card(i));
+        }
+        for (int i=13; i<17; i++) {
+            gameView.cardPlayed(PlayerPosition.fromCode((i-1) % 4), new Card(i));
+        }
 
         // Act
         int[] tokens = toIntArray(gameView.encodeStateForTransformer());
@@ -214,16 +205,16 @@ public class GameViewEncodeTests {
         // Assert
         assertEquals(Tokens.SECTION_HISTORY, tokens[26]);
         // Trick 1
-        assertEquals(Tokens.cardToken(20), tokens[27]);
-        assertEquals(Tokens.cardToken(21), tokens[28]);
-        assertEquals(Tokens.cardToken(22), tokens[29]);
-        assertEquals(Tokens.cardToken(23), tokens[30]);
+        assertEquals(Tokens.cardToken(12), tokens[27]);
+        assertEquals(Tokens.cardToken(11), tokens[28]);
+        assertEquals(Tokens.cardToken(10), tokens[29]);
+        assertEquals(Tokens.cardToken(9), tokens[30]);
         assertEquals(Tokens.WIN_OUR_TEAM, tokens[31]); // Won by Partner (Pos 2)
         // Trick 2
-        assertEquals(Tokens.cardToken(24), tokens[32]);
-        assertEquals(Tokens.cardToken(25), tokens[33]);
-        assertEquals(Tokens.cardToken(26), tokens[34]);
-        assertEquals(Tokens.cardToken(27), tokens[35]);
+        assertEquals(Tokens.cardToken(13), tokens[32]);
+        assertEquals(Tokens.cardToken(14), tokens[33]);
+        assertEquals(Tokens.cardToken(15), tokens[34]);
+        assertEquals(Tokens.cardToken(16), tokens[35]);
         assertEquals(Tokens.WIN_OPP_TEAM, tokens[36]); // Won by OppL (Pos 3)
         // Padding
         for (int i = 37; i <= 66; i++) {

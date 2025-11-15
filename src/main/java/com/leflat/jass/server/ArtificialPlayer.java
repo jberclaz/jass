@@ -7,12 +7,6 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.DoubleAccumulator;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import java.util.stream.Collectors;
@@ -29,30 +23,22 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private boolean hasStoeck;
     private final Random rand = new Random();
     private int numberOfPliesWonByOwnTeam;
-    private int strength = 1000;
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
-    private JassModelLoader modelLoader;
-    private boolean useNn = false;
+    private IJassStrategy playStrategy;
 
     public ArtificialPlayer(int id, String name) {
+        this(id, name, new MonteCarloStrategy(1000));
+    }
+
+    public ArtificialPlayer(int id, String name, IJassStrategy strategy) {
         super(id);
         setName(name);
+        this.playStrategy = strategy;
     }
 
-    public ArtificialPlayer(int id, String name, int strength) {
-        this(id, name);
-        if (strength < 0) {
-         useNn = true;
-         var modelPath = ArtificialPlayer.class.getClassLoader().getResource("model/jassformer.onnx");
-         modelLoader = new JassModelLoader(modelPath.getPath());
-        } else {
-            this.strength = strength;
-        }
-    }
-
-    public ArtificialPlayer(int id, String name, int strength, boolean noWait) {
-        this(id, name, strength);
+    public ArtificialPlayer(int id, String name, IJassStrategy strategy, boolean noWait) {
+        this(id, name, strategy);
         this.noWait = noWait;
     }
 
@@ -115,14 +101,14 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     public void setHand(List<Card> cards) throws PlayerLeftExpection {
         Card.sort(cards);
         super.setHand(cards);
-        gameView.reset(cards, positionsByIds);
+        gameView.reset(cards);
         currentPlie = new Plie();
         numberOfPliesWonByOwnTeam = 0;
     }
 
     @Override
     public int chooseAtout(boolean first) {
-        return chooseBestAtout(first);
+        return playStrategy.chooseTrumpSuit(first, hand, gameView);
     }
 
     @Override
@@ -195,7 +181,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (positionsByIds.get(player.getId()).ourTeam()) {
             numberOfPliesWonByOwnTeam++;
         }
-        gameView.setCompletedTrick(currentPlie);
         currentPlie = new Plie();
     }
 
@@ -290,38 +275,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         return PlayerPosition.fromCode((player.getId() - id + 4) % 4);
     }
 
-    private Card chooseBestCardNn(List<Card> validCards) {
-
-        if (modelLoader == null) {
-            // Fallback to MC
-            LOGGER.warning("No NN model loaded: falling back on MC");
-            return chooseBestCardMc(validCards);
-        }
-
-        // Transformer inference
-        byte[] tokens = gameView.encodeStateForTransformer();  // Your 95-byte array
-        float[] logits = modelLoader.predict(tokens);
-        Card bestCard = modelLoader.chooseBestCard(logits, validCards);
-
-        LOGGER.info(name + " (Transformer) : chose " + bestCard);
-        return bestCard;
-    }
-
-    // Rename old method as fallback
-    private Card chooseBestCardMc(List<Card> validCards) {
-        Card bestCard = null;
-        float bestScore = -1000;
-        for (Card validCard : validCards) {
-            var score = evaluateMoveReward(hand, validCard, strength * 10);
-            if (score > bestScore) {
-                bestScore = score;
-                bestCard = validCard;
-            }
-        }
-        LOGGER.info(name + " (MC) : chose " + bestCard);
-        return bestCard;
-    }
-
     private Card chooseBestCard() {
         List<Card> validCards;
         if (currentPlie.getSize() == 0) {
@@ -332,172 +285,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         if (validCards.size() == 1) {
             return validCards.getFirst();
         }
-        if (useNn) {
-            return chooseBestCardNn(validCards);
-        }
-        else {
-            return chooseBestCardMc(validCards);
-        }
-    }
-
-    private float evaluateMoveRewardParallel(List<Card> hand, Card move, int numberOfGames) {
-        if (numberOfGames <= 0) return 0.0f;
-
-        // Thread pool: Use available processors
-        int numThreads = Runtime.getRuntime().availableProcessors();
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
-        DoubleAccumulator totalReward = new DoubleAccumulator((a, b) -> a + b, 0.0);
-        AtomicInteger completed = new AtomicInteger(0);
-
-        // Batch size: Submit in groups to reduce overhead
-        int batchSize = Math.max(1, numberOfGames / numThreads * 2);
-        for (int start = 0; start < numberOfGames; start += batchSize) {
-            final int batchStart = start;
-            final int batchEnd = Math.min(start + batchSize, numberOfGames);
-            executor.submit(() -> {
-                int pliesCollected = numberOfPliesWonByOwnTeam;
-                List<Card>[] hands = new List[4];
-                int localReward = 0;
-                ThreadLocalRandom localRand = ThreadLocalRandom.current();  // Thread-safe random
-
-                for (int game = batchStart; game < batchEnd; game++) {
-                    hands[0] = new ArrayList<>(hand);
-                    int i = 1;
-                    for (var h : gameView.getRandomHands()) {
-                        hands[i++] = h;
-                    }
-                    var plie = new Plie(currentPlie);
-                    PlayerPosition startPosition = PlayerPosition.fromCode((4 - plie.getSize()) % 4);
-                    try {
-                        plie.playCard(move, this, hands[0]);
-                    } catch (BrokenRuleException e) {
-                        e.printStackTrace();
-                        continue;  // Skip bad sim
-                    }
-                    hands[0].remove(move);
-                    int gameScore = 0;
-                    PlayerPosition plieWinnerPosition;
-                    do {
-                        while (plie.getSize() < 4) {
-                            var currentPosition = startPosition.add(plie.getSize());
-                            final var finalPlie = new Plie(plie);
-                            var validMoves = hands[currentPosition.getCode()].stream()
-                                    .filter(c -> finalPlie.canPlay(c, hands[currentPosition.getCode()]))
-                                    .collect(Collectors.toList());
-                            if (validMoves.isEmpty()) {
-                                throw new RuntimeException("No valid move!");
-                            }
-                            Card randomMove;
-                            if (validMoves.size() == 1) {
-                                randomMove = validMoves.get(0);
-                            } else {
-                                randomMove = validMoves.get(localRand.nextInt(validMoves.size()));
-                            }
-                            try {
-                                plie.playCard(randomMove, currentPosition == PlayerPosition.SELF ? this : playersByPosition.get(currentPosition), hands[currentPosition.getCode()]);
-                            } catch (BrokenRuleException e) {
-                                e.printStackTrace();
-                                break;  // Skip bad trick
-                            }
-                            hands[currentPosition.getCode()].remove(randomMove);
-                        }
-                        plieWinnerPosition = positionsByIds.get(plie.getOwner().getId());
-                        if (plieWinnerPosition.ourTeam()) {
-                            gameScore += plie.getScore();
-                            pliesCollected++;
-                        } else {
-                            gameScore -= plie.getScore();
-                        }
-                        plie = new Plie();
-                    } while (!hands[0].isEmpty());
-                    int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-                    gameScore += plieWinnerPosition.ourTeam() ? cinqDeDer : 0;
-                    int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
-                    if (pliesCollected == 9) {
-                        gameScore += match;
-                    } else if (pliesCollected == 0) {
-                        gameScore -= match;
-                    }
-                    localReward += gameScore;
-                }
-                totalReward.accumulate(localReward);
-                completed.incrementAndGet();
-            });
-        }
-
-        // Wait for completion
-        try {
-            executor.shutdown();
-            executor.awaitTermination(10, TimeUnit.MINUTES);  // Adjust timeout if needed
-        } catch (InterruptedException e) {
-            Thread.currentThread().interrupt();
-            LOGGER.warning("MC sim interrupted");
-        }
-
-        return (float) totalReward.get() / numberOfGames;
-    }
-
-    private float evaluateMoveReward(List<Card> hand, Card move, int numberOfGames) {
-        List<Card>[] hands = new List[4];
-        int reward = 0;
-        for (int game = 0; game < numberOfGames; game++) {
-            int pliesCollected = numberOfPliesWonByOwnTeam;
-            hands[0] = new ArrayList<>(hand);
-            int i = 1;
-            for (var h : gameView.getRandomHands()) {
-                hands[i++] = h;
-            }
-            var plie = new Plie(currentPlie);
-            PlayerPosition startPosition = PlayerPosition.fromCode((4 - plie.getSize()) % 4);
-            try {
-                plie.playCard(move, this, hands[0]);
-            } catch (BrokenRuleException e) {
-                e.printStackTrace();
-            }
-            hands[0].remove(move);
-            int gameScore = 0;
-            PlayerPosition plieWinnerPosition;
-            do {
-                while (plie.getSize() < 4) {
-                    var currentPosition = startPosition.add(plie.getSize());
-                    final var finalPlie = new Plie(plie);
-                    var validMoves = hands[currentPosition.getCode()].stream().filter(c -> finalPlie.canPlay(c, hands[currentPosition.getCode()])).collect(Collectors.toList());
-                    if (validMoves.isEmpty()) {
-                        throw new RuntimeException("No valid move!");
-                    }
-                    Card randomMove;
-                    if (validMoves.size() == 1) {
-                        randomMove = validMoves.get(0);
-                    } else {
-                        randomMove = validMoves.get(rand.nextInt(validMoves.size()));
-                    }
-                    try {
-                        plie.playCard(randomMove, currentPosition == PlayerPosition.SELF ? this : playersByPosition.get(currentPosition), hands[currentPosition.getCode()]);
-                    } catch (BrokenRuleException e) {
-                        e.printStackTrace();
-                    }
-                    hands[currentPosition.getCode()].remove(randomMove);
-                }
-                plieWinnerPosition = positionsByIds.get(plie.getOwner().getId());
-                if (plieWinnerPosition.ourTeam()) {
-                    gameScore += plie.getScore();
-                    pliesCollected++;
-                } else {
-                    gameScore -= plie.getScore();
-                }
-                plie = new Plie();
-            } while (!hands[0].isEmpty());
-            int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-            gameScore += plieWinnerPosition.ourTeam() ? cinqDeDer : 0;
-            int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
-            if (pliesCollected == 9) {
-                gameScore += match;
-            } else if (pliesCollected == 0) {
-                gameScore -= match;
-            }
-            reward += gameScore;
-        }
-        return (float) reward / numberOfGames;
+        return playStrategy.chooseCard(validCards, gameView, currentPlie, hand, numberOfPliesWonByOwnTeam);
     }
 
     private boolean playedStoeck() {
@@ -517,31 +305,6 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             }
         }
         return true;
-    }
-
-    int chooseBestAtout(boolean canPass) {
-        int bestAtout = Card.COLOR_NONE;
-        float bestScore = -10000;
-        for (int atout = Card.COLOR_SPADE; atout <= Card.COLOR_DIAMOND; atout++) {
-            Card.atout = atout;
-            var announcements = Announcement.findAnouncements(hand);
-            float startScore = announcements.stream().mapToInt(Announcement::getValue).sum();
-            if (atout == Card.COLOR_SPADE) {
-                startScore *= 2;
-            }
-            float maxScore = -10000;
-            for (var card : hand) {
-                float score = evaluateMoveRewardParallel(hand, card, 5 * strength);
-                if (score > maxScore) {
-                    maxScore = score;
-                }
-            }
-            if (startScore + maxScore > bestScore) {
-                bestScore = startScore + maxScore;
-                bestAtout = atout;
-            }
-        }
-        return bestScore < 0 && canPass ? Card.COLOR_NONE : bestAtout;
     }
 
     void waitSec(float seconds) {

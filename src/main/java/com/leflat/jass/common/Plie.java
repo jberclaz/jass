@@ -57,6 +57,10 @@ public class Plie {
         return cards.size();
     }
 
+    public boolean isEmpty() {return cards.isEmpty(); }
+
+    public boolean isFull() { return cards.size() == 4; }
+
     public List<Card> getCards() { return cards; }
 
     public void playCard(Card card, BasePlayer player, List<Card> hand) throws BrokenRuleException {

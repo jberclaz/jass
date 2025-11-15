@@ -79,11 +79,9 @@ public class Team {
             return true;
         }
 
-        if (!(obj instanceof Team)) {
+        if (!(obj instanceof Team t)) {
             return false;
         }
-
-        Team t = (Team) obj;
 
         return t.id == this.id;
     }

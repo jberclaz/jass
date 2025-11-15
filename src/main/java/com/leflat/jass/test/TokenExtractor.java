@@ -2,6 +2,7 @@ package com.leflat.jass.test;
 
 import com.leflat.jass.server.ArtificialPlayer;
 import com.leflat.jass.server.GameController;
+import com.leflat.jass.server.MonteCarloStrategy;
 import com.leflat.jass.server.PlayerLeftExpection;
 
 import java.io.FileNotFoundException;
@@ -13,7 +14,7 @@ public class TokenExtractor {
         game.enableTeamSelection(false);
         game.playKGames(2000);
          for (int i=0; i<4; i++) {
-             var player = new ArtificialPlayer(i, String.valueOf(i), 100, true);
+             var player = new ArtificialPlayer(i, String.valueOf(i), new MonteCarloStrategy(1000), true);
              player.extractTransformersTokens("tokens_file" + i + ".dat");
              game.addPlayer(player);
          }

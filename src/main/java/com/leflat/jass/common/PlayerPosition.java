@@ -38,7 +38,7 @@ public enum PlayerPosition {
         return code % 2 == 0;
     }
 
-    public PlayerPosition add(int steps) {
+    public PlayerPosition next(int steps) {
         // Cannot add steps to an invalid position
         if (this == NONE) {
             return NONE;
@@ -57,8 +57,8 @@ public enum PlayerPosition {
      * @param steps The number of steps to rotate counter-clockwise.
      * @return The new PlayerPosition.
      */
-    public PlayerPosition subtract(int steps) {
-        return add(-steps);
+    public PlayerPosition previous(int steps) {
+        return next(-steps);
     }
 
     /**
@@ -66,13 +66,13 @@ public enum PlayerPosition {
      * Uses the new add() logic.
      */
     public PlayerPosition opposite() {
-        return this.add(2); // Opposite is always 2 steps away
+        return this.next(2); // Opposite is always 2 steps away
     }
 
     /**
      * Static version of opposite().
      */
     public static PlayerPosition opposite(PlayerPosition pos) {
-        return pos.add(2);
+        return pos.next(2);
     }
 }
