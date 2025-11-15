@@ -1,8 +1,7 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.PlayerPosition;
-import com.leflat.jass.common.Plie;
+import com.leflat.jass.client.ClientPlayer;
+import com.leflat.jass.common.*;
 
 import java.util.*;
 import java.util.logging.Logger;
@@ -20,18 +19,35 @@ public class GameView {
     private int opponentGameScore;
     private int ourMatchScore;
     private int opponentMatchScore;
-    private final List<Card> currentTrick = new ArrayList<>();
+    private Plie currentTrick = new Plie();
+
     private PlayerPosition firstToPlayTrick;
     private final List<Plie> lastCompletedTricks = new ArrayList<>();
-    private final Map<Integer, PlayerPosition> positionsByIds = new HashMap<>();
+    final private Map<PlayerPosition, ClientPlayer> players = new HashMap<>();
+    final private Team ourTeam = new Team(0);
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
             knownCardsInHands[p] = new ArrayList<>();
         }
+        Team opponentTeam = new Team(1);
+        for (int i=0; i<4; i++) {
+            var p = new ClientPlayer(i, String.valueOf(i));
+            if (i % 2 == 0) {
+                ourTeam.addPlayer(p);
+            }
+            else {
+                opponentTeam.addPlayer(p);
+            }
+            players.put(PlayerPosition.fromCode(i), p);
+        }
     }
 
-    public void reset(List<Card> ownHand, Map<Integer, PlayerPosition> positionsByIds) {
+    BasePlayer getPlayer(PlayerPosition position) {
+        return players.get(position);
+    }
+
+    public void reset(List<Card> ownHand) {
         unknownCardsInGame.clear();
         for (int p = 0; p < 3; p++) {
             knownCardsInHands[p].clear();
@@ -46,14 +62,31 @@ public class GameView {
         }
         this.ownHand = new ArrayList<>(ownHand);
         assert getNumberCardsInGame() == 27;
-        this.positionsByIds.putAll(positionsByIds);
         ourGameScore = 0;
         opponentGameScore = 0;
         lastCompletedTricks.clear();
-        currentTrick.clear();
+        currentTrick = new Plie();
     }
 
     public void cardPlayed(PlayerPosition position, Card card) {
+        if (currentTrick.isEmpty()) {
+            firstToPlayTrick = position;
+        }
+        try {
+            currentTrick.playCard(card, players.get(position), null);
+        } catch (BrokenRuleException e) {
+            throw new RuntimeException(e);
+        }
+        if (currentTrick.isFull()) {
+            if (currentTrick.getOwner().getTeam() == ourTeam) {
+                ourGameScore += currentTrick.getScore();
+            } else {
+                opponentGameScore += currentTrick.getScore();
+            }
+            lastCompletedTricks.add(currentTrick);
+            currentTrick = new Plie();
+            firstToPlayTrick = null;
+        }
         if (position == PlayerPosition.SELF) {
             ownHand.remove(card);
             return;
@@ -67,10 +100,6 @@ public class GameView {
         }
         handSizes[positionIndex] --;
         assert getNumberCardsInGame() == (previousNumberCardsInGame - 1);
-        if (currentTrick.isEmpty()) {
-            firstToPlayTrick = position;
-        }
-        currentTrick.add(card);
     }
 
     public void playerHasCard(PlayerPosition position, int cardNumber) {
@@ -119,17 +148,6 @@ public class GameView {
         wasTrumpChosenOnFirstTurn = chosenOnFirstTurn;
     }
 
-    public void setCompletedTrick(Plie lastTrick) {
-        lastCompletedTricks.add(lastTrick);
-        var ownerPosition = positionsByIds.get(lastTrick.getOwner().getId());
-        if (ownerPosition.ourTeam()) {
-            ourGameScore += lastTrick.getScore();
-        } else {
-            opponentGameScore += lastTrick.getScore();
-        }
-        currentTrick.clear();
-    }
-
     public void addAnnouncementScore(int score, boolean ourTeam) {
         if (ourTeam) {
             ourGameScore += score;
@@ -162,7 +180,7 @@ public class GameView {
         StringBuilder s = new StringBuilder();
         for (var card : unknownCardsInGame.entrySet()) {
             var prob = card.getValue();
-            s.append(new Card(card.getKey()).toString()).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
+            s.append(new Card(card.getKey())).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
         }
         for (int p = 0; p < 3; p++) {
             if (!knownCardsInHands[p].isEmpty()) {
@@ -306,9 +324,9 @@ public class GameView {
 
         // === 19-24: CURRENT TRICK (≤3 cards → 6 tokens) ===
         tokens.add(Tokens.SECTION_TRICK);
-        int played = currentTrick.size();
+        int played = currentTrick.getSize();
         for (int i = 0; i < played; i++) {
-            Card c = currentTrick.get(i);
+            Card c = currentTrick.getCards().get(i);
             PlayerPosition pos = PlayerPosition.fromCode((firstToPlayTrick.getCode() + i) % 4);
             tokens.add(Tokens.positionToken(pos));
             tokens.add(Tokens.cardToken(c));
@@ -323,7 +341,7 @@ public class GameView {
                 for (var c : trick.getCards()) {
                     tokens.add(c != null ? Tokens.cardToken(c) : Tokens.PAD);
                 }
-                boolean weWon = positionsByIds.get(trick.getOwner().getId()).ourTeam();
+                boolean weWon = trick.getOwner().getTeam() == ourTeam;
                 tokens.add(weWon ? Tokens.WIN_OUR_TEAM : Tokens.WIN_OPP_TEAM);
         }
         for (int i=0; i<(8 - lastCompletedTricks.size()); i++) {
