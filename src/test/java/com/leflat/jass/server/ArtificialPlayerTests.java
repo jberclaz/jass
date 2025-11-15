@@ -103,7 +103,7 @@ public class ArtificialPlayerTests {
         player.setPlayersOrder(Arrays.asList(0, 1, 2, 3));
         player.setHand(buildHand(1, 2, 10, 11, 20, 21, 29, 31, 28));
         assertEquals(player.chooseAtout(true), Card.COLOR_NONE);
-        assertEquals(player.chooseAtout(false), Card.COLOR_CLUB);
+        assertEquals(player.chooseAtout(false), Card.COLOR_DIAMOND);
         player.setHand(buildHand(1, 2, 3, 4, 10, 20, 30, 31, 32));
         assertEquals(player.chooseAtout(true), Card.COLOR_SPADE);
     }
