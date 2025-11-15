@@ -77,7 +77,7 @@ public class GameView {
         } catch (BrokenRuleException e) {
             throw new RuntimeException(e);
         }
-        if (currentTrick.done()) {
+        if (currentTrick.isFull()) {
             if (currentTrick.getOwner().getTeam() == ourTeam) {
                 ourGameScore += currentTrick.getScore();
             } else {

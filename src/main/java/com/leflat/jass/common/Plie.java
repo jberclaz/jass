@@ -59,7 +59,7 @@ public class Plie {
 
     public boolean isEmpty() {return cards.isEmpty(); }
 
-    public boolean done() { return cards.size() == 4; }
+    public boolean isFull() { return cards.size() == 4; }
 
     public List<Card> getCards() { return cards; }
 
