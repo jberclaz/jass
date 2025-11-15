@@ -8,7 +8,7 @@ import java.util.List;
  * An interface representing a card-playing strategy (policy)
  * for an ArtificialPlayer.
  */
-public interface IJassPolicy {
+public interface IJassStrategy {
     /**
      * Chooses a card to play.
      *

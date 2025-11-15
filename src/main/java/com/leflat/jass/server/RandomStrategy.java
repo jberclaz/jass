@@ -1,13 +1,13 @@
 package com.leflat.jass.server;
 
 import com.leflat.jass.common.Card;
-import com.leflat.jass.common.IJassPolicy;
+import com.leflat.jass.common.IJassStrategy;
 import com.leflat.jass.common.Plie;
 
 import java.util.List;
 import java.util.Random;
 
-public class RandomPolicy implements IJassPolicy {
+public class RandomStrategy implements IJassStrategy {
     private final Random rand = new Random();
 
     @Override

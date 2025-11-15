@@ -25,7 +25,7 @@ public class ArtificialPlayerTests {
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
-        player = new ArtificialPlayer(1, "name", 10, true);
+        player = new ArtificialPlayer(1, "name", new MonteCarloStrategy(10), true);
         playersPositionField = ArtificialPlayer.class.getDeclaredField("positionsByIds");
         playersPositionField.setAccessible(true);
         gameViewField = ArtificialPlayer.class.getDeclaredField("gameView");
@@ -37,7 +37,7 @@ public class ArtificialPlayerTests {
         playersPosition = (Map<Integer, PlayerPosition>) playersPositionField.get(player);
         gameView = (GameView) gameViewField.get(player);
         hand = (List<Card>) handField.get(player);
-        otherPlayer = new ArtificialPlayer(2, "Pischus", 10, true);
+        otherPlayer = new ArtificialPlayer(2, "Pischus", new MonteCarloStrategy(10), true);
         Field unknownCardsInGameField = GameView.class.getDeclaredField("unknownCardsInGame");
         Field knownCardsInHandsField = GameView.class.getDeclaredField("knownCardsInHands");
         unknownCardsInGameField.setAccessible(true);
@@ -94,7 +94,7 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_choose_atout() throws PlayerLeftExpection {
-        var player = new ArtificialPlayer(1, "AI", 100, true);
+        var player = new ArtificialPlayer(1, "AI", new MonteCarloStrategy(100), true);
         var thirdPlayer = new ArtificialPlayer(3, "GC");
         var fourthPlayer = new ArtificialPlayer(0, "Mono");
         player.setPlayerInfo(otherPlayer);
@@ -177,6 +177,12 @@ public class ArtificialPlayerTests {
     public void test_get_announcements() throws PlayerLeftExpection {
         var secondPlayer = new ArtificialPlayer(0, "Wein");
         var fourthPlayer = new ArtificialPlayer(3, "Hhip");
+        var team1 = new Team(0);
+        var team2 = new Team(1);
+        team1.addPlayer(player);
+        team1.addPlayer(secondPlayer);
+        team2.addPlayer(fourthPlayer);
+        team2.addPlayer(otherPlayer);
         player.setPlayerInfo(secondPlayer);
         player.setPlayerInfo(otherPlayer);
         player.setPlayerInfo(fourthPlayer);

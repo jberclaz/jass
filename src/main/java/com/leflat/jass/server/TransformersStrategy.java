@@ -1,16 +1,20 @@
 package com.leflat.jass.server;
 
 import com.leflat.jass.common.Card;
-import com.leflat.jass.common.IJassPolicy;
+import com.leflat.jass.common.IJassStrategy;
 import com.leflat.jass.common.Plie;
 
 import java.util.List;
 
-public class TransformersPolicy implements IJassPolicy {
+public class TransformersStrategy implements IJassStrategy {
     private final JassModelLoader modelLoader;
-    private final IJassPolicy atoutFallbackPolicy; // For choosing atout
+    private final IJassStrategy atoutFallbackPolicy; // For choosing atout
 
-    public TransformersPolicy(String modelPath, IJassPolicy atoutFallbackPolicy) {
+    public TransformersStrategy() {
+        this(TransformersStrategy.class.getClassLoader().getResource("model/jassformer.onnx").getPath(), new MonteCarloStrategy(1000));
+    }
+
+    public TransformersStrategy(String modelPath, IJassStrategy atoutFallbackPolicy) {
         JassModelLoader loader = null;
         try {
             loader = new JassModelLoader(modelPath);

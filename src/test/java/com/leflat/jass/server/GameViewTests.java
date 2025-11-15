@@ -33,7 +33,7 @@ public class GameViewTests {
         handSizes = (int[]) handSizesField.get(gameView);
         unknownCardsInGame = (Map<Integer, Float[]>) unknownCardsInGameField.get(gameView);
         knownCardsInHands = (List<Card>[]) knownCardsInHandsField.get(gameView);
-        gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17), new HashMap<>());
+        gameView.reset(buildHand(1, 3, 5, 7, 9, 11, 13, 15, 17));
     }
 
     @Test
@@ -169,16 +169,16 @@ public class GameViewTests {
         assertFalse(hands[2].contains(new Card(22)));
     }
 
-      @Test
+    @Test
     public void test_encode_state_for_transformers() {
         gameView.setTrump(PlayerPosition.ACROSS, true);
         gameView.cardPlayed(PlayerPosition.ACROSS, new Card(30));
         gameView.cardPlayed(PlayerPosition.LEFT, new Card(20));
         gameView.playerHasCard(PlayerPosition.RIGHT, 31);
-          gameView.playerHasCard(PlayerPosition.ACROSS, 32);
-          gameView.playerHasCard(PlayerPosition.LEFT, 33);
-          gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 12);
+        gameView.playerHasCard(PlayerPosition.ACROSS, 32);
+        gameView.playerHasCard(PlayerPosition.LEFT, 33);
+        gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 12);
         var tokens = gameView.encodeStateForTransformer();
         assertEquals(95, tokens.length);
-      }
+    }
 }

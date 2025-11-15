@@ -1,8 +1,6 @@
 package com.leflat.jass.test;
 
-import com.leflat.jass.server.ArtificialPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.server.*;
 
 import java.io.FileNotFoundException;
 
@@ -11,11 +9,10 @@ public class AiTester {
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
-        game.playKGames(100);
+        game.playKGames(10);
         for (int i = 0; i < 4; i++) {
-            int strength = i % 2 == 0 ? 100 : -1;
             String name = i % 2 == 0 ? "mc-" + i : "nn-" + i;
-            var player = new ArtificialPlayer(i, name, strength, true);
+            var player = new ArtificialPlayer(i, name, i % 2 == 0 ? new MonteCarloStrategy(1000) : new TransformersStrategy(), true);
             player.extractTransformersTokens("tokens_file" + i + ".dat");
             game.addPlayer(player);
         }
