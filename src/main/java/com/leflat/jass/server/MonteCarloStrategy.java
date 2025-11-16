@@ -73,7 +73,7 @@ public class MonteCarloStrategy implements IJassStrategy {
                 bestAtout = atout;
             }
         }
-        return bestScore < 0 && first ? Card.COLOR_NONE : bestAtout;
+        return bestScore < 80 && first ? Card.COLOR_NONE : bestAtout;
     }
 
     // --- All private MC logic is now contained within this class ---
@@ -94,11 +94,10 @@ public class MonteCarloStrategy implements IJassStrategy {
             try {
                 plie.playCard(move, gameView.getPlayer(PlayerPosition.SELF), hands[0]);
             } catch (BrokenRuleException e) {
-                e.printStackTrace();
+                throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
             }
             hands[0].remove(move);
             int gameScore = 0;
-            boolean weWonLastPlie;
             do {
                 while (plie.getSize() < 4) {
                     var currentPosition = startPosition.next(plie.getSize());
@@ -109,19 +108,19 @@ public class MonteCarloStrategy implements IJassStrategy {
                     }
                     Card randomMove;
                     if (validMoves.size() == 1) {
-                        randomMove = validMoves.get(0);
+                        randomMove = validMoves.getFirst();
                     } else {
                         randomMove = validMoves.get(rand.nextInt(validMoves.size()));
                     }
                     try {
                         plie.playCard(randomMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
                     } catch (BrokenRuleException e) {
-                        e.printStackTrace();
+                        throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
                     }
                     hands[currentPosition.getCode()].remove(randomMove);
                 }
-                weWonLastPlie = plie.getOwner().getTeam().getId() == OUR_TEAM_ID;
-                if (weWonLastPlie) {
+                startPosition = startPosition.next(plie.getWinningIndex());
+                if (startPosition.ourTeam()) {
                     gameScore += plie.getScore();
                     pliesCollected++;
                 } else {
@@ -130,7 +129,7 @@ public class MonteCarloStrategy implements IJassStrategy {
                 plie = new Plie();
             } while (!hands[0].isEmpty());
             int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-            gameScore += weWonLastPlie ? cinqDeDer : 0;
+            gameScore += startPosition.ourTeam() ? cinqDeDer : -cinqDeDer;
             int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
             if (pliesCollected == 9) {
                 gameScore += match;
@@ -160,12 +159,12 @@ public class MonteCarloStrategy implements IJassStrategy {
             final int batchStart = start;
             final int batchEnd = Math.min(start + batchSize, numberOfGames);
             executor.submit(() -> {
-                int pliesCollected = numberOfPliesWonByOwnTeam;
                 List<Card>[] hands = new List[4];
                 int localReward = 0;
                 ThreadLocalRandom localRand = ThreadLocalRandom.current();  // Thread-safe random
 
                 for (int game = batchStart; game < batchEnd; game++) {
+                    int pliesCollected = numberOfPliesWonByOwnTeam;
                     hands[0] = new ArrayList<>(hand);
                     int i = 1;
                     for (var h : gameView.getRandomHands()) {
@@ -176,25 +175,23 @@ public class MonteCarloStrategy implements IJassStrategy {
                     try {
                         plie.playCard(move, gameView.getPlayer(PlayerPosition.SELF), hands[0]); // Use 'self'
                     } catch (BrokenRuleException e) {
-                        e.printStackTrace();
-                        continue;  // Skip bad sim
+                        throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
                     }
                     hands[0].remove(move);
                     int gameScore = 0;
-                    boolean weWonLastPlie;
                     do {
                         while (plie.getSize() < 4) {
                             var currentPosition = startPosition.next(plie.getSize());
                             final var finalPlie = new Plie(plie);
                             var validMoves = hands[currentPosition.getCode()].stream()
                                     .filter(c -> finalPlie.canPlay(c, hands[currentPosition.getCode()]))
-                                    .collect(Collectors.toList());
+                                    .toList();
                             if (validMoves.isEmpty()) {
                                 throw new RuntimeException("No valid move!");
                             }
                             Card randomMove;
                             if (validMoves.size() == 1) {
-                                randomMove = validMoves.get(0);
+                                randomMove = validMoves.getFirst();
                             } else {
                                 randomMove = validMoves.get(localRand.nextInt(validMoves.size()));
                             }
@@ -202,13 +199,13 @@ public class MonteCarloStrategy implements IJassStrategy {
                                 // Use 'self' and 'playersByPosition'
                                 plie.playCard(randomMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
                             } catch (BrokenRuleException e) {
-                                e.printStackTrace();
-                                break;  // Skip bad trick
+                                throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
                             }
                             hands[currentPosition.getCode()].remove(randomMove);
                         }
-                        weWonLastPlie = plie.getOwner().getTeam().getId() == OUR_TEAM_ID;
-                        if (weWonLastPlie) {
+                        // the trick's owner gets to start the next trick
+                        startPosition = startPosition.next(plie.getWinningIndex());
+                        if (startPosition.ourTeam()) {
                             gameScore += plie.getScore();
                             pliesCollected++;
                         } else {
@@ -217,7 +214,7 @@ public class MonteCarloStrategy implements IJassStrategy {
                         plie = new Plie();
                     } while (!hands[0].isEmpty());
                     int cinqDeDer = Card.atout == Card.COLOR_SPADE ? 10 : 5;
-                    gameScore += weWonLastPlie ? cinqDeDer : 0;
+                    gameScore += startPosition.ourTeam() ? cinqDeDer : -cinqDeDer;
                     int match = Card.atout == Card.COLOR_SPADE ? 200 : 100;
                     if (pliesCollected == 9) {
                         gameScore += match;
