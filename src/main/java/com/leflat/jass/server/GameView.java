@@ -292,7 +292,7 @@ public class GameView {
                 .toList();
     }
 
-    public byte[] encodeStateForTransformer() {
+    public byte[] getTransformersTokensForCardChoice() {
         List<Integer> tokens = new ArrayList<>();
 
         // === 0: CLS ===
@@ -300,6 +300,7 @@ public class GameView {
 
         // === 1-9: GLOBALS (9 tokens) ===
         tokens.add(Tokens.SECTION_GLOBALS);
+        tokens.add(Tokens.CHOOSE_NEXT_CARD);
 
         // Trump signal triplet: [TYPE] [PLAYER] [COLOR]
         tokens.add(wasTrumpChosenOnFirstTurn ? Tokens.TRUMP_FIRST_CHOICE : Tokens.TRUMP_FORCED);  // 2
@@ -312,7 +313,7 @@ public class GameView {
         tokens.add(Tokens.globalScoreToken(ourMatchScore));                   // 7
         tokens.add(Tokens.globalScoreToken(opponentMatchScore));                 // 8
 
-        assert tokens.size() == 9;
+        assert tokens.size() == 10;
         // === 9-18: HAND (9 cards + pad) ===
         tokens.add(Tokens.SECTION_HAND);
         List<Card> sorted = new ArrayList<>(ownHand);
@@ -320,7 +321,7 @@ public class GameView {
         for (int i = 0; i < 9; i++) {
             tokens.add(i < sorted.size() ? Tokens.cardToken(sorted.get(i)) : Tokens.PAD);
         }
-        assert tokens.size() == 19;
+        assert tokens.size() == 20;
 
         // === 19-24: CURRENT TRICK (≤3 cards → 6 tokens) ===
         tokens.add(Tokens.SECTION_TRICK);
@@ -331,9 +332,9 @@ public class GameView {
             tokens.add(Tokens.positionToken(pos));
             tokens.add(Tokens.cardToken(c));
         }
-        while (tokens.size() < 26) tokens.add(Tokens.PAD);  // pad to 6
+        while (tokens.size() < 27) tokens.add(Tokens.PAD);  // pad to 6
 
-        assert tokens.size() == 26;
+        assert tokens.size() == 27;
 
         // === 25-64: HISTORY (5 tricks × 5 tokens = 40) ===
         tokens.add(Tokens.SECTION_HISTORY);
@@ -348,7 +349,7 @@ public class GameView {
             for (int j = 0; j < 5; j++) tokens.add(Tokens.PAD);
         }
 
-        assert tokens.size() == 67;
+        assert tokens.size() == 68;
 
         // === 65-94: BELIEF (10 × 3 = 30 tokens) ===
         tokens.add(Tokens.SECTION_BELIEF);
@@ -373,7 +374,7 @@ public class GameView {
                 tokens.add(Tokens.PAD);
             }
         }
-        assert tokens.size() == 95;
+        assert tokens.size() == 96;
         byte[] result = new byte[tokens.size()];
         for (int i = 0; i < tokens.size(); i++) {
             result[i] = (byte) (tokens.get(i) & 0xFF);
@@ -381,5 +382,53 @@ public class GameView {
         return result;
     }
 
+    public byte[] getTransformersTokensForTrumpChoice(boolean firstToChoose) {
+        List<Integer> tokens = new ArrayList<>();
 
+        // === 0: CLS ===
+        tokens.add(Tokens.CLS);
+
+        // === 1-9: GLOBALS (9 tokens) ===
+        tokens.add(Tokens.SECTION_GLOBALS);
+        tokens.add(Tokens.CHOOSE_TRUMP_SUIT);
+
+        // Trump signal triplet: [TYPE] [PLAYER] [COLOR]
+        tokens.add(firstToChoose ? Tokens.TRUMP_FIRST_CHOICE : Tokens.TRUMP_FORCED);  // 2
+        tokens.add(Tokens.positionToken(PlayerPosition.SELF));
+        tokens.add(Tokens.PAD);
+
+        // Scores — pure positional
+        tokens.add(Tokens.scoreToken(ourGameScore));                              // 5
+        tokens.add(Tokens.scoreToken(opponentGameScore));                            // 6
+        tokens.add(Tokens.globalScoreToken(ourMatchScore));                   // 7
+        tokens.add(Tokens.globalScoreToken(opponentMatchScore));                 // 8
+
+        assert tokens.size() == 10;
+
+        // === 9-18: HAND (9 cards + pad) ===
+        tokens.add(Tokens.SECTION_HAND);
+        List<Card> sorted = new ArrayList<>(ownHand);
+        sorted.sort(Comparator.comparingInt(Card::getNumber));
+        for (int i = 0; i < 9; i++) {
+            tokens.add(i < sorted.size() ? Tokens.cardToken(sorted.get(i)) : Tokens.PAD);
+        }
+        assert tokens.size() == 20;
+
+        tokens.add(Tokens.SECTION_TRICK);
+        while (tokens.size() < 27) tokens.add(Tokens.PAD);  // pad to 6
+
+        tokens.add(Tokens.SECTION_HISTORY);
+        while (tokens.size() < 68) tokens.add(Tokens.PAD);  // pad to 6
+
+        // === 65-94: BELIEF (10 × 3 = 30 tokens) ===
+        tokens.add(Tokens.SECTION_BELIEF);
+        while (tokens.size() < 96) tokens.add(Tokens.PAD);
+        assert tokens.size() == 96;
+
+        byte[] result = new byte[tokens.size()];
+        for (int i = 0; i < tokens.size(); i++) {
+            result[i] = (byte) (tokens.get(i) & 0xFF);
+        }
+        return result;
+    }
 }

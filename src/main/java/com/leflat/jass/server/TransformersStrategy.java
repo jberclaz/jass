@@ -38,7 +38,7 @@ public class TransformersStrategy implements IJassStrategy {
             return atoutFallbackPolicy.chooseCard(validCards, gameView, currentPlie, hand, pliesWon);
         }
 
-        byte[] tokens = gameView.encodeStateForTransformer();
+        byte[] tokens = gameView.getTransformersTokensForCardChoice();
         float[] logits = modelLoader.predict(tokens);
         Card bestCard = modelLoader.chooseBestCard(logits, validCards);
 

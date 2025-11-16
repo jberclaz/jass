@@ -12,9 +12,9 @@ public class TokenExtractor {
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
-        game.playKGames(2000);
+        game.playKGames(20);
          for (int i=0; i<4; i++) {
-             var player = new ArtificialPlayer(i, String.valueOf(i), new MonteCarloStrategy(1000), true);
+             var player = new ArtificialPlayer(i, String.valueOf(i), new MonteCarloStrategy(100), true);
              player.extractTransformersTokens("tokens_file" + i + ".dat");
              game.addPlayer(player);
          }

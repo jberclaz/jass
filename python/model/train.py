@@ -112,14 +112,27 @@ def train():
 
             for tokens, action in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
                 step += 1
+                phase = tokens[2]
+                trump_choice_turn = tokens[3]
                 tokens = tokens.to(device)
                 action = action.to(device)
 
-                #legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
-                legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
+                if phase == 125: # play
+                    legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
+                    trump_legal_mask = torch.tensor([False]*5)
+                else:  # choose trump suit
+                    legal_mask = torch.tensor([False]*36)
+                    if trump_choice_turn == 50:  # first turn
+                        trump_legal_mask = torch.tensor([True]*5)
+                    else:
+                        trump_legal_mask = torch.tensor([True, True, True, True, False])
 
-                log_probs = model(tokens, legal_mask)
-                loss = F.nll_loss(log_probs, action)
+                card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask)
+
+                if phase == 125:
+                    loss = F.nll_loss(card_log_probs, action)
+                else:
+                    loss = F.nll_loss(trump_log_probs, action)
 
                 optimizer.zero_grad()
                 loss.backward()

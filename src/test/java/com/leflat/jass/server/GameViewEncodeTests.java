@@ -17,7 +17,6 @@ import java.util.List;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.mockito.Mockito.when;
 
 /**
  * Unit tests for the GameView class, focusing on encodeStateForTransformer.
@@ -89,7 +88,7 @@ public class GameViewEncodeTests {
         // Arrange (Setup is already initial state)
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         // Total size
@@ -153,7 +152,7 @@ public class GameViewEncodeTests {
         }
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         assertEquals(Tokens.SECTION_HAND, tokens[9]);
@@ -175,7 +174,7 @@ public class GameViewEncodeTests {
         gameView.cardPlayed(PlayerPosition.ACROSS, new Card(11)); // Partner
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         assertEquals(Tokens.SECTION_TRICK, tokens[19]);
@@ -200,7 +199,7 @@ public class GameViewEncodeTests {
         }
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         assertEquals(Tokens.SECTION_HISTORY, tokens[26]);
@@ -230,7 +229,7 @@ public class GameViewEncodeTests {
         gameView.playerHasCard(PlayerPosition.LEFT, new Card(32)); // OppL (Pos 3, idx 2) has Card 32
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         assertEquals(Tokens.SECTION_BELIEF, tokens[67]);
@@ -277,7 +276,7 @@ public class GameViewEncodeTests {
         gameView.playerDoesNotHaveCard(PlayerPosition.LEFT, new Card(25));
 
         // Act
-        int[] tokens = toIntArray(gameView.encodeStateForTransformer());
+        int[] tokens = toIntArray(gameView.getTransformersTokensForCardChoice());
 
         // Assert
         assertEquals(Tokens.SECTION_BELIEF, tokens[67]);

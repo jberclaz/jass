@@ -108,7 +108,20 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
 
     @Override
     public int chooseAtout(boolean first) {
-        return playStrategy.chooseTrumpSuit(first, hand, gameView);
+        byte[] tokens = new byte[0];
+        if (tokensDos != null) {
+            tokens = gameView.getTransformersTokensForTrumpChoice(first);
+        }
+        var trumpSuit = playStrategy.chooseTrumpSuit(first, hand, gameView);
+        if (tokensDos != null) {
+            try {
+                tokensDos.write(tokens);
+                tokensDos.write((byte)trumpSuit);
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return trumpSuit;
     }
 
     @Override
@@ -128,7 +141,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         long startTime = System.currentTimeMillis();
         byte[] tokens = new byte[0];
         if (tokensDos != null) {
-            tokens = gameView.encodeStateForTransformer();
+            tokens = gameView.getTransformersTokensForCardChoice();
         }
         playedCard = chooseBestCard();
         try {

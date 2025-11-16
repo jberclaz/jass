@@ -74,4 +74,7 @@ public class Tokens {
     // ── Trick state ───────────────────────────────────────
     public static final int WIN_OUR_TEAM = 123;
     public static final int WIN_OPP_TEAM = 124;
+
+    public static final int CHOOSE_NEXT_CARD = 125;
+    public static final int CHOOSE_TRUMP_SUIT = 126;
 }

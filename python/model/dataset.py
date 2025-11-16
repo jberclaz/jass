@@ -5,8 +5,8 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset
 
-SAMPLE_LENGTH = 96
-TOKEN_LENGTH = 95
+SAMPLE_LENGTH = 97
+TOKEN_LENGTH = 96
 VOCABULARY_SIZE = 128
 
 

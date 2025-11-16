@@ -2,12 +2,10 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.Card;
 import com.leflat.jass.common.PlayerPosition;
-import com.leflat.jass.common.Plie;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Field;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -178,7 +176,7 @@ public class GameViewTests {
         gameView.playerHasCard(PlayerPosition.ACROSS, 32);
         gameView.playerHasCard(PlayerPosition.LEFT, 33);
         gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 12);
-        var tokens = gameView.encodeStateForTransformer();
+        var tokens = gameView.getTransformersTokensForCardChoice();
         assertEquals(95, tokens.length);
     }
 }

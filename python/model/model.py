@@ -17,18 +17,22 @@ class JassFormer(nn.Module):
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.policy_head = nn.Linear(d_model, 36)  # 36 cards
+        self.trump_head = nn.Linear(d_model, 5)  # 4 suits + pass
 
-    def forward(self, x, legal_mask=None):
+    def forward(self, x, legal_mask=None, trump_legal_mask=None):
         x = self.embedding(x) + self.pos_embedding
         x = self.transformer(x)
 
         cls = x[:, 0]  # [CLS] token
         logits = self.policy_head(cls)  # [B, 36]
+        trump_logits = self.trump_head(cls)
 
         if legal_mask is not None:
             logits = logits.masked_fill(~legal_mask, -1e9)
+        if trump_legal_mask is not None:
+            trump_logits = trump_logits.masked_fill(~trump_legal_mask, -1e9)
 
-        return F.log_softmax(logits, dim=-1)
+        return F.log_softmax(logits, dim=-1), F.log_softmax(trump_logits, dim=-1)
 
 
 class JassFormerActorCritic(nn.Module):
