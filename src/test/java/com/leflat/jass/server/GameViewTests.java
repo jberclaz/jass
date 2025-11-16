@@ -177,6 +177,6 @@ public class GameViewTests {
         gameView.playerHasCard(PlayerPosition.LEFT, 33);
         gameView.playerDoesNotHaveCard(PlayerPosition.ACROSS, 12);
         var tokens = gameView.getTransformersTokensForCardChoice();
-        assertEquals(95, tokens.length);
+        assertEquals(96, tokens.length);
     }
 }
