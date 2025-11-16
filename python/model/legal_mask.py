@@ -12,21 +12,24 @@ def get_legal_mask(hand_tokens):
 
 
 def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
-    trump = tokens[4] - 56
-    hand_tokens = tokens[10:19]
+    phase = tokens[2]
+    if phase == 126:
+        return torch.zeros(36, dtype=torch.bool)
+    trump = tokens[5] - 56
+    hand_tokens = tokens[11:20]
     valid = hand_tokens != 0
     card_ids = hand_tokens[valid] - 10
 
     mask = torch.zeros(36, dtype=torch.bool)
     mask[card_ids] = True
-    if tokens[21] == 0:
+    if tokens[22] == 0:
         # first card to play, anything is legal
         return mask
 
-    leading_trick_suit = (tokens[21] - 10) // 9
+    leading_trick_suit = (tokens[22] - 10) // 9
     cut = False
     highest_cut_rank = -1
-    for t in (23, 25):
+    for t in (24, 26):
         if tokens[t] == 0:
             break
         card_suit = (tokens[t] - 10) // 9
@@ -73,13 +76,15 @@ def get_legal_mask_with_rules_batch(tokens: torch.Tensor) -> torch.Tensor:
     B = tokens.shape[0]
     device = tokens.device
 
+    is_card_play_phase = (tokens[:, 2] == 125).unsqueeze(1)
+
     # 1. Get trump suit
     # Shape: (B, 1) for broadcasting
-    trump = tokens[:, 4].sub(56).unsqueeze(1)
+    trump = tokens[:, 5].sub(56).unsqueeze(1)
 
     # 2. Get hand cards
     # Shape: (B, 9)
-    hand_tokens = tokens[:, 10:19]
+    hand_tokens = tokens[:, 11:20]
     valid = hand_tokens != 0
     # card_ids can be -10 for invalid/empty slots
     card_ids = hand_tokens.sub(10)
@@ -99,17 +104,17 @@ def get_legal_mask_with_rules_batch(tokens: torch.Tensor) -> torch.Tensor:
 
     # 4. Check if first player to play
     # Shape: (B, 1)
-    is_first_player = (tokens[:, 21] == 0).unsqueeze(1)
+    is_first_player = (tokens[:, 22] == 0).unsqueeze(1)
 
     # --- All logic below is for non-first players ---
     # We compute it for everyone, then use torch.where at the end.
 
     # 5. Get trick state
     # Shape: (B, 1)
-    leading_trick_suit = (tokens[:, 21] - 10).div(9, rounding_mode='floor').unsqueeze(1)
+    leading_trick_suit = (tokens[:, 22] - 10).div(9, rounding_mode='floor').unsqueeze(1)
 
     # Shape: (B, 2)
-    trick_cards = tokens[:, [23, 25]]
+    trick_cards = tokens[:, [24, 26]]
     trick_valid = trick_cards != 0
     trick_card_ids = trick_cards.sub(10)
     trick_suits = trick_card_ids.div(9, rounding_mode='floor')
@@ -187,6 +192,69 @@ def get_legal_mask_with_rules_batch(tokens: torch.Tensor) -> torch.Tensor:
     # 9. Final selection
     # If first_player, use the simple 'base_hand_mask'.
     # Otherwise, use the 'complex_legal_mask' we just built.
-    final_mask = torch.where(is_first_player, base_hand_mask, complex_legal_mask)
+    card_play_mask = torch.where(is_first_player, base_hand_mask, complex_legal_mask)
+
+    # Create an all-false mask for the trump choice phase
+    all_false_mask = torch.zeros((B, 36), dtype=torch.bool, device=device)
+
+    # If it's the card play phase, use the mask we just calculated.
+    # Otherwise (it's trump choice phase), use the all-false mask.
+    final_mask = torch.where(is_card_play_phase, card_play_mask, all_false_mask)
+
+    return final_mask
+
+
+def get_trump_mask_batch(tokens: torch.Tensor) -> torch.Tensor:
+    """
+    Calculates the legal trump choice mask for a batch of game states.
+    Output shape is (B, 5).
+
+    This mask is all False if in "card play" phase (token[2] == 125).
+    If in "trump choice" phase (token[2] == 126):
+        - If token[3] == 50 (first turn): Returns all True [T, T, T, T, T]
+        - If token[3] == 51 (second turn): Returns [T, T, T, T, F] (cannot pass)
+
+    Args:
+        tokens: A (B, L) tensor, where B is batch_size and L is token_length.
+
+    Returns:
+        A (B, 5) boolean tensor, where True indicates a legal trump choice.
+    """
+    B = tokens.shape[0]
+    device = tokens.device
+
+    # Get relevant tokens
+    # Shape: (B,)
+    phase = tokens[:, 2]
+    trump_turn = tokens[:, 3]
+
+    # --- Define possible masks ---
+
+    # 1. Mask for Phase 1 (Card Play): All False
+    # Shape: (B, 5)
+    all_false_mask = torch.zeros((B, 5), dtype=torch.bool, device=device)
+
+    # 2. Mask for Phase 2 (Trump Choice), Turn 1 (token[3] == 50): All True
+    # Shape: (B, 5)
+    all_true_mask = torch.ones((B, 5), dtype=torch.bool, device=device)
+
+    # 3. Mask for Phase 2 (Trump Choice), Turn 2 (token[3] == 51): [T, T, T, T, F]
+    # Assumes the 5th option is "pass"
+    # Shape: (B, 5)
+    no_pass_mask = torch.tensor([True, True, True, True, False],
+                                dtype=torch.bool, device=device).expand(B, -1)
+
+    # --- Select the correct mask based on conditions ---
+
+    # Conditions (broadcastable to (B, 1))
+    is_phase_2 = (phase == 126).unsqueeze(1)
+    is_turn_1 = (trump_turn == 50).unsqueeze(1)
+
+    # 1. First, determine the correct mask *if* we are in Phase 2
+    # If it's turn 1, use all_true. Otherwise (assume turn 2), use no_pass.
+    phase_2_mask = torch.where(is_turn_1, all_true_mask, no_pass_mask)
+
+    # 2. Now, choose between the Phase 2 mask and the Phase 1 (all_false) mask
+    final_mask = torch.where(is_phase_2, phase_2_mask, all_false_mask)
 
     return final_mask
