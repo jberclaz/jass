@@ -16,6 +16,7 @@ import java.util.stream.Collectors;
 public class MonteCarloStrategy implements IJassStrategy {
     private final int strength;
     private final Random rand = new Random();
+    private final HeuristicStrategy heuristicStrategy =new HeuristicStrategy();
 
     public MonteCarloStrategy(int strength) {
         this.strength = strength;
@@ -105,18 +106,18 @@ public class MonteCarloStrategy implements IJassStrategy {
                     if (validMoves.isEmpty()) {
                         throw new RuntimeException("No valid move!");
                     }
-                    Card randomMove;
+                    Card nextMove;
                     if (validMoves.size() == 1) {
-                        randomMove = validMoves.getFirst();
+                        nextMove = validMoves.getFirst();
                     } else {
-                        randomMove = validMoves.get(rand.nextInt(validMoves.size()));
+                        nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
                     }
                     try {
-                        plie.playCard(randomMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
+                        plie.playCard(nextMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
                     } catch (BrokenRuleException e) {
                         throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
                     }
-                    hands[currentPosition.getCode()].remove(randomMove);
+                    hands[currentPosition.getCode()].remove(nextMove);
                 }
                 startPosition = startPosition.next(plie.getWinningIndex());
                 if (startPosition.ourTeam()) {
@@ -188,19 +189,19 @@ public class MonteCarloStrategy implements IJassStrategy {
                             if (validMoves.isEmpty()) {
                                 throw new RuntimeException("No valid move!");
                             }
-                            Card randomMove;
+                            Card nextMove;
                             if (validMoves.size() == 1) {
-                                randomMove = validMoves.getFirst();
+                                nextMove = validMoves.getFirst();
                             } else {
-                                randomMove = validMoves.get(localRand.nextInt(validMoves.size()));
+                                nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
                             }
                             try {
                                 // Use 'self' and 'playersByPosition'
-                                plie.playCard(randomMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
+                                plie.playCard(nextMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
                             } catch (BrokenRuleException e) {
                                 throw new RuntimeException("Broken rule in MC simulation: " + e.getBrokenRule());
                             }
-                            hands[currentPosition.getCode()].remove(randomMove);
+                            hands[currentPosition.getCode()].remove(nextMove);
                         }
                         // the trick's owner gets to start the next trick
                         startPosition = startPosition.next(plie.getWinningIndex());

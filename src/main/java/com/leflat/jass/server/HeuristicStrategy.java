@@ -37,7 +37,7 @@ public class HeuristicStrategy implements IJassStrategy {
      * @param validMoves  The list of legal cards to play.
      * @return The chosen card.
      */
-    private Card chooseHeuristicMove(Plie plie, List<Card> validMoves) {
+    public Card chooseHeuristicMove(Plie plie, List<Card> validMoves) {
         // Sort moves from lowest power to highest power.
         // This makes finding the "cheapest" card easy.
         List<Card> sortedMoves = new ArrayList<>(validMoves);
@@ -45,7 +45,7 @@ public class HeuristicStrategy implements IJassStrategy {
         sortedMoves.sort(Comparator.comparingInt(Card::getRank));
 
         // Rule 2: Leading a new trick.
-        if (plie.getSize() == 0) {
+        if (plie.isEmpty()) {
             // **** MODIFICATION: New "Lead" logic ****
             // Try to lead with the highest-power non-trump card.
             Card bestNonTrumpLead = null;
