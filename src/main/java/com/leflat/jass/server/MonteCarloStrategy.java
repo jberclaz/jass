@@ -16,7 +16,6 @@ import java.util.stream.Collectors;
 public class MonteCarloStrategy implements IJassStrategy {
     private final int strength;
     private final Random rand = new Random();
-    private static final int OUR_TEAM_ID = 0;
 
     public MonteCarloStrategy(int strength) {
         this.strength = strength;
@@ -99,7 +98,7 @@ public class MonteCarloStrategy implements IJassStrategy {
             hands[0].remove(move);
             int gameScore = 0;
             do {
-                while (plie.getSize() < 4) {
+                while (!plie.isFull()) {
                     var currentPosition = startPosition.next(plie.getSize());
                     final var finalPlie = new Plie(plie);
                     var validMoves = hands[currentPosition.getCode()].stream().filter(c -> finalPlie.canPlay(c, hands[currentPosition.getCode()])).collect(Collectors.toList());
@@ -180,7 +179,7 @@ public class MonteCarloStrategy implements IJassStrategy {
                     hands[0].remove(move);
                     int gameScore = 0;
                     do {
-                        while (plie.getSize() < 4) {
+                        while (!plie.isFull()) {
                             var currentPosition = startPosition.next(plie.getSize());
                             final var finalPlie = new Plie(plie);
                             var validMoves = hands[currentPosition.getCode()].stream()

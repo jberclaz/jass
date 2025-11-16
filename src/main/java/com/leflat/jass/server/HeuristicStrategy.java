@@ -24,6 +24,7 @@ public class HeuristicStrategy implements IJassStrategy {
             long count = entry.getValue();
             if (count > highestCount) {
                 bestSuit = entry.getKey();
+                highestCount = (int)count;
             }
         }
         return bestSuit;
