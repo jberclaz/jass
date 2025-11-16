@@ -110,7 +110,8 @@ public class MonteCarloStrategy implements IJassStrategy {
                     if (validMoves.size() == 1) {
                         nextMove = validMoves.getFirst();
                     } else {
-                        nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
+                        nextMove = validMoves.get(rand.nextInt(validMoves.size()));
+                        // nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
                     }
                     try {
                         plie.playCard(nextMove, gameView.getPlayer(currentPosition), hands[currentPosition.getCode()]);
@@ -193,7 +194,8 @@ public class MonteCarloStrategy implements IJassStrategy {
                             if (validMoves.size() == 1) {
                                 nextMove = validMoves.getFirst();
                             } else {
-                                nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
+                                nextMove = validMoves.get(localRand.nextInt(validMoves.size()));
+                                // nextMove = heuristicStrategy.chooseHeuristicMove(plie, validMoves);
                             }
                             try {
                                 // Use 'self' and 'playersByPosition'
