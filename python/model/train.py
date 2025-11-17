@@ -39,12 +39,40 @@ def evaluate(val_loader, model, device) -> float:
         for tokens, action in tqdm(val_loader, desc="Validating"):
             tokens = tokens.to(device)
             action = action.to(device)
-            #legal_mask = torch.stack([get_legal_mask_with_rules(t) for t in tokens]).to(device)
+
             legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
-            log_probs = model(tokens, legal_mask)
-            pred = log_probs.argmax(dim=-1)
-            val_correct += (pred == action).sum().item()
+            trump_legal_mask = get_trump_mask_batch(tokens).to(device)
+
+            card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask                                                    )
+
+            is_card_play = (tokens[:, 2] == 125)
+            is_trump_choice = (tokens[:, 2] == 126)
+            card_play_indices = is_card_play.nonzero(as_tuple=True)[0]
+            trump_choice_indices = is_trump_choice.nonzero(as_tuple=True)[0]
+
+            correct_card = 0
+            correct_trump = 0
+
+            # 1. Calculate accuracy for the card-play samples (if any exist)
+            if card_play_indices.numel() > 0:
+                # Get predictions for card-play phase
+                pred_card = card_log_probs[card_play_indices].argmax(dim=-1)
+
+                # Compare with correct actions for this phase
+                correct_card = (pred_card == action[card_play_indices]).sum().item()
+
+            # 2. Calculate accuracy for the trump-choice samples (if any exist)
+            if trump_choice_indices.numel() > 0:
+                # Get predictions for trump-choice phase
+                pred_trump = trump_log_probs[trump_choice_indices].argmax(dim=-1)
+
+                # Compare with correct actions for this phase
+                correct_trump = (pred_trump == action[trump_choice_indices]).sum().item()
+
+            # 3. Add correct predictions from *both* phases
+            val_correct += (correct_card + correct_trump)
             val_total += action.size(0)
+
     model.train()
     return val_correct / val_total
 
