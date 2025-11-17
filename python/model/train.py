@@ -13,7 +13,7 @@ import mlflow.pytorch
 
 from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
 from model import JassFormer
-from legal_mask import get_legal_mask_with_rules, get_legal_mask_with_rules_batch
+from legal_mask import get_legal_mask_with_rules, get_legal_mask_with_rules_batch, get_trump_mask_batch
 
 
 class Config:
@@ -112,27 +112,41 @@ def train():
 
             for tokens, action in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
                 step += 1
-                phase = tokens[2]
-                trump_choice_turn = tokens[3]
                 tokens = tokens.to(device)
                 action = action.to(device)
 
-                if phase == 125: # play
-                    legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
-                    trump_legal_mask = torch.tensor([False]*5)
-                else:  # choose trump suit
-                    legal_mask = torch.tensor([False]*36)
-                    if trump_choice_turn == 50:  # first turn
-                        trump_legal_mask = torch.tensor([True]*5)
-                    else:
-                        trump_legal_mask = torch.tensor([True, True, True, True, False])
+                legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
+                trump_legal_mask = get_trump_mask_batch(tokens).to(device)
 
                 card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask)
 
-                if phase == 125:
-                    loss = F.nll_loss(card_log_probs, action)
-                else:
-                    loss = F.nll_loss(trump_log_probs, action)
+                is_card_play = (tokens[:, 2] == 125)
+                is_trump_choice = (tokens[:, 2] == 126)
+                card_play_indices = is_card_play.nonzero(as_tuple=True)[0]
+                trump_choice_indices = is_trump_choice.nonzero(as_tuple=True)[0]
+
+                # 3. Initialize loss components
+                loss_card = torch.tensor(0.0, device=device)
+                loss_trump = torch.tensor(0.0, device=device)
+
+                # 4. Calculate the total loss for the card-play samples (if any exist)
+                if card_play_indices.numel() > 0:
+                    loss_card = F.nll_loss(
+                        card_log_probs[card_play_indices],  # Select "card play" rows
+                        action[card_play_indices],  # Select corresponding actions
+                        reduction='sum'  # We get the sum of losses for this group
+                    )
+
+                # 5. Calculate the total loss for the trump-choice samples (if any exist)
+                if trump_choice_indices.numel() > 0:
+                    loss_trump = F.nll_loss(
+                        trump_log_probs[trump_choice_indices],  # Select "trump choice" rows
+                        action[trump_choice_indices],  # Select corresponding actions
+                        reduction='sum'  # We get the sum of losses for this group
+                    )
+
+                # 6. Combine the sums and average over the *total* batch size
+                loss = (loss_card + loss_trump) / cfg.batch_size
 
                 optimizer.zero_grad()
                 loss.backward()
@@ -140,8 +154,28 @@ def train():
                 optimizer.step()
 
                 total_loss += loss.item()
-                pred = log_probs.argmax(dim=-1)
-                correct += (pred == action).sum().item()
+
+                correct_card = 0
+                correct_trump = 0
+
+                # 1. Calculate accuracy for the card-play samples (if any exist)
+                if card_play_indices.numel() > 0:
+                    # Get predictions for card-play phase
+                    pred_card = card_log_probs[card_play_indices].argmax(dim=-1)
+
+                    # Compare with correct actions for this phase
+                    correct_card = (pred_card == action[card_play_indices]).sum().item()
+
+                # 2. Calculate accuracy for the trump-choice samples (if any exist)
+                if trump_choice_indices.numel() > 0:
+                    # Get predictions for trump-choice phase
+                    pred_trump = trump_log_probs[trump_choice_indices].argmax(dim=-1)
+
+                    # Compare with correct actions for this phase
+                    correct_trump = (pred_trump == action[trump_choice_indices]).sum().item()
+
+                # 3. Add correct predictions from *both* phases
+                correct += (correct_card + correct_trump)
                 total += action.size(0)
 
                 # === LOGGING ===

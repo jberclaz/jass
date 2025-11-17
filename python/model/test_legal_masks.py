@@ -172,3 +172,79 @@ class TestFastLegalMask(unittest.TestCase):
                     print(f"Loop:   {original_results[i].int()}")
                     print(f"Batch:  {batch_results[i].int()}")
                     break
+
+class TestMaskForTrumpSelection(unittest.TestCase):
+
+    def setUp(self):
+        """Set up a base token tensor to be modified in each test."""
+        # A base state with 100 tokens, all zeros.
+        # We will modify specific indices for each test case.
+        self.base_tokens = torch.zeros(96, dtype=torch.int64)
+
+    # --- Tests for get_trump_mask_batch ---
+
+    def test_trump_mask_phase_1_card_play(self):
+        """
+        Test trump mask during PHASE 1 (Card Play).
+        Expected: All False, as no trump choice is being made.
+        """
+        tokens = self.base_tokens.clone().unsqueeze(0) # Batch size 1
+        tokens[0, 2] = 125  # Phase 1: Card Play
+
+        mask = legal_mask.get_trump_mask_batch(tokens)
+        expected = torch.tensor([[False, False, False, False, False]], dtype=torch.bool)
+
+        torch.testing.assert_close(mask, expected)
+
+    def test_trump_mask_phase_2_turn_1(self):
+        """
+        Test trump mask during PHASE 2 (Trump Choice), TURN 1.
+        Expected: All True (can choose any suit or pass).
+        """
+        tokens = self.base_tokens.clone().unsqueeze(0)
+        tokens[0, 2] = 126  # Phase 2: Trump Choice
+        tokens[0, 3] = 50   # Turn 1
+
+        mask = legal_mask.get_trump_mask_batch(tokens)
+        expected = torch.tensor([[True, True, True, True, True]], dtype=torch.bool)
+
+        torch.testing.assert_close(mask, expected)
+
+    def test_trump_mask_phase_2_turn_2(self):
+        """
+        Test trump mask during PHASE 2 (Trump Choice), TURN 2.
+        Expected: [T, T, T, T, F] (cannot pass).
+        """
+        tokens = self.base_tokens.clone().unsqueeze(0)
+        tokens[0, 2] = 126  # Phase 2: Trump Choice
+        tokens[0, 3] = 51   # Turn 2
+
+        mask = legal_mask.get_trump_mask_batch(tokens)
+        # Assumes the 5th option is "pass"
+        expected = torch.tensor([[True, True, True, True, False]], dtype=torch.bool)
+
+        torch.testing.assert_close(mask, expected)
+
+    def test_trump_mask_batch(self):
+        """Test a batch containing all three trump mask scenarios."""
+        token1 = self.base_tokens.clone()
+        token1[2] = 125  # Scenario 1: Card Play
+
+        token2 = self.base_tokens.clone()
+        token2[2] = 126  # Scenario 2: Trump Choice, Turn 1
+        token2[3] = 50
+
+        token3 = self.base_tokens.clone()
+        token3[2] = 126  # Scenario 3: Trump Choice, Turn 2
+        token3[3] = 51
+
+        batch_tokens = torch.stack([token1, token2, token3])
+        mask = legal_mask.get_trump_mask_batch(batch_tokens)
+
+        expected = torch.tensor([
+            [False, False, False, False, False], # Result for token1
+            [True, True, True, True, True],      # Result for token2
+            [True, True, True, True, False]      # Result for token3
+        ], dtype=torch.bool)
+
+        torch.testing.assert_close(mask, expected)
