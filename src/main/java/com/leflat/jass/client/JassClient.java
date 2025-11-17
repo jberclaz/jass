@@ -2,10 +2,7 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IJassUi;
-import com.leflat.jass.server.ArtificialPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.MonteCarloStrategy;
-import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.server.*;
 
 import javax.swing.*;
 import java.io.IOException;

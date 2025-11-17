@@ -12,8 +12,11 @@ import java.util.List;
 
 public class JassModelLoader {
     private static final Logger LOGGER = LoggerFactory.getLogger(JassModelLoader.class);
-    private OrtEnvironment env;
-    private OrtSession session;
+    private final OrtEnvironment env;
+    private final OrtSession session;
+    private static final int TOKEN_LENGTH = 96;
+    private static final String CARD_OUTPUT_NAME = "logits";
+    private static final String TRUMP_OUTPUT_NAME = "log_softmax_1";
 
     public JassModelLoader(String modelPath) {
         try {
@@ -30,26 +33,55 @@ public class JassModelLoader {
         }
     }
 
+    /**
+     * Runs inference on the given tokens and returns the appropriate logit array
+     * based on the game phase.
+     *
+     * @param tokens The raw byte array of game state tokens.
+     * @return A float[] array of logits. This will be size 36 for the card-play phase
+     * (token[2] == 125) or size 5 for the trump-choice phase (token[2] == 126).
+     */
     public float[] predict(byte[] tokens) {
-        if (tokens.length != 95) {
-            throw new IllegalArgumentException("Tokens must be exactly 95 bytes, got " + tokens.length);
+        if (tokens.length != TOKEN_LENGTH) {
+            throw new IllegalArgumentException("Tokens must be exactly " + TOKEN_LENGTH + " bytes, got " + tokens.length);
         }
-        try {
-            // Convert byte[] to float[] for ONNX (int64 input as float32 for simplicity)
-            long[] tokenLongs = new long[tokens.length];
-            for (int i = 0; i < tokens.length; i++) {
-                tokenLongs[i] = tokens[i] & 0xFF;
+
+        // 1. Convert tokens to long[] and read the phase
+        long[] tokenLongs = new long[tokens.length];
+        for (int i = 0; i < tokens.length; i++) {
+            tokenLongs[i] = tokens[i] & 0xFF;
+        }
+
+        // 2. Determine the phase
+        long phase = tokenLongs[2];
+
+        // 3. Use try-with-resources for automatic resource management (safer)
+        try (OnnxTensor inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenLongs), new long[]{1, TOKEN_LENGTH});
+             OrtSession.Result result = session.run(Collections.singletonMap("tokens", inputTensor))) {
+
+            if (phase == 125) {
+                // --- Card Play Phase ---
+                // Fetch the card logits output by its name
+                OnnxTensor cardOutputTensor = (OnnxTensor) result.get(CARD_OUTPUT_NAME)
+                        .orElseThrow(() -> new RuntimeException("ONNX model did not return expected output: " + CARD_OUTPUT_NAME));
+
+                // Return the float array of size [36]
+                return cardOutputTensor.getFloatBuffer().array();
+
+            } else if (phase == 126) {
+                // --- Trump Choice Phase ---
+                // Fetch the trump logits output by its name
+                OnnxTensor trumpOutputTensor = (OnnxTensor) result.get(TRUMP_OUTPUT_NAME)
+                        .orElseThrow(() -> new RuntimeException("ONNX model did not return expected output: " + TRUMP_OUTPUT_NAME));
+
+                // Return the float array of size [5]
+                return trumpOutputTensor.getFloatBuffer().array();
+
+            } else {
+                // Unknown phase
+                throw new IllegalArgumentException("Unknown phase token at index 2: " + phase);
             }
-            OnnxTensor inputTensor = OnnxTensor.createTensor(env, LongBuffer.wrap(tokenLongs), new long[]{1, 95});
 
-            // Run inference
-            OrtSession.Result result = session.run(Collections.singletonMap("tokens", inputTensor));
-            OnnxTensor outputTensor = (OnnxTensor) result.get(0);
-            float[] logits = outputTensor.getFloatBuffer().array();
-
-            inputTensor.close();
-            result.close();
-            return logits;  // [36]
         } catch (OrtException e) {
             LOGGER.error("Inference failed", e);
             throw new RuntimeException("ONNX inference error", e);
@@ -73,4 +105,28 @@ public class JassModelLoader {
         }
         return legalCards.get(bestIdx);
     }
+
+    public int chooseTrumpSuit(float[] logits, boolean isFirstTurn) {
+        if (logits.length != 5) {
+            throw new IllegalArgumentException("Logits array must be of length 5, got " + logits.length);
+        }
+
+        int bestIndex = 0;
+        float maxLogit = Float.NEGATIVE_INFINITY;
+
+        // Determine the number of options to check
+        // If first turn, check all 5 (including pass, index 4)
+        // If second turn, check only first 4 (cannot pass)
+        int numOptions = isFirstTurn ? 5 : 4;
+
+        for (int i = 0; i < numOptions; i++) {
+            if (logits[i] > maxLogit) {
+                maxLogit = logits[i];
+                bestIndex = i;
+            }
+        }
+
+        return bestIndex;
+    }
+
 }

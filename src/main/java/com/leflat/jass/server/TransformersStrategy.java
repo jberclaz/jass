@@ -49,7 +49,18 @@ public class TransformersStrategy implements IJassStrategy {
 
     @Override
     public int chooseTrumpSuit(boolean first, List<Card> hand, GameView gameView) {
-        // NN is not trained for this; delegate to the fallback policy (MC)
-        return atoutFallbackPolicy.chooseTrumpSuit(first, hand, gameView);
-    }
+        if (modelLoader == null) {
+            // Fallback to the atout policy (which is MC) if NN fails
+            ArtificialPlayer.LOGGER.warning("No NN model loaded: falling back on policy");
+            return atoutFallbackPolicy.chooseTrumpSuit(first, hand, gameView);
+        }
+
+        byte[] tokens = gameView.getTransformersTokensForTrumpChoice(first);
+        float[] logits = modelLoader.predict(tokens);
+        int suit = modelLoader.chooseTrumpSuit(logits, first);
+
+        // Name is not easily accessible here, just log the choice
+        ArtificialPlayer.LOGGER.info("(Transformer) : chose trump " + suit);
+        return suit;
+   }
 }
