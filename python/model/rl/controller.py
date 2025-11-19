@@ -23,7 +23,7 @@ class Controller:
         hands = deck.reshape((4, 9)).astype(np.int64)
         for idx, player in enumerate(self._players):
             player.set_hand([Card(i) for i in hands[idx]])
-        self._current_player = np.where(hands == DIAMOND_SEVEN)[0]
+        self._current_player = int(np.where(hands == DIAMOND_SEVEN)[0])
         self._trump_selection_first_turn = True
         self._game_over = False
         self._announcements = []
@@ -39,20 +39,23 @@ class Controller:
                     raise RuntimeError("Second player cannot pass during trump selection")
                 self._move_to_partner()
                 self._trump_selection_first_turn = False
+            else:
+                for p in self._players:
+                    p.set_trump_suit(self._trump_suit)
             if not self._trump_selection_first_turn:
                 self._move_to_partner()
             return self._trump_suit, False
         move = self._players[self._current_player].choose_card()
         for p in range(4):
-            self._players[p].played(move, self._relative_position(self._current_player, p))
+            self._players[p].played(Card(move), self._relative_position(self._current_player, p))
         announcements = self._players[self._current_player].get_announcements()
         if announcements:
             self._announcements.extend([(self._current_player, a) for a in announcements])
 
-        self._process_move(move)
+        self._process_move(Card(move))
 
         self._move_to_next_player()
-        return move.number, self._game_over
+        return move, self._game_over
 
     def get_next_tokens(self, player_id: int) -> tuple[list[int], int, bool]:
         while self._current_player != player_id:
@@ -67,9 +70,9 @@ class Controller:
         if self._trick is None:
             self._trick = Trick(self._trump_suit)
         self._trick.play_card(move, self._current_player)
-        if self._trick.is_full():
-            team_id = self._trick.owner % 2
-            self._scores[team_id] += self._trick.get_score()
+        if self._trick.is_full:
+            team_id = self._trick._owner % 2
+            self._scores[team_id] += self._trick.score
             # handle announcements
             if self._announcements:
                 self._handle_announcements()
@@ -84,7 +87,7 @@ class Controller:
             if highest is None or announcement > highest:
                 highest = announcement
                 player_with_highest = player
-            elif announcement.highest_card.get_suit() == self._trump_suit and announcement == highest:
+            elif announcement.highest_card.suit() == self._trump_suit and announcement == highest:
                 highest = announcement
                 player_with_highest = player
         announcement_team_id = player_with_highest % 2
@@ -95,8 +98,8 @@ class Controller:
                 self._scores[player % 2] += value
                 valid_announcements.append((player, announcement))
         if valid_announcements:
-            for p in range(4):
-                self._players[p].set_announcements(valid_announcements)
+            for p in self._players:
+                p.set_announcements(valid_announcements)
 
     def _move_to_next_player(self):
         self._current_player = (self._current_player + 1) % 4
