@@ -34,5 +34,8 @@ class Player:
     def choose_card(self) -> Card:
         return self._strategy.choose_card()
 
+    def get_state_as_tokens(self) -> list[int]:
+        return []
+
     def _compute_announcements(self):
         pass
