@@ -99,7 +99,8 @@ class Controller:
                 valid_announcements.append((player, announcement))
         if valid_announcements:
             for p in self._players:
-                p.set_announcements(valid_announcements)
+                localized = [(self._relative_position(pp, p), a) for pp, a in valid_announcements]
+                p.set_announcements(localized)
 
     def _move_to_next_player(self):
         self._current_player = (self._current_player + 1) % 4
