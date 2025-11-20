@@ -100,7 +100,7 @@ class Trick:
             if has_non_trump:
                 return False
 
-            has_higher_trump = any(c > self._highest for c in hand if c.suit == self._trump)
+            has_higher_trump = any(Card.compare(c, self._highest, self._trump) > 0 for c in hand if c.suit == self._trump)
             return not has_higher_trump
 
         # Not following suit and not playing trump

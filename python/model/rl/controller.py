@@ -42,8 +42,8 @@ class Controller:
             else:
                 for p in self._players:
                     p.set_trump_suit(self._trump_suit)
-            if not self._trump_selection_first_turn:
-                self._move_to_partner()
+                if not self._trump_selection_first_turn:
+                    self._move_to_partner()
             return self._trump_suit, False
         move = self._players[self._current_player].choose_card()
         for p in range(4):

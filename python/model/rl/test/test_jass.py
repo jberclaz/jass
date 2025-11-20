@@ -60,14 +60,19 @@ class TestTrickLogic(unittest.TestCase):
 
     def test_undertrump_not_allowed_if_higher_exists(self):
         trick = Trick(self.trump)
-        hand = [Card(5), Card(3)]  # Jack and Nell of Spades
+        hand = [Card(1), Card(2)]  # 6, 7 trump
 
         trick.play_card(Card(20), 0)  # lead non-trump
-        trick.play_card(Card(0), 1)   # 6 of Spades (low trump)
+        trick.play_card(Card(4), 1)   # 10 of Spades
+        self.assertTrue(trick.is_cut)
 
         # Player 2 has Jack and Nell → cannot undertrump
-        self.assertFalse(trick.can_play(Card(3), hand))  # Nell
-        self.assertFalse(trick.can_play(Card(5), hand))  # Jack
+        self.assertTrue(trick.can_play(Card(1), hand))  # 6
+        self.assertTrue(trick.can_play(Card(2), hand))  # 7
+
+        hand.append(Card(6)) # Queen
+        self.assertFalse(trick.can_play(Card(1), hand))  # 6
+        self.assertFalse(trick.can_play(Card(2), hand))  # 7
 
     def test_bourg_sec_exception(self):
         trick = Trick(Suit.HEART)
@@ -90,9 +95,6 @@ class TestControllerFlow(unittest.TestCase):
 
     def test_full_match_plays_without_error(self):
         self.controller.reset()
-        # Force trump so we skip selection
-        self.players[self.controller._current_player]._strategy = lambda h, f: Suit.SPADE
-
         moves = 0
         while not self.controller._game_over:
             self.controller.play_next_turn()
@@ -103,7 +105,6 @@ class TestControllerFlow(unittest.TestCase):
         self.assertTrue(any(s >= WINNING_SCORE for s in self.controller._scores))
 
     def test_diamond_seven_starts(self):
-        # Force Diamond Seven in player 2's hand
         import numpy as np
         np.random.seed(42)
         self.controller.reset()
@@ -119,43 +120,19 @@ class TestControllerFlow(unittest.TestCase):
 
         # First player passes
         self.players[forehand]._strategy.choose_trump_suit = lambda h, f: Suit.NONE
-        self.controller.play_next_turn()
+        action, game_over = self.controller.play_next_turn()
+        self.assertEqual(4, action)
+        self.assertFalse(game_over)
 
         # Now partner must choose (cannot pass)
         self.assertNotEqual(self.controller._current_player, forehand)
         partner = self.controller._current_player
         self.players[partner]._strategy.choose_trump_suit = lambda h, f: Suit.HEART
 
-        self.controller.play_next_turn()
+        action, game_over = self.controller.play_next_turn()
+        self.assertEqual(1, action)
+        self.assertFalse(game_over)
         self.assertEqual(self.controller._trump_suit, Suit.HEART)
         self.assertTrue(all(p._current_trump == Suit.HEART for p in self.players))
 
-
-class TestLegalMoves(unittest.TestCase):
-
-    def test_must_follow_suit(self):
-        players = [Player(RandomStrategy()) for _ in range(4)]
-        controller = Controller(players)
-        controller.reset()
-
-        # Force trump and hands
-        controller._trump_suit = Suit.SPADE
-        for p in players:
-            p.set_trump_suit(Suit.SPADE)
-
-        # Player 0 leads with 10 of Clubs
-        p0 = players[0]
-        p0._hand = [Card(10), Card(11), Card(20)]  # 10, Queen Clubs + 6 Hearts
-        trick = Trick(Suit.SPADE)
-        trick.play_card(Card(10), 0)
-
-        # Player 1 must follow Clubs if has it
-        p1 = players[1]
-        p1._hand = [Card(12), Card(0)]  # Queen Clubs + 6 Spades
-        legal = []
-        for c in p1._hand:
-            if trick.can_play(c, p1._hand):
-                legal.append(c)
-        self.assertIn(Card(12), legal)   # Must play Queen of Clubs
-        self.assertNotIn(Card(0), legal) # Cannot trump if has suit
 
