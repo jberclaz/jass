@@ -45,7 +45,8 @@ class Trick:
         score = sum(c.get_value(self._trump) for c in self._cards)
         return score * 2 if self._trump == Suit.SPADE else score
 
-    def get_owner(self) -> Optional[int]:
+    @property
+    def owner(self) -> Optional[int]:
         return self._owner
 
     @property

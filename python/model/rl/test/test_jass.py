@@ -45,7 +45,7 @@ class TestTrickLogic(unittest.TestCase):
         trick = Trick(self.trump)
         trick.play_card(Card(10), 0)  # 10 of Clubs
         trick.play_card(Card(12), 1)  # Queen of Clubs
-        self.assertEqual(trick.get_owner(), 1)  # Queen > 10
+        self.assertEqual(trick.owner, 1)  # Queen > 10
         self.assertFalse(trick.is_full)
         self.assertFalse(trick.is_empty)
 
@@ -55,7 +55,7 @@ class TestTrickLogic(unittest.TestCase):
         self.assertFalse(trick.is_cut)
         trick.play_card(Card(0), 1)   # 6 of Spades (trump)
         trick.play_card(Card(11), 2)  # 8 of Hearts
-        self.assertEqual(trick.get_owner(), 1)
+        self.assertEqual(trick.owner, 1)
         self.assertTrue(trick.is_cut)
 
     def test_undertrump_not_allowed_if_higher_exists(self):

@@ -1,11 +1,12 @@
 import unittest
-import collections
+
 from rl.jass_rules import (
     Card, Suit, Announcement,
     RANK_6, RANK_7, RANK_8, RANK_NELL, RANK_10, RANK_BOURG, RANK_DAME, RANK_ROI, RANK_AS,
     ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED,
-    ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS, ANNOUNCE_STOECK
+    ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS
 )
+
 
 # --- Helper function for test setup ---
 

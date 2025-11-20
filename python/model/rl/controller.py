@@ -16,20 +16,30 @@ class Controller:
         self._trump_selection_first_turn = True
         self._announcements = []
         self._game_over = False
+        self._trick_count = 0
+        self._round_starter = None
 
     def reset(self):
-        deck = np.arange(36)
-        np.random.shuffle(deck)
-        hands = deck.reshape((4, 9)).astype(np.int64)
-        for idx, player in enumerate(self._players):
-            player.set_hand([Card(i) for i in hands[idx]])
-        self._current_player = int(np.where(hands == DIAMOND_SEVEN)[0])
+        self._round_starter = self._shuffle_deck()
+        self._current_player = self._round_starter
         self._trump_selection_first_turn = True
         self._game_over = False
         self._announcements = []
         self._trick = None
-        self._scores = [0, 0]
         self._trump_suit = Suit.NONE
+        self._trick_count = 0
+        self._scores = [0, 0]
+
+    def _new_round(self):
+        print(f"new round: score {self._scores}")
+        self._shuffle_deck()
+        self._trump_selection_first_turn = True
+        self._announcements = []
+        self._trick = None
+        self._trump_suit = Suit.NONE
+        self._trick_count = 0
+        self._round_starter = (self._round_starter + 1)  % 4
+        self._current_player = self._round_starter
 
     def play_next_turn(self) -> tuple[int, bool]:
         if self._trump_suit == Suit.NONE:
@@ -40,12 +50,15 @@ class Controller:
                 self._move_to_partner()
                 self._trump_selection_first_turn = False
             else:
-                for p in self._players:
-                    p.set_trump_suit(self._trump_suit)
+                print(f"Trump chosen: {self._trump_suit}")
+                for p in range(4):
+                    pos = self._relative_position(self._current_player, p)
+                    self._players[p].set_trump_suit(self._trump_suit, pos, self._trump_selection_first_turn)
                 if not self._trump_selection_first_turn:
                     self._move_to_partner()
             return self._trump_suit, False
         move = self._players[self._current_player].choose_card()
+        print(f"Player {self._current_player} played {move}")
         for p in range(4):
             self._players[p].played(Card(move), self._relative_position(self._current_player, p))
         announcements = self._players[self._current_player].get_announcements()
@@ -54,7 +67,6 @@ class Controller:
 
         self._process_move(Card(move))
 
-        self._move_to_next_player()
         return move, self._game_over
 
     def get_next_tokens(self, player_id: int) -> tuple[list[int], int, bool]:
@@ -71,14 +83,21 @@ class Controller:
             self._trick = Trick(self._trump_suit)
         self._trick.play_card(move, self._current_player)
         if self._trick.is_full:
-            team_id = self._trick._owner % 2
+            team_id = self._trick.owner % 2
             self._scores[team_id] += self._trick.score
             # handle announcements
             if self._announcements:
                 self._handle_announcements()
             if any(s >= WINNING_SCORE for s in self._scores):
                 self._game_over = True
+                return
             self._trick = None
+            self._trick_count += 1
+            if self._trick_count == 9:
+                self._scores[team_id] += 10 if self._trump_suit == Suit.SPADE else 5
+                self._new_round()
+                return
+        self._move_to_next_player()
 
     def _handle_announcements(self):
         highest = None
@@ -87,7 +106,7 @@ class Controller:
             if highest is None or announcement > highest:
                 highest = announcement
                 player_with_highest = player
-            elif announcement.highest_card.suit() == self._trump_suit and announcement == highest:
+            elif announcement.highest_card.suit == self._trump_suit and announcement == highest:
                 highest = announcement
                 player_with_highest = player
         announcement_team_id = player_with_highest % 2
@@ -98,15 +117,25 @@ class Controller:
                 self._scores[player % 2] += value
                 valid_announcements.append((player, announcement))
         if valid_announcements:
-            for p in self._players:
+            print(f"Announcements: {valid_announcements}")
+            for p in range(4):
                 localized = [(self._relative_position(pp, p), a) for pp, a in valid_announcements]
-                p.set_announcements(localized)
+                self._players[p].set_announcements(localized)
+        self._announcements = []
 
     def _move_to_next_player(self):
         self._current_player = (self._current_player + 1) % 4
 
     def _move_to_partner(self):
         self._current_player = (self._current_player + 2) % 4
+
+    def _shuffle_deck(self) -> int:
+        deck = np.arange(36)
+        np.random.shuffle(deck)
+        hands = deck.reshape((4, 9)).astype(np.int64)
+        for idx, player in enumerate(self._players):
+            player.set_hand([Card(i) for i in hands[idx]])
+        return int(np.where(hands == DIAMOND_SEVEN)[0])
 
     @staticmethod
     def _relative_position(player, reference):
