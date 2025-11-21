@@ -19,10 +19,17 @@ class Player:
         self._has_stoeck = False
         self._trump_selector = None
         self._trump_chosen_on_first_turn = False
+        self._known_cards_in_hand = None
+        self._deck_probs = None
 
     def set_hand(self, hand: list[Card]):
         self._hand = hand
         self._current_trump = Suit.NONE
+        self._deck_probs = np.full((36, 3), 1/3, dtype=np.float32)
+        my_hand = np.array([c.number for c in hand])
+        self._deck_probs[my_hand,:] = 0
+        self._known_cards_in_hand = [[], [], []]
+        self._past_tricks = []
 
     def set_trump_suit(self, suit: Suit, player: PlayerPosition, chosen_on_first_turn: bool):
         self._current_trump = suit
@@ -69,8 +76,7 @@ class Player:
         legal_moves = self._get_legal_moves()
         return self._strategy.choose_card(legal_moves, self._hand)
 
-    def get_state_as_tokens(self) -> list[int]:
-        return []
+    def get_state_as_tokens(self, first_turn_of_trump_selection: bool) -> list[int]:
         tokens = np.zeros(TOKEN_LENGTH, dtype=np.int64)
         tokens.fill(Tokens.PAD)
 
@@ -89,9 +95,9 @@ class Player:
         if self._current_trump == Suit.NONE:
             # --- Trump Choice Phase Globals ---
             tokens[2] = Tokens.CHOOSE_TRUMP_SUIT
-            tokens[3] = Tokens.TRUMP_FIRST_CHOICE if self.trump_turn == 0 else Tokens.TRUMP_FORCED
+            tokens[3] = Tokens.TRUMP_FIRST_CHOICE if first_turn_of_trump_selection else Tokens.TRUMP_FORCED
             tokens[4] = Tokens.position_token(0)  # Position is "SELF"
-            tokens[5] = Tokens.PAD  # Trump suit is not set
+            # 5 is already padded
         else:
             # --- Card Play Phase Globals ---
             tokens[2] = Tokens.CHOOSE_NEXT_CARD
@@ -112,8 +118,7 @@ class Player:
         for i in range(9):
             if i < len(hand):
                 tokens[11 + i] = Tokens.card_token(hand[i])
-            else:
-                tokens[11 + i] = Tokens.PAD
+            # otherwise: already padded
 
         # === 20-26: CURRENT TRICK (7 tokens) ===
         tokens[20] = Tokens.SECTION_TRICK
@@ -124,13 +129,14 @@ class Player:
             return tokens.tolist()
 
         token_idx = 21
-        for idx, card in enumerate(self._trick.cards):
-            if token_idx < 27:
-                position = 4 - self._trick.count + idx
-                tokens[token_idx] = Tokens.position_token(position)
-                tokens[token_idx + 1] = Tokens.card_token(card.number)
-                token_idx += 2
-        # (Rest are already padded)
+        if self._trick is not None:
+            for idx, card in enumerate(self._trick.cards):
+                if token_idx < 27:
+                    position = 4 - self._trick.count + idx
+                    tokens[token_idx] = Tokens.position_token(position)
+                    tokens[token_idx + 1] = Tokens.card_token(card.number)
+                    token_idx += 2
+            # (Rest are already padded)
 
         # === 27-67: HISTORY (41 tokens) ===
         # (8 tricks * 5 tokens/trick + 1 section token)
@@ -146,42 +152,66 @@ class Player:
             tokens[token_idx] = Tokens.WIN_OUR_TEAM if trick.owner % 2 == 0 else Tokens.WIN_OPP_TEAM
             token_idx += 1
 
-        while token_idx < 68:
-            tokens[token_idx] = Tokens.PAD
-            token_idx += 1
-
         # === 68-95: BELIEF / KNOWN HANDS (28 tokens) ===
         # (1 section + 3 opponents * (1 pos + 4 * 2 card/conf))
         tokens[68] = Tokens.SECTION_BELIEF
 
         token_idx = 69
         # Loop through opponents (e.g., Left, Partner, Right)
-        for i in range(1, 4):
-            opp_id = (cp + i) % 4
-
+        max_cards_per_player = 4
+        for p in range(3):
+            pos = p + 1
             # Add opponent position token
-            tokens[token_idx] = Tokens.position_token(opp_id, cp)
+            tokens[token_idx] = Tokens.position_token(pos)
             token_idx += 1
 
-            # Get opponent's unplayed cards
-            opp_hand = self.player_hands[opp_id]
-            unplayed_cards = opp_hand[opp_hand != -1]
-
-            # Add up to 4 known cards with 1.0 confidence
-            for j in range(4):
-                if j < len(unplayed_cards):
-                    tokens[token_idx] = Tokens.card_token(unplayed_cards[j])
-                    tokens[token_idx + 1] = Tokens.confidence_token(1.0)
-                else:
-                    tokens[token_idx] = Tokens.PAD
-                    tokens[token_idx + 1] = Tokens.PAD
+            known_cards_count = min(max_cards_per_player, len(self._known_cards_in_hand[p]))
+            for i in range(known_cards_count):
+                tokens[token_idx] = Tokens.card_token(self._known_cards_in_hand[p][i])
+                tokens[token_idx + 1] = Tokens.confidence_token(1.0)
                 token_idx += 2
+
+            remaining_cards_count = max_cards_per_player - known_cards_count
+            if remaining_cards_count > 0:
+                card_ids, probs = self._get_k_most_likely_cards(p, remaining_cards_count)
+                for i in range(len(card_ids)):
+                    tokens[token_idx] = Tokens.card_token(card_ids[i])
+                    tokens[token_idx + 1] = Tokens.confidence_token(probs[i])
+                    token_idx += 2
+                remaining_cards_count = max_cards_per_player - known_cards_count - len(card_ids)
+
+            if remaining_cards_count > 0:
+                for i in range(remaining_cards_count):
+                    token_idx += 2
+                    # tokens already padded
+
         # (Rest are already padded)
 
         assert token_idx == 96, f"Token generation ended at index {token_idx}, expected 96"
 
         return tokens.tolist()
 
+    def _get_k_most_likely_cards(self, player_idx: int, k: int, threshold: float =0.34) -> tuple[list[int], list[float]]:
+        top_k_card_ids = np.argsort(self._deck_probs[:, player_idx])[-k:][::-1]
+
+        # 1. Select the player's probability column
+        player_probs = self._deck_probs[:, player_idx]
+
+        # 2. Boolean Masking: Get the indices (Card IDs) of all candidates above the threshold
+        candidate_card_ids = np.where(player_probs > threshold)[0]
+        candidate_probs = player_probs[candidate_card_ids]
+
+        # 3. Argsort: Find the indices that sort the candidate probabilities
+        sorted_candidate_indices = np.argsort(candidate_probs)
+
+        # 4. Determine how many to select (min of k or available candidates)
+        num_to_select = min(k, len(candidate_card_ids))
+
+        # 5. Final Selection: Map the top indices back to the original Card IDs and get probabilities
+        top_k_indices_in_candidates = sorted_candidate_indices[-num_to_select:][::-1]
+
+        # FINAL RESULTS ARRAYS:
+        return candidate_card_ids[top_k_indices_in_candidates], candidate_probs[top_k_indices_in_candidates]
 
     def _compute_announcements(self):
         self._announcements = Announcement.find_announcements(self._hand)

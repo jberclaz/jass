@@ -74,7 +74,7 @@ class Controller:
             self.play_next_turn()
             if self._game_over:
                 return [], 0, True
-        input_tokens = self._players[player_id].get_state_as_tokens()
+        input_tokens = self._players[player_id].get_state_as_tokens(self._trump_selection_first_turn)
         action, game_over = self.play_next_turn()
         return input_tokens, action, self._game_over
 
