@@ -52,3 +52,7 @@ class Tokens(IntEnum):
     @staticmethod
     def card_token(card: int):
         return 10 + card
+
+    @staticmethod
+    def confidence_token(conf: float):
+        pass

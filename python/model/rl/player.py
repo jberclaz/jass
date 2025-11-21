@@ -192,8 +192,6 @@ class Player:
         return tokens.tolist()
 
     def _get_k_most_likely_cards(self, player_idx: int, k: int, threshold: float =0.34) -> tuple[list[int], list[float]]:
-        top_k_card_ids = np.argsort(self._deck_probs[:, player_idx])[-k:][::-1]
-
         # 1. Select the player's probability column
         player_probs = self._deck_probs[:, player_idx]
 
