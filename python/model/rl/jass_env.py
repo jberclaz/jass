@@ -1,417 +1,154 @@
 import gymnasium as gym
 from gymnasium import spaces
 import numpy as np
-import torch
+from typing import Optional, Tuple, Dict, Any, List
 
-# --- We must import BOTH mask functions from your new file ---
-# (Assuming your new file is legal_mask_v2.py)
-from legal_mask import get_legal_mask_with_rules_batch, get_trump_mask_batch
-from model import JassFormerActorCritic
+# Import your core game logic classes
+from controller import Controller
+from player import Player
+from strategy import RandomStrategy
+from rl_agent import RLAgent
 from rl.tokens import Tokens
+from rl.jass_rules import Suit
 
-# (I'm assuming these are in your project)
-# from model import JassFormerActorCritic
-# from dataset import TOKEN_LENGTH, VOCABULARY_SIZE
-# from rl.utils import DIAMOND_SEVEN
-
-# --- Mock imports for a self-contained file ---
-# (Remove these in your real project)
-TOKEN_LENGTH = 100
-VOCABULARY_SIZE = 127
-DIAMOND_SEVEN = 10 # Card ID 10 (Diamond 6, assuming 0-indexed)
-
-
-# --- Define constants for action space ---
-CARD_ACTION_SPACE_SIZE = 36
-TRUMP_ACTION_SPACE_SIZE = 5
-TOTAL_ACTION_SPACE_SIZE = CARD_ACTION_SPACE_SIZE + TRUMP_ACTION_SPACE_SIZE # 41
-AGENT_ID = 0
-PARTNER_ID = 2
 
 class JassEnv(gym.Env):
     """
-    A two-phase (trump + card) Gymnasium environment for Jass.
-
-    Action Space (Discrete(41)):
-    - 0-35: Play a card (ID 0 to 35)
-    - 36-40: Choose trump (ID 0 to 4, e.g., 4 = pass)
+    A multi-agent (simulated) Jass environment wrapped in the Gymnasium API.
+    The environment is designed to train Agent 0 against three static opponents.
     """
-    metadata = {"render_modes": [], "render_fps": 1}
+    metadata = {"render_modes": ["human"], "render_fps": 30}
 
-    def __init__(self, opponent_model: JassFormerActorCritic, device):
+    def __init__(self, render_mode: Optional[str] = None):
         super().__init__()
 
-        self.opponent_model = opponent_model
-        self.device = device
-        self.opponent_model.to(self.device)
-        self.opponent_model.eval()
+        # 1. Initialize Player and Controller components
+        self.players: List[Player] = []
+        for i in range(4):
+            # Initially, all players use a dummy RandomStrategy
+            self.players.append(Player(RandomStrategy()))
 
-        # --- 1. Define Action Space ---
-        # We combine both action spaces into one.
-        # The legal_mask will tell the agent which part to use.
-        # Actions 0-35 are cards. Actions 36-40 are trump choices.
-        self.action_space = spaces.Discrete(TOTAL_ACTION_SPACE_SIZE)
+        # Set up the RLAgent (Player 0) as the learning strategy
+        # NOTE: You must provide a model instance when running training!
+        self.rl_model = None  # To be set externally during training setup
+        self.rl_agent = RLAgent(model=None, player_ref=self.players[0])  # Initialized with placeholder
+        self.players[0]._strategy = self.rl_agent
+        self._controller = Controller(self.players)
 
-        # --- 2. Define Observation Space ---
-        # This remains your token array
+        # 2. Define Observation Space (State Tokens)
+        # Assuming TOKEN_LENGTH is defined in your dataset/model setup
+        from dataset import TOKEN_LENGTH
         self.observation_space = spaces.Box(
-            low=0,
-            high=VOCABULARY_SIZE - 1,
-            shape=(TOKEN_LENGTH,),
-            dtype=np.int64
+            low=0, high=255, shape=(TOKEN_LENGTH,), dtype=np.int64
         )
 
-        # --- 3. Internal Game State ---
-        self.deck = np.arange(36)
-        self.player_hands = np.zeros((4, 9), dtype=np.int64)
-        self.current_trick = [] # Will store (player_id, card_id) tuples
-        self.tricks_played = 0
-        self.team_scores = np.zeros(2, dtype=np.int32)
-        self.team_game_scores = np.zeros(2, dtype=np.int32)
+        # 3. Define Action Space (Single output for Card or Trump)
+        # Card Action (0-35) or Trump Action (36-40)
+        self.action_space = spaces.Discrete(36 + 5)  # 41 total actions
 
         self.current_player_idx = 0
-        self.trick_starter_idx = 0
-        self.trump_suit = 0
-        self.trump_chosen_on_first_turn = None
-        self.position_who_chose_trump = 0
+        self.render_mode = render_mode
 
-        # --- NEW: State machine variables ---
-        self.game_phase = "trump"  # "trump" or "card"
-        self.trump_turn = 0        # 0 (first) or 1 (second)
-        self.game_state_tokens = np.zeros(TOKEN_LENGTH, dtype=np.int64)
+        # Store initial scores for reward calculation
+        self._initial_match_scores = [0, 0]
 
-    def _get_obs(self):
-        """
-        Generates the observation (token array) from the perspective
-        of the self.current_player_idx.
-        This logic is based on the Java GameView.java implementation.
-        """
-        self.game_state_tokens.fill(Tokens.PAD)
-        cp = self.current_player_idx  # Current Player index (0-3)
+    def _get_obs(self) -> np.ndarray:
+        """Returns the observation (token vector) for the current player."""
+        player = self.players[self.current_player_idx]
+        is_first_turn = self._controller._trump_suit == Suit.NONE and self._controller._trump_selection_first_turn
 
-        # === 0: CLS ===
-        self.game_state_tokens[0] = Tokens.CLS
+        # The tokens are generated by the Player instance
+        return np.array(player.get_state_as_tokens(is_first_turn), dtype=np.int64)
 
-        # === 1-9: GLOBALS (9 tokens) ===
-        self.game_state_tokens[1] = Tokens.SECTION_GLOBALS
-
-        # Get relative scores
-        our_game_score = self.team_game_scores[cp % 2]
-        opp_game_score = self.team_game_scores[(cp + 1) % 2]
-        our_match_score = self.team_scores[cp % 2]
-        opp_match_score = self.team_scores[(cp + 1) % 2]
-
-        if self.game_phase == "trump":
-            # --- Trump Choice Phase Globals ---
-            self.game_state_tokens[2] = Tokens.CHOOSE_TRUMP_SUIT
-            self.game_state_tokens[3] = Tokens.TRUMP_FIRST_CHOICE if self.trump_turn == 0 else Tokens.TRUMP_FORCED
-            self.game_state_tokens[4] = Tokens.position_token(0)  # Position is "SELF"
-            self.game_state_tokens[5] = Tokens.PAD  # Trump suit is not set
-        else:
-            # --- Card Play Phase Globals ---
-            self.game_state_tokens[2] = Tokens.CHOOSE_NEXT_CARD
-            self.game_state_tokens[
-                3] = Tokens.TRUMP_FIRST_CHOICE if self.trump_chosen_on_first_turn else Tokens.TRUMP_FORCED
-            self.game_state_tokens[4] = Tokens.position_token(self.position_who_chose_trump)
-            self.game_state_tokens[5] = Tokens.trump_token(self.trump_suit_token)
-
-        self.game_state_tokens[6] = Tokens.game_score_token(our_game_score)
-        self.game_state_tokens[7] = Tokens.game_score_token(opp_game_score)
-        self.game_state_tokens[8] = Tokens.match_score_token(our_match_score)
-        self.game_state_tokens[9] = Tokens.match_score_token(opp_match_score)
-
-        # === 10-19: HAND (10 tokens) ===
-        self.game_state_tokens[10] = Tokens.SECTION_HAND
-
-        # Get and sort the current player's hand
-        hand = self.player_hands[cp]
-        valid_cards = hand[hand != -1]  # Filter out played cards (-1)
-        sorted_hand = np.sort(valid_cards)
-
-        for i in range(9):
-            if i < len(sorted_hand):
-                self.game_state_tokens[11 + i] = Tokens.card_token(sorted_hand[i])
-            else:
-                self.game_state_tokens[11 + i] = Tokens.PAD
-
-        # === 20-26: CURRENT TRICK (7 tokens) ===
-        self.game_state_tokens[20] = Tokens.SECTION_TRICK
-
-        if self.game_phase == "trump":
-            self.game_state_tokens[27] = Tokens.SECTION_HISTORY
-            self.game_state_tokens[68] = Tokens.SECTION_BELIEF
-            return self.game_state_tokens
-
-        token_idx = 21
-        for (player_id, card_id) in self.current_trick:
-            if token_idx < 27:
-                self.game_state_tokens[token_idx] = Tokens.position_token(player_id, cp)
-                self.game_state_tokens[token_idx + 1] = Tokens.card_token(card_id)
-                token_idx += 2
-        # (Rest are already padded)
-
-        # === 27-67: HISTORY (41 tokens) ===
-        # (8 tricks * 5 tokens/trick + 1 section token)
-        self.game_state_tokens[27] = Tokens.SECTION_HISTORY
-
-        token_idx = 28
-        # Iterate history, most recent trick first (Java `lastCompletedTricks.add`)
-        for (cards_in_play_order, winner_id) in reversed(self.last_completed_tricks):
-            if token_idx > 67: break  # Max 8 tricks
-
-            for card_id in cards_in_play_order:
-                self.game_state_tokens[token_idx] = Tokens.card_token(card_id)
-                token_idx += 1
-
-            self.game_state_tokens[token_idx] = Tokens.win_token(winner_id, cp)
-            token_idx += 1
-        # (Rest are already padded)
-
-        # === 68-95: BELIEF / KNOWN HANDS (28 tokens) ===
-        # (1 section + 3 opponents * (1 pos + 4 * 2 card/conf))
-        self.game_state_tokens[68] = Tokens.SECTION_BELIEF
-
-        token_idx = 69
-        # Loop through opponents (e.g., Left, Partner, Right)
-        for i in range(1, 4):
-            opp_id = (cp + i) % 4
-
-            # Add opponent position token
-            self.game_state_tokens[token_idx] = Tokens.position_token(opp_id, cp)
-            token_idx += 1
-
-            # Get opponent's unplayed cards
-            opp_hand = self.player_hands[opp_id]
-            unplayed_cards = opp_hand[opp_hand != -1]
-
-            # Add up to 4 known cards with 1.0 confidence
-            for j in range(4):
-                if j < len(unplayed_cards):
-                    self.game_state_tokens[token_idx] = Tokens.card_token(unplayed_cards[j])
-                    self.game_state_tokens[token_idx + 1] = Tokens.confidence_token(1.0)
-                else:
-                    self.game_state_tokens[token_idx] = Tokens.PAD
-                    self.game_state_tokens[token_idx + 1] = Tokens.PAD
-                token_idx += 2
-        # (Rest are already padded)
-
-        assert token_idx == 96, f"Token generation ended at index {token_idx}, expected 96"
-
-        return self.game_state_tokens
-
-    def _get_info(self):
-        """
-        Generates auxiliary info, primarily the combined legal mask.
-        """
-        # We need to get masks for the *current* player's state
-        current_tokens_tensor = torch.tensor(
-            self.game_state_tokens,
-            dtype=torch.long,
-            device=self.device
-        ).unsqueeze(0) # Add batch dim [1, L]
-
-        with torch.no_grad():
-            # Get *both* masks
-            legal_card_mask_batch = get_legal_mask_with_rules_batch(current_tokens_tensor) # [1, 36]
-            legal_trump_mask_batch = get_trump_mask_batch(current_tokens_tensor)       # [1, 5]
-
-            # Combine them into one 41-element mask
-            combined_mask_batch = torch.cat(
-                (legal_card_mask_batch, legal_trump_mask_batch),
-                dim=1
-            ) # [1, 41]
-
-            # Squeeze to [41] and move to CPU
-            legal_mask = combined_mask_batch.squeeze(0).cpu().numpy()
-
-        return {"legal_mask": legal_mask}
-
-    def reset(self, seed=None, options=None):
+    def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         super().reset(seed=seed)
 
-        # 1. Create and shuffle the deck
-        np.random.shuffle(self.deck)
+        # Reset game state and initial scores
+        self._controller.reset()
+        self.current_player_idx = self._controller._current_player
+        self._initial_match_scores = list(self._controller._scores)  # Copy scores
 
-        # 2. Deal hands (reshape into 4x9)
-        self.player_hands = self.deck.reshape((4, 9)).astype(np.int64)
-
-        # 3. Find starting player (e.g., holder of DIAMOND_SEVEN)
-        # np.where returns (array([player_idx]), array([card_idx]))
-        start_player_tuple = np.where(self.player_hands == DIAMOND_SEVEN)
-        self.current_player_idx = start_player_tuple[0][0]
-
-        # 4. Initialize all other game state variables
-        self.current_trick = []
-        self.tricks_played = 0
-        self.team_scores.fill(0)
-        self.trick_starter_idx = self.current_player_idx
-        self.trump_suit_token = 0 # 0 = not set
-
-        # 5. Set the state machine to the beginning
-        self.game_phase = "trump"
-        self.trump_turn = 0
-        self.trump_chosen_on_first_turn = None
-
-        # 6. Simulate opponent turns *until* it's the agent's turn
-        self._simulate_opponent_turns()
-
-        # 7. Generate the initial observation and info for the agent
         observation = self._get_obs()
-        info = self._get_info()
+        info = {}
+
+        if self.render_mode == "human":
+            self._render_frame()
 
         return observation, info
 
-    def step(self, action: int):
-        """
-        Executes one agent action, then simulates all opponent actions
-        until it is the agent's turn again.
-        """
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+        # action is the single integer from the action_space (0-40)
 
-        # --- 1. Agent takes the provided action ---
-        # The 'action' is an int from 0-40. We must check the phase
-        # to know what this action means.
+        # 1. Check if the action is a Card Play (0-35) or Trump Choice (36-40)
+        is_trump_action = action >= 36
 
-        if self.game_phase == "trump":
-            # Action 36-40 corresponds to trump choice 0-4
-            trump_choice = action - CARD_ACTION_SPACE_SIZE
-            self._handle_trump_choice(AGENT_ID, trump_choice)
-        else:
-            # Action 0-35 corresponds to card choice 0-35
-            card_choice = action
-            self._handle_card_play(AGENT_ID, card_choice)
+        # 2. Execute the move for the current player (Agent 0)
+        if is_trump_action:
+            chosen_suit = Suit(action - 36)  # 0-3 are Suits, 4 is Pass/None
+            self._controller._trump_suit = chosen_suit  # Directly set for the step
 
-        # --- 2. Simulate Opponent Moves ---
-        # This loop runs until it's the agent's turn again (or game over)
-        terminated = self._simulate_opponent_turns()
+            # The Controller's play_next_turn method handles the rest of the trump logic
+            # (partner choice, moving to next player, setting trump for all players)
 
-        # --- 3. Prepare Return Values ---
-        observation = self._get_obs()
-        info = self._get_info()
+            # We skip the explicit move execution here, as the Controller's logic is complex
+            # Instead, we rely on the Controller's internal turn management to process the action
+            # The Controller's logic needs to be modified to accept an action directly if running RLAgent in the loop.
 
-        # 4. Calculate Reward
-        reward = 0
+            # --- CRITICAL INTEGRATION POINT ---
+            # Since the Controller calls player.choose_trump_suit, we must rely on
+            # the RLAgent's choose_trump_suit returning the action given here.
+            # This requires a complex change to your existing Controller/RLAgent structure.
+            #
+            # For simplicity in this env wrapper, we will simulate the whole turn
+            self._controller.play_next_turn()  # Assumes the current player is the RLAgent
+
+        else:  # Card Action
+            card_id = action
+            # The Controller's play_next_turn method needs to be executed
+            # Since Controller.play_next_turn already contains the logic for RLAgent
+            # when controller._current_player == 0, we rely on that.
+            self._controller.play_next_turn()
+
+        # 3. Advance to the next player whose turn it is
+        # Note: The Controller handles moving to the next player. We just check who it is.
+        self.current_player_idx = self._controller._current_player
+
+        # 4. Check for Termination and Calculate Reward
+        terminated = self._controller._game_over
+        reward = 0.0
+
         if terminated:
-            # Game is over, calculate final score
-            my_team_score = self.team_scores[AGENT_ID % 2]
-            opp_team_score = self.team_scores[(AGENT_ID + 1) % 2]
+            # Reward is based on team scores at the end of the game
+            our_team_score = self._controller._scores[0]
+            opp_team_score = self._controller._scores[1]
 
-            # Simple win/loss reward
-            reward = 1 if my_team_score > opp_team_score else -1
+            # Simple Win/Loss/Draw Reward (Standard RL setup)
+            if our_team_score > opp_team_score:
+                reward = 1.0
+            elif our_team_score < opp_team_score:
+                reward = -1.0
+            else:
+                reward = 0.0
 
-        truncated = False # We don't have a time limit
+        # We are using a fully-defined game (Jass), so 'truncated' is generally False.
+        truncated = False
+
+        observation = self._get_obs()
+        info = {"score": self._controller._scores}
+
+        if self.render_mode == "human":
+            self._render_frame()
 
         return observation, reward, terminated, truncated, info
 
-    def _simulate_opponent_turns(self):
-        """
-        Runs the game loop for opponents until it's AGENT_ID's turn.
-        Returns True if the game ended.
-        """
-        # Loop while it's not the agent's turn AND the game isn't over
-        while self.current_player_idx != AGENT_ID:
+    # The remaining methods (render, close) are standard for Gymnasium, but omitted for brevity.
+    def render(self):
+        if self.render_mode == "rgb_array":
+            return self._render_frame()
 
-            # Get obs and mask for the *current opponent*
-            obs_tensor = torch.tensor(
-                self._get_obs(), dtype=torch.long, device=self.device
-            ).unsqueeze(0)
+    def _render_frame(self):
+        # Placeholder for game visualization (not needed for training)
+        pass
 
-            info = self._get_info()
-            mask_tensor = torch.tensor(
-                info["legal_mask"], dtype=torch.bool, device=self.device
-            ).unsqueeze(0)
-
-            # Split the mask back up for the model
-            card_mask = mask_tensor[:, :CARD_ACTION_SPACE_SIZE]
-            trump_mask = mask_tensor[:, CARD_ACTION_SPACE_SIZE:]
-
-            # Use the opponent_model to choose an action
-            with torch.no_grad():
-                log_probs_card, log_probs_trump = self.opponent_model(
-                    obs_tensor, card_mask, trump_mask
-                )
-
-            # Take the action based on the current phase
-            if self.game_phase == "trump":
-                # Opponent chooses trump
-                opponent_action = torch.argmax(log_probs_trump, dim=-1).item()
-                self._handle_trump_choice(self.current_player_idx, opponent_action)
-            else:
-                # Opponent plays a card
-                opponent_action = torch.argmax(log_probs_card, dim=-1).item()
-                self._handle_card_play(self.current_player_idx, opponent_action)
-
-            # Check if the game just ended (e.g., in _handle_card_play)
-            if self.tricks_played == 9:
-                return True # Game is over
-
-        return False # Game is not over, it's agent's turn
-
-    def _handle_trump_choice(self, player_id: int, choice: int):
-        """Processes a single trump choice (0-4)."""
-
-        self.trump_turn += 1
-
-        if choice == 4: # 4 is the "pass" action
-            # Player passed. It's the next player's turn.
-            self.current_player_idx = (self.current_player_idx + 1) % 4
-            # If we've gone all the way around, it's the second turn
-            if self.current_player_idx == self.trick_starter_idx:
-                self.trump_turn = 1
-        else:
-            # --- Trump was chosen! ---
-            # TODO: Convert choice (0-3) to your trump suit token (e.g., 56-59)
-            self.trump_suit_token = choice + 56
-            self.trump_chosen_on_first_turn = (self.trump_turn <= 4)
-
-            # Set game phase to card play
-            self.game_phase = "card"
-
-            # The player who chose trump starts the first trick
-            self.current_player_idx = player_id
-            self.trick_starter_idx = player_id
-
-    def _handle_card_play(self, player_id: int, card: int):
-        """Processes a single card play (0-35)."""
-
-        # 1. Add card to trick
-        self.current_trick.append((player_id, card))
-
-        # 2. Remove card from player's hand (e.g., mark as -1)
-        hand = self.player_hands[player_id]
-        card_index = np.where(hand == card)[0][0]
-        hand[card_index] = -1 # Mark as played
-
-        # 3. Advance to next player
-        self.current_player_idx = (self.current_player_idx + 1) % 4
-
-        # 4. Check if trick is over
-        if len(self.current_trick) == 4:
-            self._resolve_trick()
-
-    def _resolve_trick(self):
-        """
-        Resolves the current trick, assigns score, and sets next player.
-
-        !!! CRITICAL TODO !!!
-        This is the core Jass trick-taking logic.
-        """
-
-        # TODO: Implement your Jass trick logic here
-        # 1. Look at self.current_trick and self.trump_suit_token
-        # 2. Determine who won
-        winner_id = self.current_trick[0][0] # Placeholder: first player wins
-        # 3. Calculate the score of the trick
-        trick_score = 10 # Placeholder
-
-        # 4. Update game state
-        self.team_scores[winner_id % 2] += trick_score
-        self.tricks_played += 1
-
-        # 5. Set next player
-        self.current_player_idx = winner_id
-        self.trick_starter_idx = winner_id
-
-        # 6. Clear trick
-        self.current_trick = []
-
-        # (Game-over check is handled in the simulation loop)
+    def close(self):
+        pass

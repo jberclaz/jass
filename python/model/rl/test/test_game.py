@@ -3,11 +3,12 @@ import unittest
 from rl.controller import Controller
 from rl.player import Player
 from rl.strategy import RandomStrategy
-
+from rl.rl_agent import RLAgent
+from model import JassFormerActorCritic
 
 class TestGame(unittest.TestCase):
     def test_game(self):
-        players = [Player(RandomStrategy()) for i in range(4)]
+        players = [Player(RLAgent(JassFormerActorCritic())) for _ in range(4)]
         controller = Controller(players)
 
         controller.reset()

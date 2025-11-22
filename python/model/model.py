@@ -50,10 +50,11 @@ class JassFormerActorCritic(nn.Module):
         # --- Two Heads ---
         # 1. The Actor Head (Policy)
         self.policy_head = nn.Linear(d_model, 36) # 36 cards
+        self.trump_head = nn.Linear(d_model, 5)  # 4 suits + pass
         # 2. The Critic Head (Value)
         self.value_head = nn.Linear(d_model, 1) # Outputs ONE number: the value
 
-    def forward(self, x, legal_mask=None):
+    def forward(self, x, legal_mask=None, trump_legal_mask=None ):
         # --- Shared Body ---
         x = self.embedding(x) + self.pos_embedding
         x = self.transformer(x)
@@ -62,11 +63,16 @@ class JassFormerActorCritic(nn.Module):
         # --- Two Heads ---
         # 1. Get Logits (for the Actor)
         logits = self.policy_head(cls)
+        trump_logits = self.trump_head(cls)
+
         if legal_mask is not None:
             logits = logits.masked_fill(~legal_mask, -1e9)
+        if trump_legal_mask is not None:
+            trump_logits = trump_logits.masked_fill(~trump_legal_mask, -1e9)
         log_probs = F.log_softmax(logits, dim=-1)
+        trump_log_probs =  F.log_softmax(trump_logits, dim=-1)
 
         # 2. Get Value (for the Critic)
         value = self.value_head(cls)
 
-        return log_probs, value.squeeze(-1) # Return both
+        return log_probs, trump_log_probs, value.squeeze(-1) # Return both

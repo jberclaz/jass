@@ -135,7 +135,8 @@ class Controller:
         hands = deck.reshape((4, 9)).astype(np.int64)
         for idx, player in enumerate(self._players):
             player.set_hand([Card(i) for i in hands[idx]])
-        return int(np.where(hands == DIAMOND_SEVEN)[0])
+        idx = np.where(hands == DIAMOND_SEVEN)[0]
+        return int(idx[0])
 
     @staticmethod
     def _relative_position(player, reference):

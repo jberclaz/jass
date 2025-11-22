@@ -9,6 +9,7 @@ import numpy as np
 class Player:
     def __init__(self, strategy: Strategy):
         self._strategy = strategy
+        self._strategy.set_player(self)
         self._current_trump = Suit.NONE
         self._hand = []
         self._trick = None
