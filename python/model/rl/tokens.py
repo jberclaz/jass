@@ -47,7 +47,7 @@ class Tokens(IntEnum):
 
     @staticmethod
     def match_score_token(score):
-        return 86 + min(score / 100, 25)
+        return 86 + min(score // 100, 25)
 
     @staticmethod
     def card_token(card: int):
