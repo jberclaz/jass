@@ -1,6 +1,7 @@
 from rl.tokens import Tokens
 from rl.trick import Trick
-from rl.jass_rules import Card, Suit, PlayerPosition, Announcement, RANK_DAME, RANK_ROI, ANNOUNCE_STOECK
+from rl.jass_rules import Card, Suit, PlayerPosition, Announcement, RANK_DAME, RANK_ROI, ANNOUNCE_STOECK, \
+    ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED, RANK_BOURG
 from rl.strategy import Strategy
 from dataset import TOKEN_LENGTH
 import numpy as np
@@ -37,9 +38,27 @@ class Player:
         self._trump_chosen_on_first_turn = chosen_on_first_turn
         self._compute_announcements()
 
-    def set_announcements(self, announcements):
+    def set_announcements(self, announcements: list[tuple[int, Announcement]]):
         for player, a in announcements:
             self._scores[player % 2] += 2 * a.value if self._current_trump == Suit.SPADE else a.value
+            if player == 0:
+                continue
+            if a.type != ANNOUNCE_STOECK:
+                player -= 1
+                target_row = np.zeros(3, dtype=np.float32)
+                target_row[player] = 1.0
+                card_ids = list(a.card_ids)
+                self._deck_probs[card_ids, :] = target_row
+                self._known_cards_in_hand[player].extend(card_ids)
+                if a.type in [ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED]:
+                    low_rank = card_ids[-1] % 9
+                    high_rank = card_ids[0] % 9
+                    target_row = np.ones(3, dtype=np.float32) * 0.5
+                    target_row[player] = 0
+                    if low_rank > 0 and a.type != ANNOUNCE_HUNDRED:
+                        self._deck_probs[card_ids[-1] - 1, :] = target_row
+                    if high_rank < 8:
+                        self._deck_probs[card_ids[0] + 1, :] = target_row
 
     def get_announcements(self):
         if len(self._hand) == 8:  # after playing the first card
@@ -59,6 +78,21 @@ class Player:
 
         if player == PlayerPosition.SELF:
             self._hand.remove(card)
+        else:
+            player -= 1
+            if card.number in  self._known_cards_in_hand[player]:
+                self._known_cards_in_hand[player].remove(card.number)
+            self._deck_probs[card.number, :] = 0
+
+            if self._trick.count > 1 and self._trick.lead_suit != card.suit and card.suit != self._current_trump:
+                # doesn't follow -> doesn't have cards from the lead suit, except maybe from the bourg sec
+                current_bourg = self._current_trump * 9 + RANK_BOURG
+                target_row = np.ones(3, dtype=np.float32) * 0.5
+                target_row[player] = 0
+                for r in range(9):
+                    c = self._trick.lead_suit * 9 + r
+                    if c != current_bourg:
+                        self._deck_probs[c, :] = target_row
 
         if self._trick.is_full:
             team_id = self._trick.owner % 2

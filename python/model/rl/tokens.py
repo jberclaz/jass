@@ -55,4 +55,5 @@ class Tokens(IntEnum):
 
     @staticmethod
     def confidence_token(conf: float):
-        pass
+        level = int(round(conf * 10))
+        return 112 + min(max(level, 0), 10)

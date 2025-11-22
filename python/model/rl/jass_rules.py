@@ -13,6 +13,7 @@ before calling `get_value()` or `play_card()` for correct scoring and comparison
 import collections
 from dataclasses import dataclass
 from enum import IntEnum
+from typing import Any, Generator, Iterable
 
 
 class PlayerPosition(IntEnum):
@@ -191,6 +192,17 @@ class Announcement:
     @property
     def value(self):
         return ANNOUNCE_VALUES[self.type]
+
+    @property
+    def card_ids(self) -> Iterable[int]:
+        if self.type in [ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED]:
+            for rank in range(self.type + 2):
+                yield self.highest_card.rank - rank
+        elif self.type in [ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS]:
+            for suit in range(4):
+                yield self.highest_card.rank + suit * 9
+        for rank in [RANK_DAME, RANK_ROI]:
+            yield self.highest_card.suit * 9 + rank
 
     @staticmethod
     def _find_squares(hand: list[Card]) -> list['Announcement']:
