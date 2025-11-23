@@ -32,7 +32,8 @@ class Suit(IntEnum):
     HEART = 1
     CLUB = 2
     DIAMOND = 3
-    NONE = 4
+    PASS = 4
+    NONE = 5
 
 # --- Constants from Card.java ---
 DECK_SIZE = 36

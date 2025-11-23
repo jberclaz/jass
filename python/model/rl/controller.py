@@ -41,24 +41,26 @@ class Controller:
         self._round_starter = (self._round_starter + 1)  % 4
         self._current_player = self._round_starter
 
-    def play_next_turn(self) -> tuple[int, bool]:
-        if self._trump_suit == Suit.NONE:
-            self._trump_suit = self._players[self._current_player].choose_trump_suit(self._trump_selection_first_turn)
-            if self._trump_suit == Suit.NONE:
+    def play_next_turn(self, forced_action:int=None) -> tuple[int, bool]:
+        if self._trump_suit in [Suit.NONE, Suit.PASS]:
+            if forced_action is not None:
+                assert forced_action < 5
+            self._trump_suit = self._players[self._current_player].choose_trump_suit(self._trump_selection_first_turn) if forced_action is None else Suit(forced_action)
+            if self._trump_suit == Suit.PASS:
                 if not self._trump_selection_first_turn:
                     raise RuntimeError("Second player cannot pass during trump selection")
                 self._move_to_partner()
                 self._trump_selection_first_turn = False
             else:
-                print(f"Trump chosen: {self._trump_suit}")
+                print(f"Trump chosen: {Suit(self._trump_suit)}")
                 for p in range(4):
                     pos = self._relative_position(self._current_player, p)
                     self._players[p].set_trump_suit(self._trump_suit, pos, self._trump_selection_first_turn)
                 if not self._trump_selection_first_turn:
                     self._move_to_partner()
             return self._trump_suit, False
-        move = self._players[self._current_player].choose_card()
-        print(f"Player {self._current_player} played {move}")
+        move = self._players[self._current_player].choose_card() if forced_action is None else forced_action
+        print(f"Player {self._current_player} played {Card(move)}")
         for p in range(4):
             self._players[p].played(Card(move), self._relative_position(self._current_player, p))
         announcements = self._players[self._current_player].get_announcements()
@@ -69,11 +71,15 @@ class Controller:
 
         return move, self._game_over
 
-    def get_next_tokens(self, player_id: int) -> tuple[list[int], int, bool]:
+    def get_current_observation(self, player_id) -> np.ndarray:
+        assert self._current_player == player_id
+        return self._players[player_id].get_state_as_tokens(self._trump_selection_first_turn)
+
+    def get_next_tokens(self, player_id: int) -> tuple[np.ndarray, int, bool]:
         while self._current_player != player_id:
             self.play_next_turn()
             if self._game_over:
-                return [], 0, True
+                return np.array([]), 0, True
         input_tokens = self._players[player_id].get_state_as_tokens(self._trump_selection_first_turn)
         action, game_over = self.play_next_turn()
         return input_tokens, action, self._game_over
@@ -141,3 +147,11 @@ class Controller:
     @staticmethod
     def _relative_position(player, reference):
         return (player + 4 - reference) % 4
+
+    @property
+    def current_player(self):
+        return self._current_player
+
+    @property
+    def scores(self) -> list[int, int]:
+        return self._scores

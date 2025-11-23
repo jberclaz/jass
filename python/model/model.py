@@ -13,7 +13,7 @@ class JassFormer(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead, dim_feedforward=512, dropout=0.1, activation="gelu", batch_first=True
+            d_model=d_model, nhead=nhead, dim_feedforward=4*d_model, dropout=0.1, activation="gelu", batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
         self.policy_head = nn.Linear(d_model, 36)  # 36 cards
@@ -43,7 +43,7 @@ class JassFormerActorCritic(nn.Module):
         self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead, dim_feedforward=512, dropout=0.1, activation="gelu", batch_first=True
+            d_model=d_model, nhead=nhead, dim_feedforward=4*d_model, dropout=0.1, activation="gelu", batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 
@@ -76,3 +76,25 @@ class JassFormerActorCritic(nn.Module):
         value = self.value_head(cls)
 
         return log_probs, trump_log_probs, value.squeeze(-1) # Return both
+
+    @staticmethod
+    def load_policy_weights(ac_model: 'JassFormerActorCritic', torch_state_file: str):
+        """
+        Loads policy weights from a JassFormer state dict into the JassFormerActorCritic.
+        Value head weights remain randomized.
+        """
+        policy_state_dict = torch.load(torch_state_file, map_location="cpu")
+
+        # Load the AC model's current state dict
+        ac_state_dict = ac_model.state_dict()
+
+        # Iterate over the provided policy weights (MC Model)
+        for name, param in policy_state_dict.items():
+            if name in ac_state_dict:
+                # 1. Direct transfer (e.g., embedding, transformer body weights)
+                ac_state_dict[name].copy_(param)
+
+        # Load the modified state dict back into the AC model
+        ac_model.load_state_dict(ac_state_dict)
+        print("✅ Policy weights successfully loaded into Actor-Critic model.")
+        print("   Value head initialized randomly and ready for RL training.")

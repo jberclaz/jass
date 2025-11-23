@@ -111,7 +111,7 @@ class Player:
         legal_moves = self._get_legal_moves()
         return self._strategy.choose_card(legal_moves, self._hand)
 
-    def get_state_as_tokens(self, first_turn_of_trump_selection: bool) -> list[int]:
+    def get_state_as_tokens(self, first_turn_of_trump_selection: bool) -> np.ndarray:
         tokens = np.zeros(TOKEN_LENGTH, dtype=np.int64)
         tokens.fill(Tokens.PAD)
 
@@ -161,7 +161,7 @@ class Player:
         if self._current_trump == Suit.NONE:
             tokens[27] = Tokens.SECTION_HISTORY
             tokens[68] = Tokens.SECTION_BELIEF
-            return tokens.tolist()
+            return tokens
 
         token_idx = 21
         if self._trick is not None:
@@ -224,7 +224,7 @@ class Player:
 
         assert token_idx == 96, f"Token generation ended at index {token_idx}, expected 96"
 
-        return tokens.tolist()
+        return tokens
 
     def _get_k_most_likely_cards(self, player_idx: int, k: int, threshold: float =0.34) -> tuple[list[int], list[float]]:
         # 1. Select the player's probability column

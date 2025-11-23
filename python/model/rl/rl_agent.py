@@ -1,5 +1,5 @@
 from typing import List
-
+import numpy as np
 import torch
 
 from legal_mask import get_trump_mask_batch, get_legal_mask_with_rules_batch
@@ -26,13 +26,13 @@ class RLAgent(Strategy):
         self.action_size = 36  # Card actions
         self.trump_action_size = 5  # 4 suits + pass
 
-    def _get_action(self, tokens: List[int], is_trump_phase: bool):
+    def _get_action(self, tokens: np.ndarray, is_trump_phase: bool):
         """
         Processes tokens, runs the model, applies mask, and samples an action.
         Returns the chosen index, log_prob, and state value.
         """
         # Convert state tokens to a PyTorch tensor (batch size 1)
-        state_tensor = torch.tensor([tokens], dtype=torch.long, device=self.device)
+        state_tensor = torch.from_numpy(tokens.reshape(1, -1))
 
         # 1. Get the legal mask
         if is_trump_phase:

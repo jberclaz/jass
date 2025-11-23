@@ -96,9 +96,6 @@ if __name__ == "__main__":
     # Initialize the environment
     env = JassEnv()
 
-    # Disable the RLAgent's model dependency for the simple test run
-    # (By setting the RLAgent's strategy back to a RandomStrategy for the test)
-    env.players[0]._strategy = RandomStrategy()
 
     run_env_sanity_check(env)
 

@@ -8,7 +8,9 @@ from model import JassFormerActorCritic
 
 class TestGame(unittest.TestCase):
     def test_game(self):
-        players = [Player(RLAgent(JassFormerActorCritic())) for _ in range(4)]
+        model = JassFormerActorCritic(d_model=256)
+        JassFormerActorCritic.load_policy_weights(model, "state_dict.pth")
+        players = [Player(RLAgent(model)) for _ in range(4)]
         controller = Controller(players)
 
         controller.reset()
