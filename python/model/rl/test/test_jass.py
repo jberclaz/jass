@@ -119,7 +119,7 @@ class TestControllerFlow(unittest.TestCase):
         forehand = self.controller._current_player
 
         # First player passes
-        self.players[forehand]._strategy.choose_trump_suit = lambda h, f: Suit.NONE
+        self.players[forehand]._strategy.choose_trump_suit = lambda h, f: Suit.PASS
         action, game_over = self.controller.play_next_turn()
         self.assertEqual(4, action)
         self.assertFalse(game_over)

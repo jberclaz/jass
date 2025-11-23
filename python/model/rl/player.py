@@ -127,7 +127,7 @@ class Player:
         our_match_score = self._scores[0]
         opp_match_score = self._scores[1]
 
-        if self._current_trump == Suit.NONE:
+        if self._current_trump in [Suit.NONE, Suit.PASS]:
             # --- Trump Choice Phase Globals ---
             tokens[2] = Tokens.CHOOSE_TRUMP_SUIT
             tokens[3] = Tokens.TRUMP_FIRST_CHOICE if first_turn_of_trump_selection else Tokens.TRUMP_FORCED
@@ -158,7 +158,7 @@ class Player:
         # === 20-26: CURRENT TRICK (7 tokens) ===
         tokens[20] = Tokens.SECTION_TRICK
 
-        if self._current_trump == Suit.NONE:
+        if self._current_trump in [Suit.NONE, Suit.PASS]:
             tokens[27] = Tokens.SECTION_HISTORY
             tokens[68] = Tokens.SECTION_BELIEF
             return tokens
