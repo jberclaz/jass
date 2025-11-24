@@ -153,5 +153,5 @@ class Controller:
         return self._current_player
 
     @property
-    def scores(self) -> list[int, int]:
+    def scores(self) -> list[int]:
         return self._scores

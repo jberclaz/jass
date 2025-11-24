@@ -72,26 +72,7 @@ class JassEnv(gym.Env):
         if is_trump_action:
             chosen_suit = action - 36  # 0-3 are Suits, 4 is Pass/None
             self._controller.play_next_turn(chosen_suit)
-
-            # The Controller's play_next_turn method handles the rest of the trump logic
-            # (partner choice, moving to next player, setting trump for all players)
-
-            # We skip the explicit move execution here, as the Controller's logic is complex
-            # Instead, we rely on the Controller's internal turn management to process the action
-            # The Controller's logic needs to be modified to accept an action directly if running RLAgent in the loop.
-
-            # --- CRITICAL INTEGRATION POINT ---
-            # Since the Controller calls player.choose_trump_suit, we must rely on
-            # the RLAgent's choose_trump_suit returning the action given here.
-            # This requires a complex change to your existing Controller/RLAgent structure.
-            #
-            # For simplicity in this env wrapper, we will simulate the whole turn
-            self._controller.play_next_turn()  # Assumes the current player is the RLAgent
-
         else:  # Card Action
-            # The Controller's play_next_turn method needs to be executed
-            # Since Controller.play_next_turn already contains the logic for RLAgent
-            # when controller._current_player == 0, we rely on that.
             _, terminated = self._controller.play_next_turn(action)
 
         # play other players' turn
@@ -104,9 +85,9 @@ class JassEnv(gym.Env):
 
             # Simple Win/Loss/Draw Reward (Standard RL setup)
             if our_team_score > opp_team_score:
-                reward = 1.0
+                reward = 10.0
             elif our_team_score < opp_team_score:
-                reward = -1.0
+                reward = -10.0
             else:
                 reward = 0.0
             observation = None
