@@ -1,17 +1,15 @@
+from typing import Optional, Tuple, Dict, List
+
 import gymnasium as gym
-from gymnasium import spaces
 import numpy as np
-from typing import Optional, Tuple, Dict, Any, List
+from gymnasium import spaces
 
 # Import your core game logic classes
 from controller import Controller
 from model import JassFormerActorCritic
 from player import Player
-from strategy import RandomStrategy, Strategy
 from rl_agent import RLAgent
-from rl.tokens import Tokens
-from rl.jass_rules import Suit
-
+from strategy import Strategy, RandomStrategy
 
 JASSFORMER_MODEL_PATH = "/home/jrb/src/external/jass/python/model/state_dict.pth"
 
@@ -31,6 +29,7 @@ class JassEnv(gym.Env):
         JassFormerActorCritic.load_policy_weights(model, JASSFORMER_MODEL_PATH)
         for i in range(1, 4):
             self.players.append(Player(RLAgent(model)))
+            #self.players.append(Player(RandomStrategy()))
 
         self._controller = Controller(self.players)
 

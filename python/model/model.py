@@ -2,6 +2,8 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.distributions import Categorical
+
 import legal_mask as lm
 from dataset import VOCABULARY_SIZE, TOKEN_LENGTH
 from rl.tokens import Tokens
@@ -55,7 +57,7 @@ class JassFormerActorCritic(nn.Module):
         # 2. The Critic Head (Value)
         self.value_head = nn.Linear(d_model, 1) # Outputs ONE number: the value
 
-    def forward_original(self, x, legal_mask=None, trump_legal_mask=None ):
+    def forward(self, x, legal_mask=None, trump_legal_mask=None ):
         # --- Shared Body ---
         x = self.embedding(x) + self.pos_embedding
         x = self.transformer(x)
@@ -78,9 +80,43 @@ class JassFormerActorCritic(nn.Module):
 
         return log_probs, trump_log_probs, value.squeeze(-1) # Return both
 
-    def forward(self, obs_dict: dict):
-        tokens = obs_dict["obs"].to(self.device)           # [B, L]
+    def get_value(self, x):
+        cls = self.forward_backbone(x)
+        value = self.value_head(cls)
+        return value.squeeze(-1)
 
+    def get_action_and_value(self, x, action=None):
+        cls = self.forward_backbone(x)
+        # --- Two Heads ---
+        # 1. Get Logits (for the Actor)
+        logits = self.policy_head(cls)
+        trump_logits = self.trump_head(cls)
+        # 2. Get Value (for the Critic)
+        value = self.value_head(cls)
+
+        legal_mask = lm.get_legal_mask_with_rules_batch(x).to(x.device)
+        trump_legal_mask = lm.get_trump_mask_batch(x).to(x.device)
+
+        logits = logits.masked_fill(~legal_mask, -1e9)
+        trump_logits = trump_logits.masked_fill(~trump_legal_mask, -1e9)
+        all_logits = torch.cat([logits, trump_logits], dim=-1)
+
+        probs = Categorical(logits=all_logits)
+
+        # 6. Sample or Validate Action
+        if action is None:
+            # Inference/Rollout mode: Sample an action from the distribution
+            action = probs.sample()
+
+        return action, probs.log_prob(action), probs.entropy(), value.squeeze(-1)
+
+    def forward_backbone(self, tokens):
+        # --- Shared Body ---
+        x = self.embedding(tokens) + self.pos_embedding
+        x = self.transformer(x)
+        return x[:, 0] # [CLS] token
+
+    def forward_sf(self, tokens):
         # --- Shared Body ---
         x = self.embedding(tokens) + self.pos_embedding
         x = self.transformer(x)
