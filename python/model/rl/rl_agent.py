@@ -112,3 +112,7 @@ class RLAgent(Strategy):
         log_probs = log_probs_raw.gather(1, action_tensor.unsqueeze(-1)).squeeze(-1)
 
         return log_probs, value
+
+    def update_model(self, new_state_dict):
+        self.model.load_state_dict(new_state_dict)
+        print("✅ Policy weights successfully updated into Actor-Critic model.")

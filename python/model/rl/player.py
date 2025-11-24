@@ -23,6 +23,9 @@ class Player:
         self._known_cards_in_hand = None
         self._deck_probs = None
 
+    def update_model(self, state_dict):
+        self._strategy.update_model(state_dict)
+
     def set_hand(self, hand: list[Card]):
         self._hand = hand
         self._current_trump = Suit.NONE

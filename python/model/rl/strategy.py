@@ -16,6 +16,9 @@ class Strategy:
     def set_player(self, player: 'Player'):
         self._player = player
 
+    def update_model(self, state_dict):
+        pass
+
 class RandomStrategy(Strategy):
     def __init__(self):
         super().__init__()

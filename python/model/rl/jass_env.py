@@ -131,3 +131,7 @@ class JassEnv(gym.Env):
 
     def close(self):
         pass
+
+    def update_opponent_model(self, state_dict):
+        for player in self.players:
+            player.update_model(state_dict)

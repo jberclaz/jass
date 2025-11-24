@@ -4,13 +4,13 @@ import random
 import time
 from dataclasses import dataclass
 
+import mlflow
 import gymnasium as gym
 import numpy as np
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import tyro
-from torch.distributions.categorical import Categorical
 from torch.utils.tensorboard import SummaryWriter
 
 from model import JassFormerActorCritic
@@ -43,7 +43,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 2.5e-4
     """the learning rate of the optimizer"""
-    num_envs: int = 8
+    num_envs: int = 4
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -79,6 +79,8 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
+    opponent_update_freq: int = 10
+    """Number of iterations between saving the model as a new opponent"""
 
 
 def make_env(env_id, idx, capture_video, run_name):
@@ -136,17 +138,22 @@ if __name__ == "__main__":
     args.num_iterations = args.total_timesteps // args.batch_size
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     if args.track:
-        import wandb
-
-        wandb.init(
-            project=args.wandb_project_name,
-            entity=args.wandb_entity,
-            sync_tensorboard=True,
-            config=vars(args),
-            name=run_name,
-            monitor_gym=True,
-            save_code=True,
-        )
+        mlflow.set_tracking_uri("http://192.168.11.98:5000") # or your server
+        mlflow.set_experiment("Jass_SelfPlay_PPO")
+        mlflow.start_run(run_name=f"jass_{args.seed}")
+        # Log hyperparameters
+        mlflow.log_params(vars(args))
+        # import wandb
+        #
+        # wandb.init(
+        #     project=args.wandb_project_name,
+        #     entity=args.wandb_entity,
+        #     sync_tensorboard=True,
+        #     config=vars(args),
+        #     name=run_name,
+        #     monitor_gym=True,
+        #     save_code=True,
+        # )
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
@@ -218,6 +225,11 @@ if __name__ == "__main__":
                         print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+
+                        # --- ADD MLFLOW HERE ---
+                        if args.track:
+                            mlflow.log_metric("charts/episodic_return", info["episode"]["r"], step=global_step)
+                            mlflow.log_metric("charts/episodic_length", info["episode"]["l"], step=global_step)
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -313,5 +325,38 @@ if __name__ == "__main__":
         print("SPS:", int(global_step / (time.time() - start_time)))
         writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
 
+        # --- ADD MLFLOW HERE ---
+        if args.track:
+            mlflow.log_metric("charts/learning_rate", optimizer.param_groups[0]["lr"], step=global_step)
+            mlflow.log_metric("losses/value_loss", v_loss.item(), step=global_step)
+            mlflow.log_metric("losses/policy_loss", pg_loss.item(), step=global_step)
+            mlflow.log_metric("losses/entropy", entropy_loss.item(), step=global_step)
+            mlflow.log_metric("losses/approx_kl", approx_kl.item(), step=global_step)
+            mlflow.log_metric("charts/SPS", int(global_step / (time.time() - start_time)), step=global_step)
+
+            # --- SELF-PLAY LEAGUE UPDATE ---
+            if iteration % args.opponent_update_freq == 0:
+                print(f">>> Saving Checkpoint at Iteration {iteration} <<<")
+
+                # 1. Save locally
+                ckpt_name = f"model_iter_{iteration}.pth"
+                save_path = os.path.join(f"runs/{run_name}", ckpt_name)
+                os.makedirs(os.path.dirname(save_path), exist_ok=True)
+                torch.save(agent.state_dict(), save_path)
+
+                # 2. Upload to MLflow
+                if args.track:
+                    mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
+                    print(f"Logged artifact: {ckpt_name}")
+
+                # 3. Update Environment (The step we discussed previously)
+                # You need to implement 'update_opponent_model' in your JassEnv
+                current_weights = agent.state_dict()
+                for env_idx in range(args.num_envs):
+                    # Handle the vector wrapper to get to the real env
+                    if hasattr(envs.envs[env_idx], "unwrapped"):
+                        envs.envs[env_idx].unwrapped.update_opponent_model(current_weights)
+                    else:
+                        envs.envs[env_idx].update_opponent_model(current_weights)
     envs.close()
     writer.close()
