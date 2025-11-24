@@ -1,7 +1,7 @@
-from rl.jass_rules import Card, DIAMOND_SEVEN, Suit, WINNING_SCORE, ANNOUNCE_STOECK
-from rl.player import Player
 import numpy as np
 
+from rl.jass_rules import Card, DIAMOND_SEVEN, Suit, WINNING_SCORE, ANNOUNCE_STOECK
+from rl.player import Player
 from rl.trick import Trick
 
 

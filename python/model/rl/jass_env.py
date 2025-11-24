@@ -5,11 +5,11 @@ import numpy as np
 from gymnasium import spaces
 
 # Import your core game logic classes
-from controller import Controller
+from rl.controller import Controller
 from model import JassFormerActorCritic
-from player import Player
-from rl_agent import RLAgent
-from strategy import Strategy, RandomStrategy
+from rl.player import Player
+from rl.rl_agent import RLAgent
+from rl.strategy import Strategy, RandomStrategy
 
 JASSFORMER_MODEL_PATH = "/home/jrb/src/external/jass/python/model/state_dict.pth"
 

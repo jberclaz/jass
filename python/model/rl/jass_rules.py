@@ -13,7 +13,7 @@ before calling `get_value()` or `play_card()` for correct scoring and comparison
 import collections
 from dataclasses import dataclass
 from enum import IntEnum
-from typing import Any, Generator, Iterable
+from typing import Iterable
 
 
 class PlayerPosition(IntEnum):

@@ -4,3 +4,4 @@ tqdm
 onnxscript
 mlflow
 gymnasium
+tyro
