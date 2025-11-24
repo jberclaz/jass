@@ -18,6 +18,7 @@ class Controller:
         self._game_over = False
         self._trick_count = 0
         self._round_starter = None
+        self._last_trick = None
 
     def reset(self):
         self._round_starter = self._shuffle_deck()
@@ -26,6 +27,7 @@ class Controller:
         self._game_over = False
         self._announcements = []
         self._trick = None
+        self._last_trick = None
         self._trump_suit = Suit.NONE
         self._trick_count = 0
         self._scores = [0, 0]
@@ -36,6 +38,7 @@ class Controller:
         self._trump_selection_first_turn = True
         self._announcements = []
         self._trick = None
+        self._last_trick = None
         self._trump_suit = Suit.NONE
         self._trick_count = 0
         self._round_starter = (self._round_starter + 1)  % 4
@@ -97,6 +100,7 @@ class Controller:
             if any(s >= WINNING_SCORE for s in self._scores):
                 self._game_over = True
                 return
+            self._last_trick = self._trick
             self._trick = None
             self._trick_count += 1
             if self._trick_count == 9:
@@ -155,3 +159,11 @@ class Controller:
     @property
     def scores(self) -> list[int]:
         return self._scores
+
+    @property
+    def current_trick(self):
+        return self._trick
+
+    @property
+    def last_trick(self):
+        return self._last_trick

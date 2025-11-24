@@ -16,7 +16,6 @@ class Player:
         self._past_tricks = []
         self._scores = [0, 0]
         self._game_scores = [0, 0]
-        self._opponent_score = 0
         self._announcements = []
         self._has_stoeck = False
         self._trump_selector = None

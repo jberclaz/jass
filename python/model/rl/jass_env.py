@@ -23,6 +23,8 @@ class JassEnv(gym.Env):
     def __init__(self, render_mode: Optional[str] = None):
         super().__init__()
 
+        self.scores = [0, 0]
+
         # 1. Initialize Player and Controller components
         self.players: List[Player] = [Player(Strategy())]
         model = JassFormerActorCritic(d_model=256)
@@ -60,6 +62,8 @@ class JassEnv(gym.Env):
         if self.render_mode == "human":
             self._render_frame()
 
+        self.scores = [0, 0]
+
         return observation, info
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
@@ -67,6 +71,8 @@ class JassEnv(gym.Env):
         terminated = False
         # 1. Check if the action is a Card Play (0-35) or Trump Choice (36-40)
         is_trump_action = action >= 36
+
+        reward = 0
 
         # 2. Execute the move for the current player (Agent 0)
         if is_trump_action:
@@ -93,7 +99,16 @@ class JassEnv(gym.Env):
             observation = None
         else:
             observation = self._controller.get_current_observation(0)
-            reward = 0.0
+            last_trick = self._controller.last_trick
+            if last_trick is None:
+                # hand finished
+                game_scores = [ self._controller.scores[i] - self.scores[i] for i in range(2)]
+                diff = game_scores[0]- game_scores[1]
+                reward = diff / 157
+                self.scores = self._controller.scores
+            else:
+                if last_trick.owner % 2 == 0:
+                    reward = self._controller.last_trick.score / 157 * 0.1
 
         # We are using a fully-defined game (Jass), so 'truncated' is generally False.
         truncated = False
