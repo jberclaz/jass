@@ -11,7 +11,11 @@ public class TransformersStrategy implements IJassStrategy {
     private final IJassStrategy atoutFallbackPolicy; // For choosing atout
 
     public TransformersStrategy() {
-        this(TransformersStrategy.class.getClassLoader().getResource("model/jassformer.onnx").getPath(), new MonteCarloStrategy(1000));
+        this("cp:/model/jassformer.onnx", new MonteCarloStrategy(1000));
+    }
+
+    public TransformersStrategy(String modelPath) {
+        this(modelPath, new MonteCarloStrategy(1000));
     }
 
     public TransformersStrategy(String modelPath, IJassStrategy atoutFallbackPolicy) {

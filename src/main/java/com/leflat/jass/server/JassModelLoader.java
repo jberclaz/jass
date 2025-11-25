@@ -6,7 +6,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.LongBuffer;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
 
@@ -20,12 +23,29 @@ public class JassModelLoader {
 
     public JassModelLoader(String modelPath) {
         try {
-            File modelFile = new File(modelPath);
-            if (!modelFile.exists()) {
-                throw new RuntimeException("Model file not found: " + modelPath);
-            }
             this.env = OrtEnvironment.getEnvironment();
-            this.session = env.createSession(modelFile.getAbsolutePath(), new OrtSession.SessionOptions());
+
+            if (!modelPath.startsWith("cp:")) {
+                // load from file system
+                File modelFile = new File(modelPath);
+                if (!modelFile.exists()) {
+                    throw new RuntimeException("Model file not found: " + modelPath);
+                }
+                this.session = env.createSession(modelFile.getAbsolutePath(), new OrtSession.SessionOptions());
+            } else {
+                modelPath = modelPath.substring(3);
+                // load from jar
+                try (var modelStream = JassModelLoader.class.getResourceAsStream(modelPath)) {
+                    if (modelStream == null) {
+                        throw new RuntimeException("Model " + modelPath + " not found in classpath");
+                    }
+                    byte[] modelArray = modelStream.readAllBytes();
+                    this.session = env.createSession(modelArray, new OrtSession.SessionOptions());
+                }
+                catch (IOException e) {
+                    throw new RuntimeException("Unable to load ONNX model " + modelPath + " from jar");
+                }
+            }
             LOGGER.info("Loaded JassFormer ONNX model from {} with {} inputs", modelPath, session.getInputInfo().size());
         } catch (OrtException e) {
             LOGGER.error("Failed to load ONNX model from {}", modelPath, e);
