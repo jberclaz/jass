@@ -41,7 +41,7 @@ class Args:
     """the id of the environment"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
-    learning_rate: float = 2.5e-4
+    learning_rate: float = 1e-5
     """the learning rate of the optimizer"""
     num_envs: int = 4
     """the number of parallel game environments"""
@@ -79,7 +79,7 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
-    opponent_update_freq: int = 10
+    opponent_update_freq: int = 100
     """Number of iterations between saving the model as a new opponent"""
 
 
@@ -177,6 +177,12 @@ if __name__ == "__main__":
     agent = JassFormerActorCritic(d_model=256)
     JassFormerActorCritic.load_policy_weights(agent, JASSFORMER_MODEL_PATH)
     agent = agent.to(device)
+
+    # # Freeze the Actor (Policy) layers initially
+    # for name, param in agent.named_parameters():
+    #     if "actor" in name or "policy" in name or "transformer" in name:
+    #         param.requires_grad = False
+
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
     # ALGO Logic: Storage setup
