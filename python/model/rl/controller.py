@@ -50,12 +50,13 @@ class Controller:
                 assert forced_action < 5
             self._trump_suit = self._players[self._current_player].choose_trump_suit(self._trump_selection_first_turn) if forced_action is None else Suit(forced_action)
             if self._trump_suit == Suit.PASS:
+                print(f"Player {self._current_player} passed")
                 if not self._trump_selection_first_turn:
                     raise RuntimeError("Second player cannot pass during trump selection")
                 self._move_to_partner()
                 self._trump_selection_first_turn = False
             else:
-                print(f"Trump chosen: {Suit(self._trump_suit)}")
+                print(f"Player {self._current_player} chose trump suit: {Suit(self._trump_suit)}")
                 for p in range(4):
                     pos = self._relative_position(self._current_player, p)
                     self._players[p].set_trump_suit(self._trump_suit, pos, self._trump_selection_first_turn)
@@ -94,12 +95,14 @@ class Controller:
         if self._trick.is_full:
             team_id = self._trick.owner % 2
             self._scores[team_id] += self._trick.score
-            # handle announcements
+            print(f"Trick goes to player {self._trick.owner}")
+# handle announcements
             if self._announcements:
                 self._handle_announcements()
             if any(s >= WINNING_SCORE for s in self._scores):
                 self._game_over = True
                 return
+            self._current_player = self._trick.owner
             self._last_trick = self._trick
             self._trick = None
             self._trick_count += 1
@@ -107,7 +110,8 @@ class Controller:
                 self._scores[team_id] += 10 if self._trump_suit == Suit.SPADE else 5
                 self._new_round()
                 return
-        self._move_to_next_player()
+        else:
+            self._move_to_next_player()
 
     def _handle_announcements(self):
         highest = None

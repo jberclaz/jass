@@ -96,19 +96,23 @@ class JassEnv(gym.Env):
                 reward = -10.0
             else:
                 reward = 0.0
-            observation = None
+            print(f"Reward after game: {reward}")
+            observation = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
         else:
             observation = self._controller.get_current_observation(0)
             last_trick = self._controller.last_trick
-            if last_trick is None:
-                # hand finished
-                game_scores = [ self._controller.scores[i] - self.scores[i] for i in range(2)]
-                diff = game_scores[0]- game_scores[1]
-                reward = diff / 157
-                self.scores = self._controller.scores
-            else:
-                if last_trick.owner % 2 == 0:
-                    reward = self._controller.last_trick.score / 157 * 0.1
+            if not is_trump_action:
+                if last_trick is None:
+                    # hand finished
+                    game_scores = [ self._controller.scores[i] - self.scores[i] for i in range(2)]
+                    diff = game_scores[0] - game_scores[1]
+                    reward = diff / 157
+                    self.scores = [s for s in self._controller.scores]
+                    print(f"Reward after round finished: {reward}")
+                else:
+                    if last_trick.owner % 2 == 0:
+                        reward = self._controller.last_trick.score / 157 * 0.1
+                    print(f"Reward after trick: {reward}")
 
         # We are using a fully-defined game (Jass), so 'truncated' is generally False.
         truncated = False
