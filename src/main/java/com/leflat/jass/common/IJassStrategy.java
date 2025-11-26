@@ -34,4 +34,6 @@ public interface IJassStrategy {
      */
     int chooseTrumpSuit(boolean first,
                     List<Card> hand, GameView gameView);
+
+    String toString();
 }

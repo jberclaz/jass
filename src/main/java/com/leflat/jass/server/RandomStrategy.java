@@ -10,6 +10,8 @@ import java.util.Random;
 public class RandomStrategy implements IJassStrategy {
     private final Random rand = new Random();
 
+    public String toString() { return "random"; }
+
     @Override
     public Card chooseCard(List<Card> validCards, GameView gameView, Plie currentPlie, List<Card> hand,  int pliesWonByTeam) {
         return validCards.get(rand.nextInt(validCards.size()));

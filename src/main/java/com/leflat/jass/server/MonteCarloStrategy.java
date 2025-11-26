@@ -22,6 +22,8 @@ public class MonteCarloStrategy implements IJassStrategy {
         this.strength = strength;
     }
 
+    public String toString() { return "MonteCarlo-" + strength; }
+
     @Override
     public Card chooseCard(List<Card> validCards,
                            GameView gameView,

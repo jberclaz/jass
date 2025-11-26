@@ -9,9 +9,10 @@ import java.util.List;
 public class TransformersStrategy implements IJassStrategy {
     private final JassModelLoader modelLoader;
     private final IJassStrategy atoutFallbackPolicy; // For choosing atout
+    private static final String DEFAULT_MODEL = "cp:/model/jassformer.onnx";
 
     public TransformersStrategy() {
-        this("cp:/model/jassformer.onnx", new MonteCarloStrategy(1000));
+        this(DEFAULT_MODEL, new MonteCarloStrategy(1000));
     }
 
     public TransformersStrategy(String modelPath) {
@@ -28,6 +29,8 @@ public class TransformersStrategy implements IJassStrategy {
         this.modelLoader = loader;
         this.atoutFallbackPolicy = atoutFallbackPolicy;
     }
+
+    public String toString() { return "transformers"; }
 
     @Override
     public Card chooseCard(List<Card> validCards,

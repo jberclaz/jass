@@ -15,6 +15,8 @@ public class HeuristicStrategy implements IJassStrategy {
         return chooseHeuristicMove(currentPlie, validCards);
     }
 
+    public String toString() { return "heuristic"; }
+
     @Override
     public int chooseTrumpSuit(boolean first, List<Card> hand, GameView gameView) {
         var counts = hand.stream().collect(Collectors.groupingBy(Card::getColor, Collectors.counting()));
