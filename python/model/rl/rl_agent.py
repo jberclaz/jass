@@ -17,7 +17,7 @@ class RLAgent(Strategy):
     An agent that uses the JassFormer Actor-Critic model to select cards and trumps.
     """
 
-    def __init__(self, model: JassFormerActorCritic, device: str = 'cpu'):
+    def __init__(self, model: JassFormerActorCritic, device: str = 'cpu', name: str = None):
         # Inherit from Strategy for compatibility with Controller
         super().__init__()
         self.model = model
@@ -25,6 +25,10 @@ class RLAgent(Strategy):
         # Player reference is crucial for state extraction
         self.action_size = 36  # Card actions
         self.trump_action_size = 5  # 4 suits + pass
+        self.name = name
+
+    def __str__(self):
+        return "transformers" if self.name is None else f"{self.name}-former"
 
     def _get_action(self, tokens: np.ndarray, is_trump_phase: bool):
         """
@@ -72,10 +76,12 @@ class RLAgent(Strategy):
         # e.g., by making the Player object accessible within the RLAgent.
         tokens = self._player.get_state_as_tokens(first_turn_of_trump_selection=False)
 
-        action_index, _, _ = self._get_action(tokens, is_trump_phase=False)
+        played_card_id, _, _ = self._get_action(tokens, is_trump_phase=False)
+        if played_card_id not in [c.number for c in legal_moves]:
+            raise RuntimeError("Transformers played an illegal card")
 
         # The action_index (0-35) directly corresponds to the Card ID
-        return action_index
+        return played_card_id
 
     def choose_trump_suit(self, hand: List[Card], first: bool):
         """
@@ -90,28 +96,28 @@ class RLAgent(Strategy):
 
         # --- Methods for Training (to be used by train.py) ---
 
-    def get_action_data(self, tokens: List[int], is_trump_phase: bool):
+    def get_action_data(self, tokens: np.ndarray, is_trump_phase: bool):
         """Returns action data (index, log_prob, value) for experience collection."""
         return self._get_action(tokens, is_trump_phase)
 
-    def evaluate(self, tokens_tensor: torch.Tensor, is_trump_phase: bool, action_tensor: torch.Tensor):
-        """
-        Called by the training loop to get log_probs and value for a batch of states.
-        """
-        tokens_tensor = tokens_tensor.to(self.device)
-        action_tensor = action_tensor.to(self.device)
-
-        if is_trump_phase:
-            legal_mask = get_trump_mask_batch(tokens_tensor)
-        else:
-            legal_mask = get_legal_mask_with_rules_batch(tokens_tensor)
-
-        log_probs_raw, value = self.model(tokens_tensor, legal_mask=legal_mask)
-
-        # Calculate the log probability of the specific action that was taken
-        log_probs = log_probs_raw.gather(1, action_tensor.unsqueeze(-1)).squeeze(-1)
-
-        return log_probs, value
+    # def evaluate(self, tokens_tensor: torch.Tensor, is_trump_phase: bool, action_tensor: torch.Tensor):
+    #     """
+    #     Called by the training loop to get log_probs and value for a batch of states.
+    #     """
+    #     tokens_tensor = tokens_tensor.to(self.device)
+    #     action_tensor = action_tensor.to(self.device)
+    #
+    #     if is_trump_phase:
+    #         legal_mask = get_trump_mask_batch(tokens_tensor)
+    #     else:
+    #         legal_mask = get_legal_mask_with_rules_batch(tokens_tensor)
+    #
+    #     log_probs_raw, value = self.model(tokens_tensor, legal_mask=legal_mask)
+    #
+    #     # Calculate the log probability of the specific action that was taken
+    #     log_probs = log_probs_raw.gather(1, action_tensor.unsqueeze(-1)).squeeze(-1)
+    #
+    #     return log_probs, value
 
     def update_model(self, new_state_dict):
         self.model.load_state_dict(new_state_dict)

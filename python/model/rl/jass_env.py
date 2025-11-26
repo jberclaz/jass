@@ -1,5 +1,5 @@
 from typing import Optional, Tuple, Dict, List
-
+import random
 import gymnasium as gym
 import numpy as np
 from gymnasium import spaces
@@ -9,7 +9,7 @@ from rl.controller import Controller
 from model import JassFormerActorCritic
 from rl.player import Player
 from rl.rl_agent import RLAgent
-from rl.strategy import Strategy, RandomStrategy
+from rl.strategy import Strategy, RandomStrategy, HeuristicStrategy
 
 JASSFORMER_MODEL_PATH = "/home/jrb/src/external/jass/python/model/state_dict.pth"
 
@@ -26,12 +26,13 @@ class JassEnv(gym.Env):
         self.scores = [0, 0]
 
         # 1. Initialize Player and Controller components
-        self.players: List[Player] = [Player(Strategy())]
-        model = JassFormerActorCritic(d_model=256)
-        JassFormerActorCritic.load_policy_weights(model, JASSFORMER_MODEL_PATH)
-        for i in range(1, 4):
-            self.players.append(Player(RLAgent(model)))
-            #self.players.append(Player(RandomStrategy()))
+        self._teacher_model = JassFormerActorCritic(d_model=256)
+        JassFormerActorCritic.load_policy_weights(self._teacher_model, JASSFORMER_MODEL_PATH)
+
+        self._student_model = JassFormerActorCritic(d_model=256)
+        JassFormerActorCritic.load_policy_weights(self._student_model, JASSFORMER_MODEL_PATH)
+
+        self.players = None
 
         self._controller = Controller(self.players)
 
@@ -50,6 +51,13 @@ class JassEnv(gym.Env):
 
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
         super().reset(seed=seed)
+
+        print(" <<<<<<<<<<<<<<<<<<<<<<<< New Game >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+
+        # randomly assign player strategies
+        self.players = self.randomize_players()
+        print(f"Roster: {",".join(map(lambda p:str(p._strategy), self.players))}")
+        self._controller.set_players(self.players)
 
         # Reset game state and initial scores
         self._controller.reset()
@@ -137,5 +145,24 @@ class JassEnv(gym.Env):
         pass
 
     def update_opponent_model(self, state_dict):
-        for player in self.players:
-            player.update_model(state_dict)
+        self._student_model.load_state_dict(state_dict)
+        print("✅ Policy weights successfully updated into Actor-Critic model.")
+
+    def randomize_players(self) -> list[Player]:
+        weights = [0.4, 0.3, 0.2, 0.1]
+        model_pool = [
+            (self._teacher_model, "teacher"),
+            (self._student_model, "student"),
+            (None, "Random"), # None signals random strategy
+            (None, "Heuristic"),
+        ]
+        players: List[Player] = [Player(Strategy())]
+        for i in range(1, 4):
+            # Sample a strategy
+            chosen_model, name = random.choices(model_pool, weights=weights, k=1)[0]
+
+            if chosen_model is None:
+                players.append(Player(RandomStrategy() if name == "Random" else HeuristicStrategy()))
+            else:
+                players.append(Player(RLAgent(chosen_model, name=name)))
+        return players

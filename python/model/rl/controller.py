@@ -6,9 +6,8 @@ from rl.trick import Trick
 
 
 class Controller:
-    def __init__(self, players: list[Player]):
+    def __init__(self, players: list[Player]=None):
         self._players = players
-        assert len(players) == 4
         self._current_player = None
         self._trump_suit = Suit.NONE
         self._scores = [0, 0]
@@ -43,6 +42,10 @@ class Controller:
         self._trick_count = 0
         self._round_starter = (self._round_starter + 1)  % 4
         self._current_player = self._round_starter
+
+    def set_players(self, players: list[Player]):
+        assert len(players) == 4
+        self._players = players
 
     def play_next_turn(self, forced_action:int=None) -> tuple[int, bool]:
         if self._trump_suit in [Suit.NONE, Suit.PASS]:
