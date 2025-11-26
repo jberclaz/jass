@@ -3,7 +3,7 @@ import unittest
 import torch
 import legal_mask
 from dataset import TOKEN_LENGTH
-
+import numpy as np
 
 class TestLegalMaskWithRules(unittest.TestCase):
     def test_first_to_play_all_legal(self):
@@ -58,10 +58,10 @@ class TestLegalMaskWithRules(unittest.TestCase):
         tokens = torch.tensor([0] * TOKEN_LENGTH)
         tokens[5] = 56 + 0  # trump spades
         tokens[11] = 10 + 18  # clubs
-        tokens[12] = 10 + 3  # spades 3
+        tokens[12] = 10 + 2  # 8 of spade
 
         tokens[22] = 10 + 19  # leading clubs
-        tokens[24] = 10 + 4  # plie trump rank 5
+        tokens[24] = 10 + 4  # cut with 10 of spade
         mask = legal_mask.get_legal_mask_with_rules(tokens)
         expected = torch.zeros(36, dtype=torch.bool)
         expected[18] = True  # only clubs legal
@@ -172,6 +172,27 @@ class TestFastLegalMask(unittest.TestCase):
                     print(f"Loop:   {original_results[i].int()}")
                     print(f"Batch:  {batch_results[i].int()}")
                     break
+
+    def test_corner_case(self):
+        trump = 0
+        hand =  [11, 16, 7, 28, 5, 17]
+        legal = [28, 5]
+        tokens = np.array( [  1,   3, 125,  51,  52,  56,  74,  69,  86,  87,   4,  21,  26,  17,  38,  15,  27,   0,
+   0,   0,   5,  55,  45,  53,  16,  54,  13,   6,  31,  12,  30,  32, 124,  35,  34,  36,
+  18, 123,  28,  43,  37,  33, 124,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   7,  55,  36, 117,
+  35, 117,  34, 117,  32, 117,  53,  36, 117,  35, 117,  34, 117,  32, 117,  54,  14, 122,
+  12, 122,  11, 122,  16, 122])
+        mask = legal_mask.get_legal_mask_with_rules(torch.from_numpy(tokens))
+        for i in range(mask.shape[0]):
+            if i in legal:
+                self.assertTrue(mask[i])
+            else:
+                self.assertFalse(mask[i])
+
+        batch_mask = legal_mask.get_legal_mask_with_rules_batch(torch.from_numpy(tokens.reshape(1, -1)))
+        all_correct = torch.all(mask == batch_mask).item()
+        self.assertTrue(all_correct)
 
 class TestMaskForTrumpSelection(unittest.TestCase):
 

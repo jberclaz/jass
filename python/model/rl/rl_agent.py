@@ -17,11 +17,14 @@ class RLAgent(Strategy):
     An agent that uses the JassFormer Actor-Critic model to select cards and trumps.
     """
 
-    def __init__(self, model: JassFormerActorCritic, device: str = 'cpu', name: str = None):
+    def __init__(self, model: JassFormerActorCritic, device: str | None = None, name: str = None):
         # Inherit from Strategy for compatibility with Controller
         super().__init__()
         self.model = model
-        self.device = device
+        if device is not None:
+            self.device = device
+        else:
+            self.device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
         # Player reference is crucial for state extraction
         self.action_size = 36  # Card actions
         self.trump_action_size = 5  # 4 suits + pass
@@ -78,7 +81,13 @@ class RLAgent(Strategy):
 
         played_card_id, _, _ = self._get_action(tokens, is_trump_phase=False)
         if played_card_id not in [c.number for c in legal_moves]:
-            raise RuntimeError("Transformers played an illegal card")
+            print(f"Hand: {[c.number for c in hand]}")
+            print(f"Legal: {[c.number for c in legal_moves]}")
+            print(f"Tokens: {tokens}")
+            state_tensor = torch.from_numpy(tokens.reshape(1, -1))
+            legal_mask = get_legal_mask_with_rules_batch(state_tensor).squeeze(0)
+            print(f"Mask: {legal_mask}")
+            raise RuntimeError(f"Transformers played an illegal card: {played_card_id}")
 
         # The action_index (0-35) directly corresponds to the Card ID
         return played_card_id
