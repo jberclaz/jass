@@ -18,8 +18,8 @@ public class JassModelLoader {
     private final OrtEnvironment env;
     private final OrtSession session;
     private static final int TOKEN_LENGTH = 96;
-    private static final String CARD_OUTPUT_NAME = "logits";
-    private static final String TRUMP_OUTPUT_NAME = "log_softmax_1";
+    private static final String CARD_OUTPUT_NAME = "card_logits";
+    private static final String TRUMP_OUTPUT_NAME = "trump_logits";
 
     public JassModelLoader(String modelPath) {
         try {

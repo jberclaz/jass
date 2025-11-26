@@ -55,7 +55,7 @@ def export_to_onnx(checkpoint_path, output_path="jass_agent.onnx", d_model=256):
         opset_version=18,              # 11 or 17 are usually safest for Java
         do_constant_folding=True,      # Optimization
         input_names=['tokens'],  # Name the input node for Java lookup
-        output_names=['logits'],# Name the output node for Java lookup
+        output_names=['card_logits', "trump_logits"],# Name the output node for Java lookup
         dynamic_shapes=({0: Dim("batch", min=1)},),
         external_data=False,
     )

@@ -432,10 +432,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -455,10 +455,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -481,10 +481,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -504,10 +504,10 @@ public class GameController extends Thread {
                     }
                     return p.getId();
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            var result = answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            var result = answers.stream().map(CompletableFuture::join).toList();
             assert result.size() == 3;
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {

@@ -351,9 +351,8 @@ if __name__ == "__main__":
                 torch.save(agent.state_dict(), save_path)
 
                 # 2. Upload to MLflow
-                if args.track:
-                    mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
-                    print(f"Logged artifact: {ckpt_name}")
+                mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
+                print(f"Logged artifact: {ckpt_name}")
 
                 # 3. Update Environment (The step we discussed previously)
                 # You need to implement 'update_opponent_model' in your JassEnv
@@ -364,5 +363,15 @@ if __name__ == "__main__":
                         envs.envs[env_idx].unwrapped.update_opponent_model(current_weights)
                     else:
                         envs.envs[env_idx].update_opponent_model(current_weights)
+
+    print(f">>> Saving Final model <<<<")
+    ckpt_name = f"model_final.pth"
+    save_path = os.path.join(f"runs/{run_name}", ckpt_name)
+    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    torch.save(agent.state_dict(), save_path)
+    if args.track:
+        mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
+        print(f"Logged artifact: {ckpt_name}")
+
     envs.close()
     writer.close()
