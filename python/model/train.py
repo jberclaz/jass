@@ -1,19 +1,19 @@
 # train.py
 import argparse
-from pathlib import Path
 import subprocess
+from pathlib import Path
 
+import mlflow
+import mlflow.pytorch
 import torch
 import torch.nn.functional as F
 from torch.export import Dim  # <-- 1. Import Dim
 from torch.utils.data import DataLoader, random_split
 from tqdm import tqdm
-import mlflow
-import mlflow.pytorch
 
 from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
+from legal_mask import get_legal_mask_with_rules_batch, get_trump_mask_batch
 from model import JassFormer
-from legal_mask import get_legal_mask_with_rules, get_legal_mask_with_rules_batch, get_trump_mask_batch
 
 
 class Config:
@@ -247,8 +247,9 @@ def train():
             onnx_model,
             opset_version=18,
             input_names=["tokens"],
-            output_names=["logits"],
+            output_names=["card_logits", "trump_logits"],
             dynamic_shapes=({0: Dim("batch", min=1)},),
+            external_data=False,
         )
         print(f"Exported to {onnx_model}")
         mlflow.log_metric("final/best_acc", best_acc)
