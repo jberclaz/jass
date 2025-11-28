@@ -194,6 +194,26 @@ class TestFastLegalMask(unittest.TestCase):
         all_correct = torch.all(mask == batch_mask).item()
         self.assertTrue(all_correct)
 
+    def test_second_corner_case(self):
+        hand = [5, 9, 13, 15, 19, 22, 29, 32]
+        trump = 0
+        trick = [1, 3, 0]
+        tokens = np.array([  1,   3, 125,  51,  55,  56,  60,  60,  93,  95,   4,  15,  19,  23,
+         25,  29,  32,  39,  42,   0,   5,  55,  11,  53,  13,  54,  10,   6,
+         37,  43,  12,  38, 124,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+          0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,
+          0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   0,   7,  55,
+          0,   0,   0,   0,   0,   0,   0,   0,  53,   0,   0,   0,   0,   0,
+          0,   0,   0,  54,   0,   0,   0,   0,   0,   0,   0,   0])
+        action = 22
+        mask = legal_mask.get_legal_mask_with_rules(torch.from_numpy(tokens))
+        self.assertTrue(mask[action])
+
+        batch_mask = legal_mask.get_legal_mask_with_rules_batch(torch.from_numpy(tokens.reshape(1, -1)))
+        all_correct = torch.all(mask == batch_mask).item()
+        self.assertTrue(all_correct)
+
+
 class TestMaskForTrumpSelection(unittest.TestCase):
 
     def setUp(self):
