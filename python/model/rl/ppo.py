@@ -71,6 +71,8 @@ class Args:
     """the maximum norm for the gradient clipping"""
     target_kl: float = None
     """the target KL divergence threshold"""
+    warmup_ratio: float = 0.2
+    """ratio of total timesteps to strictly train the value function (freeze policy)"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -102,33 +104,6 @@ def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
     return layer
 
 
-# class Agent(nn.Module):
-#     def __init__(self, envs):
-#         super().__init__()
-#         self.critic = nn.Sequential(
-#             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-#             nn.Tanh(),
-#             layer_init(nn.Linear(64, 64)),
-#             nn.Tanh(),
-#             layer_init(nn.Linear(64, 1), std=1.0),
-#         )
-#         self.actor = nn.Sequential(
-#             layer_init(nn.Linear(np.array(envs.single_observation_space.shape).prod(), 64)),
-#             nn.Tanh(),
-#             layer_init(nn.Linear(64, 64)),
-#             nn.Tanh(),
-#             layer_init(nn.Linear(64, envs.single_action_space.n), std=0.01),
-#         )
-#
-#     def get_value(self, x):
-#         return self.critic(x)
-#
-#     def get_action_and_value(self, x, action=None):
-#         logits = self.actor(x)
-#         probs = Categorical(logits=logits)
-#         if action is None:
-#             action = probs.sample()
-#         return action, probs.log_prob(action), probs.entropy(), self.critic(x)
 
 
 if __name__ == "__main__":
@@ -143,17 +118,7 @@ if __name__ == "__main__":
         mlflow.start_run(run_name=f"jass_{args.seed}")
         # Log hyperparameters
         mlflow.log_params(vars(args))
-        # import wandb
-        #
-        # wandb.init(
-        #     project=args.wandb_project_name,
-        #     entity=args.wandb_entity,
-        #     sync_tensorboard=True,
-        #     config=vars(args),
-        #     name=run_name,
-        #     monitor_gym=True,
-        #     save_code=True,
-        # )
+
     writer = SummaryWriter(f"runs/{run_name}")
     writer.add_text(
         "hyperparameters",
@@ -177,11 +142,6 @@ if __name__ == "__main__":
     agent = JassFormerActorCritic(d_model=256)
     JassFormerActorCritic.load_policy_weights(agent, JASSFORMER_MODEL_PATH)
     agent = agent.to(device)
-
-    # # Freeze the Actor (Policy) layers initially
-    # for name, param in agent.named_parameters():
-    #     if "actor" in name or "policy" in name or "transformer" in name:
-    #         param.requires_grad = False
 
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
 
@@ -305,7 +265,17 @@ if __name__ == "__main__":
                     v_loss = 0.5 * ((newvalue - b_returns[mb_inds]) ** 2).mean()
 
                 entropy_loss = entropy.mean()
-                loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
+
+                warmup_steps = args.total_timesteps * args.warmup_ratio
+                if global_step < warmup_steps:
+                    # WARMUP PHASE: Only optimize Value Loss
+                    # We zero out the policy gradient and entropy terms.
+                    # This effectively freezes the Policy Head, while the Value Head
+                    # and the shared Backbone train to predict rewards.
+                    loss = v_loss * args.vf_coef
+                else:
+                    # STANDARD PPO: Train everything
+                    loss = pg_loss - args.ent_coef * entropy_loss + v_loss * args.vf_coef
 
                 optimizer.zero_grad()
                 loss.backward()
