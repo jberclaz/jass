@@ -120,6 +120,8 @@ class JassEnv(gym.Env):
                 else:
                     if last_trick.owner % 2 == 0:
                         reward = self._controller.last_trick.score / 157 * 0.1
+                    else:
+                        reward = self._controller.last_trick.score / 157 * -0.1
                     print(f"Reward after trick: {reward}")
 
         # We are using a fully-defined game (Jass), so 'truncated' is generally False.
