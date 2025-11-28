@@ -11,11 +11,13 @@ class Controller:
         self._current_player = None
         self._trump_suit = Suit.NONE
         self._scores = [0, 0]
+        self._game_scores = [0, 0] # keeps track of the game points without announcements
+        self._last_game_scores = [0, 0]
         self._trick = None
         self._trump_selection_first_turn = True
         self._announcements = []
         self._game_over = False
-        self._trick_count = 0
+        self._trick_counts = [0, 0]
         self._round_starter = None
         self._last_trick = None
 
@@ -28,20 +30,32 @@ class Controller:
         self._trick = None
         self._last_trick = None
         self._trump_suit = Suit.NONE
-        self._trick_count = 0
+        self._trick_counts = [0, 0]
         self._scores = [0, 0]
+        self._game_scores = [0, 0]
 
     def _new_round(self):
-        print(f"new round: score {self._scores}")
+        print(f">>>>>>>>> new round: score {self._scores} <<<<<<<<<<")
         self._shuffle_deck()
         self._trump_selection_first_turn = True
         self._announcements = []
         self._trick = None
         self._last_trick = None
         self._trump_suit = Suit.NONE
-        self._trick_count = 0
+        self._trick_counts = [0, 0]
         self._round_starter = (self._round_starter + 1)  % 4
         self._current_player = self._round_starter
+        self._last_game_scores = self._game_scores
+        self._game_scores = [0, 0]
+        # checks that the scores are correct
+        for i in range(4):
+            scores  = self._players[i].get_scores()
+            if i % 2 == 1:
+                assert scores[1] == self._scores[0]
+                assert scores[0] == self._scores[1]
+            else:
+                assert scores[0] == self._scores[0]
+                assert scores[1] == self._scores[1]
 
     def set_players(self, players: list[Player]):
         assert len(players) == 4
@@ -98,8 +112,10 @@ class Controller:
         if self._trick.is_full:
             team_id = self._trick.owner % 2
             self._scores[team_id] += self._trick.score
+            self._game_scores[team_id] += self._trick.score
+            self._trick_counts[team_id] += 1
             print(f"Trick goes to player {self._trick.owner}")
-# handle announcements
+            # handle announcements
             if self._announcements:
                 self._handle_announcements()
             if any(s >= WINNING_SCORE for s in self._scores):
@@ -108,9 +124,17 @@ class Controller:
             self._current_player = self._trick.owner
             self._last_trick = self._trick
             self._trick = None
-            self._trick_count += 1
-            if self._trick_count == 9:
+            if sum(self._trick_counts) == 9:
+                # cinq de der
                 self._scores[team_id] += 10 if self._trump_suit == Suit.SPADE else 5
+                self._game_scores[team_id] += 10 if self._trump_suit == Suit.SPADE else 5
+                # match reward
+                if self._trick_counts[0] == 9:
+                    self._scores[0] += 200 if self._trump_suit == Suit.SPADE else 100
+                    self._game_scores[0] += 200 if self._trump_suit == Suit.SPADE else 100
+                elif self._trick_counts[1] == 9:
+                    self._scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
+                    self._game_scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
                 self._new_round()
                 return
         else:
@@ -156,11 +180,11 @@ class Controller:
         return int(idx[0])
 
     @staticmethod
-    def _relative_position(player, reference):
+    def _relative_position(player, reference) -> int:
         return (player + 4 - reference) % 4
 
     @property
-    def current_player(self):
+    def current_player(self) -> int:
         return self._current_player
 
     @property
@@ -168,9 +192,13 @@ class Controller:
         return self._scores
 
     @property
-    def current_trick(self):
+    def current_trick(self) -> Trick:
         return self._trick
 
     @property
-    def last_trick(self):
+    def last_trick(self) -> Trick:
         return self._last_trick
+
+    @property
+    def last_game_scores(self) -> list[int]:
+        return self._last_game_scores

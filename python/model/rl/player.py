@@ -34,6 +34,9 @@ class Player:
         self._deck_probs[my_hand,:] = 0
         self._known_cards_in_hand = [[], [], []]
         self._past_tricks = []
+        for i in range(2):
+            self._scores[i] += self._game_scores[i]
+        self._game_scores = [0, 0]
 
     def set_trump_suit(self, suit: Suit, player: PlayerPosition, chosen_on_first_turn: bool):
         self._current_trump = suit
@@ -102,6 +105,15 @@ class Player:
             self._game_scores[team_id] += self._trick.score
             self._past_tricks.append(self._trick)
             self._trick = None
+            if len(self._past_tricks) == 9: # round finished
+                # cinq de der
+                self._game_scores[team_id] += 5 if self._current_trump != Suit.SPADE else 10
+                our_trick_count = sum(t.owner % 2 == 0 for t in self._past_tricks)
+                # match
+                if our_trick_count == 9:
+                    self._game_scores[0] += 100 if self._current_trump != Suit.SPADE else 200
+                elif our_trick_count == 0:
+                    self._game_scores[1] += 100 if self._current_trump != Suit.SPADE else 200
 
     def choose_trump_suit(self, first: bool) -> Suit:
         suit_number = self._strategy.choose_trump_suit(self._hand, first)
@@ -227,6 +239,9 @@ class Player:
         assert token_idx == 96, f"Token generation ended at index {token_idx}, expected 96"
 
         return tokens
+
+    def get_scores(self):
+        return self._scores
 
     def _get_k_most_likely_cards(self, player_idx: int, k: int, threshold: float =0.34) -> tuple[list[int], list[float]]:
         # 1. Select the player's probability column

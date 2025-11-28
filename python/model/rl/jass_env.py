@@ -23,8 +23,6 @@ class JassEnv(gym.Env):
     def __init__(self, render_mode: Optional[str] = None):
         super().__init__()
 
-        self.scores = [0, 0]
-
         # 1. Initialize Player and Controller components
         self._teacher_model = JassFormerActorCritic(d_model=256)
         JassFormerActorCritic.load_policy_weights(self._teacher_model, JASSFORMER_MODEL_PATH)
@@ -70,8 +68,6 @@ class JassEnv(gym.Env):
         if self.render_mode == "human":
             self._render_frame()
 
-        self.scores = [0, 0]
-
         return observation, info
 
     def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
@@ -112,10 +108,9 @@ class JassEnv(gym.Env):
             if not is_trump_action:
                 if last_trick is None:
                     # hand finished
-                    game_scores = [ self._controller.scores[i] - self.scores[i] for i in range(2)]
+                    game_scores = self._controller.last_game_scores
                     diff = game_scores[0] - game_scores[1]
                     reward = diff / 157
-                    self.scores = [s for s in self._controller.scores]
                     print(f"Reward after round finished: {reward}")
                 else:
                     if last_trick.owner % 2 == 0:
