@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from torch.export import Dim
 
 from dataset import VOCABULARY_SIZE, TOKEN_LENGTH
-from model import JassFormerActorCritic
+from model import JassFormerActorCritic, JassFormer
 
 
 class JassInferenceWrapper(nn.Module):
@@ -25,7 +25,7 @@ class JassInferenceWrapper(nn.Module):
 
         return F.log_softmax(card_logits, dim=-1), F.log_softmax(trump_logits, dim=-1)
 
-def export_to_onnx(checkpoint_path, output_path="jass_agent.onnx", d_model=256):
+def export_rl_model_to_onnx(checkpoint_path, output_path="rl_jass_agent.onnx", d_model=256):
     print(f"Loading checkpoint from: {checkpoint_path}")
 
     # 1. Initialize the Full Model (Architecture must match training)
@@ -49,6 +49,39 @@ def export_to_onnx(checkpoint_path, output_path="jass_agent.onnx", d_model=256):
     print(f"Exporting to {output_path}...")
     torch.onnx.export(
         inference_model,               # The wrapper model
+        (dummy_input,),                   # Dummy input
+        output_path,                   # Output filename
+        export_params=True,            # Store the trained weights inside the file
+        opset_version=18,              # 11 or 17 are usually safest for Java
+        do_constant_folding=True,      # Optimization
+        input_names=['tokens'],  # Name the input node for Java lookup
+        output_names=['card_logits', "trump_logits"],# Name the output node for Java lookup
+        dynamic_shapes=({0: Dim("batch", min=1)},),
+        external_data=False,
+    )
+    print("✅ Export success!")
+
+def export_supervised_model_to_onnx(checkpoint_path, output_path="supervised_jass_agent.onnx", d_model=256):
+    print(f"Loading checkpoint from: {checkpoint_path}")
+
+    # 1. Initialize the Full Model (Architecture must match training)
+    # Ensure arguments (d_model, etc.) match your training config
+    full_agent = JassFormer(d_model=d_model)
+
+    # 2. Load Weights
+    # use map_location='cpu' to ensure it works even without GPU
+    state_dict = torch.load(checkpoint_path, map_location="cpu")
+    full_agent.load_state_dict(state_dict)
+    full_agent.eval() # Crucial: turns off Dropout
+
+    # 4. Create Dummy Input
+    # Batch size 1, 96 tokens (integers)
+    dummy_input = torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH), dtype=torch.long)
+
+    # 5. Export
+    print(f"Exporting to {output_path}...")
+    torch.onnx.export(
+        full_agent,               # The wrapper model
         (dummy_input,),                   # Dummy input
         output_path,                   # Output filename
         export_params=True,            # Store the trained weights inside the file
@@ -85,7 +118,9 @@ if __name__ == "__main__":
         default=256,
         help="Dimension of the model (d_model) used during training (default: 256)"
     )
-
+    parser.add_argument("--rl", action="store_true", default=False)
     args = parser.parse_args()
-
-    export_to_onnx(args.checkpoint, args.output, args.d_model)
+    if args.rl:
+        export_rl_model_to_onnx(args.checkpoint, args.output, args.d_model)
+    else:
+        export_supervised_model_to_onnx(args.checkpoint, args.output, args.d_model)
