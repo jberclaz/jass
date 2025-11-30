@@ -335,7 +335,8 @@ if __name__ == "__main__":
                         envs.envs[env_idx].update_opponent_model(current_weights)
 
     print(f">>> Saving Final model <<<<")
-    ckpt_name = f"model_final.pth"
+    experiment_name = mlflow.get_experiment(run.info.experiment_id).name
+    ckpt_name = f"model_{experiment_name}_final.pth"
     save_path = os.path.join(f"runs/{run_name}", ckpt_name)
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     torch.save(agent.state_dict(), save_path)
