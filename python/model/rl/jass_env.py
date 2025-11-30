@@ -146,7 +146,7 @@ class JassEnv(gym.Env):
         print("✅ Policy weights successfully updated into Actor-Critic model.")
 
     def randomize_players(self) -> list[Player]:
-        weights = [0.4, 0.3, 0.2, 0.1]
+        weights = [0.95, 0.05, 0, 0]
         model_pool = [
             (self._teacher_model, "teacher"),
             (self._student_model, "student"),
