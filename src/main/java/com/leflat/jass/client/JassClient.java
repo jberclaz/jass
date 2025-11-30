@@ -23,7 +23,7 @@ public class JassClient {
         }
         Collections.shuffle(AI_PLAYER_NAMES);
         for (int i = 1; i < 4; ++i) {
-            var aip = new ArtificialPlayer(i, AI_PLAYER_NAMES.get(i), new TransformersStrategy());
+            var aip = new ArtificialPlayer(i, AI_PLAYER_NAMES.get(i), new TransformersStrategy("/home/jrb/src/external/jass/python/model/supervised_jass_agent.onnx"));
             try {
                 gameController.addPlayer(aip);
             } catch (PlayerLeftExpection e) {

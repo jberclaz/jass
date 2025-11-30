@@ -43,7 +43,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 1e-5
     """the learning rate of the optimizer"""
-    num_envs: int = 4
+    num_envs: int = 1
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -115,7 +115,7 @@ if __name__ == "__main__":
     if args.track:
         mlflow.set_tracking_uri("http://192.168.11.98:5000") # or your server
         mlflow.set_experiment("Jass_SelfPlay_PPO")
-        mlflow.start_run(run_name=f"jass_{args.seed}")
+        mlflow_run = mlflow.start_run(run_name=f"jass_{args.seed}")
         # Log hyperparameters
         mlflow.log_params(vars(args))
 
@@ -335,7 +335,7 @@ if __name__ == "__main__":
                         envs.envs[env_idx].update_opponent_model(current_weights)
 
     print(f">>> Saving Final model <<<<")
-    experiment_name = mlflow.get_experiment(run.info.experiment_id).name
+    experiment_name = mlflow.get_experiment(mlflow_run.info.experiment_id).name
     ckpt_name = f"model_{experiment_name}_final.pth"
     save_path = os.path.join(f"runs/{run_name}", ckpt_name)
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
