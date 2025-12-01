@@ -5,6 +5,10 @@ import legal_mask
 from dataset import TOKEN_LENGTH
 import numpy as np
 
+from rl.jass_rules import Suit, Card
+from rl.trick import Trick
+
+
 class TestLegalMaskWithRules(unittest.TestCase):
     def test_first_to_play_all_legal(self):
         # Tokens: first play, hand with 9 cards (0-8)
@@ -212,6 +216,28 @@ class TestFastLegalMask(unittest.TestCase):
         batch_mask = legal_mask.get_legal_mask_with_rules_batch(torch.from_numpy(tokens.reshape(1, -1)))
         all_correct = torch.all(mask == batch_mask).item()
         self.assertTrue(all_correct)
+
+    def test_third_corner_case(self):
+        hand =  [0, 8]
+        legal=  [8]
+        tokens= np.array([  1,3, 125,50,52,56,72,67,95,97,4,10,18,0,0,0,0,0
+,0,0,5,55,24,53,15,54,12,6,31,30,29,28, 123,38,44,42
+,39, 124,11,41,16,13, 123,43,19,37,40, 123,23,26,22,20, 124,34
+,32,36,14, 123,33,35,21,27, 124,0,0,0,0,0,7,55,17, 122
+,16, 122,15, 122,25, 122,53,45, 117,34, 117,28, 117,29, 117,54,45, 117
+,44, 117,43, 117,42, 117])
+        self.assertEqual(96, len(tokens))
+        mask = legal_mask.get_legal_mask_with_rules(torch.from_numpy(tokens))
+
+        trick = Trick(Suit.SPADE)
+        trick.play_card(Card(14), 0)
+        trick.play_card(Card(5), 1)
+        trick.play_card(Card(2), 2)
+
+        self.assertTrue(trick.can_play(Card(0), [Card(c) for c in hand]))
+        self.assertTrue(trick.can_play(Card(8), [Card(c) for c in hand]))
+        for i in range(36):
+            self.assertEqual(mask[i], i in [0, 8])
 
 
 class TestMaskForTrumpSelection(unittest.TestCase):

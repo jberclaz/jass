@@ -138,7 +138,7 @@ class Trick:
             self._cut = True
             return
 
-        if Card.compare(card, self._highest, self._trump):
+        if Card.compare(card, self._highest, self._trump) > 0:
             self._take_plie(card, player)
             return
 

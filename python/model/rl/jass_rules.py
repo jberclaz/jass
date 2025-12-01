@@ -113,11 +113,7 @@ class Card:
         rank = self.rank
         if self.suit != trump:
             return rank
-        if rank == RANK_NELL:
-            return RANK_AS + 1
-        if rank == RANK_BOURG:
-            return RANK_AS + 2
-        return rank
+        return TRUMP_RANK_MAP[rank]
 
     @staticmethod
     def compare(a: 'Card', b: 'Card', trump: Suit):
