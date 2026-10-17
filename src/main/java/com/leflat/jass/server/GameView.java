@@ -4,11 +4,11 @@ import com.leflat.jass.client.ClientPlayer;
 import com.leflat.jass.common.*;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 public class GameView {
     protected final static Logger LOGGER = Logger.getLogger(GameView.class.getName());
-    private final Random rand = new Random();
     private final Map<Integer, Float[]> unknownCardsInGame = new HashMap<>();
     private final List<Card>[] knownCardsInHands = new List[3];
     private final int[] handSizes = new int[3];
@@ -247,7 +247,7 @@ public class GameView {
             int player = -1;
             do {
                 float sumProb = 0;
-                float f = rand.nextFloat();
+                float f = ThreadLocalRandom.current().nextFloat();
                 for (int p = 0; p < 3; p++) {
                     sumProb += probs[p];
                     if (f < sumProb) {

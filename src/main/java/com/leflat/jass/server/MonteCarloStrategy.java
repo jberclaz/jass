@@ -5,15 +5,22 @@ import com.leflat.jass.common.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.DoubleAccumulator;
 import java.util.stream.Collectors;
 
 public class MonteCarloStrategy implements IJassStrategy {
+    private static final int NUM_THREADS = Runtime.getRuntime().availableProcessors();
+    // shared by all the players; daemon threads, so that they do not keep the JVM alive
+    private static final ExecutorService SIMULATION_POOL = Executors.newFixedThreadPool(NUM_THREADS, runnable -> {
+        var thread = new Thread(runnable, "mc-simulation");
+        thread.setDaemon(true);
+        return thread;
+    });
     private final int strength;
     private final Random rand = new Random();
     private final HeuristicStrategy heuristicStrategy =new HeuristicStrategy();
@@ -150,18 +157,15 @@ public class MonteCarloStrategy implements IJassStrategy {
                                              Card move, int numberOfPliesWonByOwnTeam, int numberOfGames) {
         if (numberOfGames <= 0) return 0.0f;
 
-        // Thread pool: Use available processors
-        int numThreads = Runtime.getRuntime().availableProcessors();
-        ExecutorService executor = Executors.newFixedThreadPool(numThreads);
         DoubleAccumulator totalReward = new DoubleAccumulator((a, b) -> a + b, 0.0);
-        AtomicInteger completed = new AtomicInteger(0);
 
-        // (Copied from ArtificialPlayer)
-        int batchSize = Math.max(1, numberOfGames / numThreads * 2);
+        // several batches per thread, so that all the threads stay busy until the end
+        int batchSize = Math.max(1, numberOfGames / (NUM_THREADS * 4));
+        List<Future<?>> batches = new ArrayList<>();
         for (int start = 0; start < numberOfGames; start += batchSize) {
             final int batchStart = start;
             final int batchEnd = Math.min(start + batchSize, numberOfGames);
-            executor.submit(() -> {
+            batches.add(SIMULATION_POOL.submit(() -> {
                 List<Card>[] hands = new List[4];
                 int localReward = 0;
                 ThreadLocalRandom localRand = ThreadLocalRandom.current();  // Thread-safe random
@@ -228,17 +232,18 @@ public class MonteCarloStrategy implements IJassStrategy {
                     localReward += gameScore;
                 }
                 totalReward.accumulate(localReward);
-                completed.incrementAndGet();
-            });
+            }));
         }
 
-        // ... (rest of method) ...
         try {
-            executor.shutdown();
-            executor.awaitTermination(10, TimeUnit.MINUTES);
+            for (var batch : batches) {
+                batch.get();
+            }
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             ArtificialPlayer.LOGGER.warning("MC sim interrupted");
+        } catch (ExecutionException e) {
+            throw new RuntimeException("MC simulation failed", e.getCause());
         }
         return (float) totalReward.get() / numberOfGames;
     }
