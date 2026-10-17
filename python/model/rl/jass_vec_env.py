@@ -16,7 +16,8 @@ class JassVecEnv(gym.vector.VectorEnv):
     waiting on opponents using the same model, their next moves are computed with a single forward pass on `device`.
 
     Autoresets like SyncVectorEnv with AutoresetMode.SAME_STEP, and reports episode statistics the same way as
-    RecordEpisodeStatistics does in that mode (infos["final_info"]["episode"], masked by infos["final_info"]["_episode"]).
+    RecordEpisodeStatistics does in that mode (infos["final_info"]["episode"], masked by infos["final_info"]["_episode"]),
+    plus "won": 1 if the agent's team won the game, 0.5 on a tie, 0 if it lost.
     """
 
     metadata = {"autoreset_mode": AutoresetMode.SAME_STEP}
@@ -57,8 +58,11 @@ class JassVecEnv(gym.vector.VectorEnv):
         rewards = np.zeros(self.num_envs, dtype=np.float64)
         terminations = np.zeros(self.num_envs, dtype=np.bool_)
         truncations = np.zeros(self.num_envs, dtype=np.bool_)
+        won = np.zeros(self.num_envs, dtype=np.float64)
         for i, env in enumerate(self.envs):
-            observations[i], rewards[i], terminations[i], truncations[i], _ = env.finish_step()
+            observations[i], rewards[i], terminations[i], truncations[i], info = env.finish_step()
+            our_score, their_score = info["score"]
+            won[i] = 0.5 + np.sign(our_score - their_score) / 2
         self._episode_returns += rewards
         self._episode_lengths += 1
 
@@ -70,6 +74,7 @@ class JassVecEnv(gym.vector.VectorEnv):
                 "episode": {
                     "r": np.where(done_mask, self._episode_returns, 0.0),
                     "l": np.where(done_mask, self._episode_lengths, 0),
+                    "won": np.where(done_mask, won, 0.0),
                 },
                 "_episode": done_mask,
             }
@@ -87,7 +92,6 @@ class JassVecEnv(gym.vector.VectorEnv):
 
     def update_opponent_model(self, state_dict):
         self._student_model.load_state_dict(state_dict)
-        print("✅ Policy weights successfully updated into Actor-Critic model.")
 
     def close_extras(self, **kwargs):
         for env in self.envs:

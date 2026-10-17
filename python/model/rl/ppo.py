@@ -2,8 +2,10 @@
 import json
 import os
 import random
+import subprocess
 import time
 from dataclasses import dataclass
+from typing import Optional
 
 import mlflow
 import gymnasium as gym
@@ -15,8 +17,11 @@ import tyro
 from torch.utils.tensorboard import SummaryWriter
 
 from model import JassFormerActorCritic
+from rl.export_checkpoint_to_onnx import export_rl_model_to_onnx
 from rl.jass_env import JASSFORMER_MODEL_PATH
 from rl.jass_vec_env import JassVecEnv
+
+DEFAULT_MLFLOW_TRACKING_URI = "http://192.168.11.98:5000"
 
 
 @dataclass
@@ -30,13 +35,13 @@ class Args:
     cuda: bool = True
     """if toggled, cuda will be enabled by default"""
     track: bool = False
-    """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
-    """the wandb's project name"""
-    wandb_entity: str = None
-    """the entity (team) of wandb's project"""
-    capture_video: bool = False
-    """whether to capture videos of the agent performances (check out `videos` folder)"""
+    """if toggled, also log the run to MLflow (TensorBoard logging in runs/<run> is always on)"""
+    mlflow_tracking_uri: Optional[str] = None
+    """MLflow server (default: $MLFLOW_TRACKING_URI, else http://192.168.11.98:5000)"""
+    mlflow_experiment: str = "Jass_SelfPlay_PPO"
+    """MLflow experiment"""
+    mlflow_log_checkpoints: bool = False
+    """with --track, also upload every model_iter_<n>.pth to MLflow (the final model is always uploaded)"""
 
     # Algorithm specific arguments
     env_id: str = "JassFormer-v1"
@@ -89,12 +94,12 @@ class Args:
     """Number of iterations between saving the model as a new opponent"""
 
 
-def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
-    torch.nn.init.orthogonal_(layer.weight, std)
-    torch.nn.init.constant_(layer.bias, bias_const)
-    return layer
-
-
+def git_commit() -> str:
+    try:
+        return subprocess.check_output(["git", "rev-parse", "HEAD"], stderr=subprocess.DEVNULL,
+                                       cwd=os.path.dirname(os.path.abspath(__file__))).decode().strip()
+    except (OSError, subprocess.CalledProcessError):
+        return "unknown"
 
 
 if __name__ == "__main__":
@@ -103,21 +108,35 @@ if __name__ == "__main__":
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
+    run_dir = f"runs/{run_name}"
+    run_info = {}
     if args.track:
-        mlflow.set_tracking_uri("http://192.168.11.98:5000") # or your server
-        mlflow.set_experiment("Jass_SelfPlay_PPO")
-        mlflow_run = mlflow.start_run(run_name=f"jass_{args.seed}")
-        # Log hyperparameters
+        args.mlflow_tracking_uri = (args.mlflow_tracking_uri or os.environ.get("MLFLOW_TRACKING_URI")
+                                    or DEFAULT_MLFLOW_TRACKING_URI)
+        mlflow.set_tracking_uri(args.mlflow_tracking_uri)
+        mlflow.set_experiment(args.mlflow_experiment)
+        mlflow_run = mlflow.start_run(run_name=run_name)
         mlflow.log_params(vars(args))
+        mlflow.set_tags({"git_commit": git_commit(), "run_dir": os.path.abspath(run_dir)})
+        run_info = {"mlflow_run_id": mlflow_run.info.run_id}
+        print(f"MLflow run {mlflow_run.info.run_id} in experiment {args.mlflow_experiment} at {args.mlflow_tracking_uri}")
 
-    writer = SummaryWriter(f"runs/{run_name}")
+    writer = SummaryWriter(run_dir)
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
-    # read by rl.evaluate, to place the checkpoints (model_iter_<n>.pth) on the global_step axis
-    with open(f"runs/{run_name}/args.json", "w") as f:
-        json.dump(vars(args), f, indent=2)
+    # read by rl.evaluate, to place the checkpoints (model_iter_<n>.pth) on the global_step axis, and to log its
+    # results to the same MLflow run
+    with open(os.path.join(run_dir, "args.json"), "w") as f:
+        json.dump(vars(args) | run_info, f, indent=2)
+
+    def log_metrics(metrics: dict[str, float], step: int):
+        """Logs to TensorBoard and, with --track, to MLflow (in one request)."""
+        for key, value in metrics.items():
+            writer.add_scalar(key, value, step)
+        if args.track:
+            mlflow.log_metrics(metrics, step=step)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)
@@ -167,6 +186,7 @@ if __name__ == "__main__":
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
+        episode_returns, episode_lengths, episode_wins = [], [], []
         for step in range(0, args.num_steps):
             global_step += args.num_envs
             obs[step] = next_obs
@@ -188,17 +208,10 @@ if __name__ == "__main__":
             # episode statistics are batched over the envs, "_episode" flags the envs that just finished
             final_info = infos.get("final_info", {})
             if "episode" in final_info:
-                for env_idx in np.flatnonzero(final_info["_episode"]):
-                    episodic_return = float(final_info["episode"]["r"][env_idx])
-                    episodic_length = int(final_info["episode"]["l"][env_idx])
-                    print(f"global_step={global_step}, episodic_return={episodic_return}")
-                    writer.add_scalar("charts/episodic_return", episodic_return, global_step)
-                    writer.add_scalar("charts/episodic_length", episodic_length, global_step)
-
-                    # --- ADD MLFLOW HERE ---
-                    if args.track:
-                        mlflow.log_metric("charts/episodic_return", episodic_return, step=global_step)
-                        mlflow.log_metric("charts/episodic_length", episodic_length, step=global_step)
+                finished = final_info["_episode"]
+                episode_returns += final_info["episode"]["r"][finished].tolist()
+                episode_lengths += final_info["episode"]["l"][finished].tolist()
+                episode_wins += final_info["episode"]["won"][finished].tolist()
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -288,54 +301,52 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
-        writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
-        writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
-        writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
-        writer.add_scalar("losses/entropy", entropy_loss.item(), global_step)
-        writer.add_scalar("losses/old_approx_kl", old_approx_kl.item(), global_step)
-        writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
-        writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
-        writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))
-        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
-
-        # --- ADD MLFLOW HERE ---
-        if args.track:
-            mlflow.log_metric("charts/learning_rate", optimizer.param_groups[0]["lr"], step=global_step)
-            mlflow.log_metric("losses/value_loss", v_loss.item(), step=global_step)
-            mlflow.log_metric("losses/policy_loss", pg_loss.item(), step=global_step)
-            mlflow.log_metric("losses/entropy", entropy_loss.item(), step=global_step)
-            mlflow.log_metric("losses/approx_kl", approx_kl.item(), step=global_step)
-            mlflow.log_metric("charts/SPS", int(global_step / (time.time() - start_time)), step=global_step)
+        sps = int(global_step / (time.time() - start_time))
+        metrics = {
+            "charts/learning_rate": optimizer.param_groups[0]["lr"],
+            "charts/SPS": sps,
+            "charts/warmup": float(in_warmup),
+            "losses/value_loss": v_loss.item(),
+            "losses/policy_loss": pg_loss.item(),
+            "losses/entropy": entropy_loss.item(),
+            "losses/old_approx_kl": old_approx_kl.item(),
+            "losses/approx_kl": approx_kl.item(),
+            "losses/clipfrac": float(np.mean(clipfracs)),
+            "losses/explained_variance": float(explained_var),
+        }
+        if episode_returns:
+            # averaged over the games finished during this iteration (against the teacher and the student)
+            metrics |= {
+                "charts/episodic_return": float(np.mean(episode_returns)),
+                "charts/episodic_length": float(np.mean(episode_lengths)),
+                "charts/game_win_rate": float(np.mean(episode_wins)),
+                "charts/games": len(episode_returns),
+            }
+        log_metrics(metrics, global_step)
+        games_summary = (f"return {np.mean(episode_returns):+.2f}, won {np.mean(episode_wins):.0%} of "
+                         f"{len(episode_returns)} games" if episode_returns else "no game finished")
+        print(f"iter {iteration}/{args.num_iterations} | step {global_step:,} | {sps} SPS"
+              f"{' | warmup' if in_warmup else ''} | {games_summary} | value loss {v_loss.item():.3f}, "
+              f"explained var {explained_var:.2f}, approx kl {approx_kl.item():.4f}, clipfrac {np.mean(clipfracs):.3f}")
 
         # --- SELF-PLAY LEAGUE UPDATE ---
         if iteration % args.opponent_update_freq == 0:
-            print(f">>> Saving Checkpoint at Iteration {iteration} <<<")
-
-            # 1. Save locally
-            ckpt_name = f"model_iter_{iteration}.pth"
-            save_path = os.path.join(f"runs/{run_name}", ckpt_name)
-            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            save_path = os.path.join(run_dir, f"model_iter_{iteration}.pth")
             torch.save(agent.state_dict(), save_path)
+            print(f"Saved {save_path}, now the student opponent")
+            if args.track and args.mlflow_log_checkpoints:
+                mlflow.log_artifact(save_path, artifact_path="checkpoints")
+            envs.update_opponent_model(agent.state_dict())
 
-            # 2. Upload to MLflow
-            if args.track:
-                mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
-                print(f"Logged artifact: {ckpt_name}")
-
-            # 3. Update the opponent model in the environments
-            current_weights = agent.state_dict()
-            envs.update_opponent_model(current_weights)
-
-    print(f">>> Saving Final model <<<<")
-    ckpt_name = f"model_{mlflow_run.info.experiment_id}_final.pth" if args.track else "model_final.pth"
-    save_path = os.path.join(f"runs/{run_name}", ckpt_name)
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    save_path = os.path.join(run_dir, "model_final.pth")
     torch.save(agent.state_dict(), save_path)
+    onnx_path = os.path.join(run_dir, "model_final.onnx")
+    export_rl_model_to_onnx(save_path, onnx_path, agent.embedding.embedding_dim)
+    print(f"Saved {save_path} and {onnx_path}")
     if args.track:
-        mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
-        print(f"Logged artifact: {ckpt_name}")
+        mlflow.log_artifact(save_path, artifact_path="checkpoints")
+        mlflow.log_artifact(onnx_path)
+        mlflow.end_run()
 
     envs.close()
     writer.close()

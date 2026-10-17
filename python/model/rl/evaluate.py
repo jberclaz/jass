@@ -4,7 +4,8 @@ Evaluates models against MonteCarlo players, by exporting them to ONNX and playi
     # one or several checkpoints (supervised .pt or RL .pth, detected automatically)
     python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --hands 1000 --strengths 100 300
 
-    # every checkpoint of a PPO run, as they are written; the win rates are logged to the run's TensorBoard
+    # every checkpoint of a PPO run, as they are written; the results are logged to the run's TensorBoard, and to its
+    # MLflow run when PPO was started with --track
     python -m rl.evaluate --watch runs/<run> --hands 1000 --strengths 100
 
 The results are appended to eval.jsonl, in the run directory with --watch, in the current directory otherwise.
@@ -122,6 +123,11 @@ def watch(args: Args, jar: str):
         run_args = json.load(f)
     eval_log = os.path.join(run_dir, "eval.jsonl")
     writer = SummaryWriter(run_dir)
+    mlflow_client = None
+    if run_args.get("mlflow_run_id"):
+        from mlflow import MlflowClient
+        mlflow_client = MlflowClient(tracking_uri=run_args["mlflow_tracking_uri"])
+        print(f"Logging to MLflow run {run_args['mlflow_run_id']} at {run_args['mlflow_tracking_uri']}")
     while True:
         done = evaluated_checkpoints(eval_log)
         last_iteration = os.path.join(run_dir, f"model_iter_{run_args['num_iterations']}.pth")
@@ -138,10 +144,19 @@ def watch(args: Args, jar: str):
             results = evaluate(checkpoint, args, jar)
             print_results(checkpoint, results)
             append_results(eval_log, os.path.basename(checkpoint), results, step)
+            metrics = {}
             for r in results:
-                writer.add_scalar(f"eval/points_per_{r['unit']}_mc{r['strength']}", r["points"], step)
-                writer.add_scalar(f"eval/{r['unit']}_win_rate_mc{r['strength']}", r["win_rate"], step)
+                metrics[f"eval/points_per_{r['unit']}_mc{r['strength']}"] = r["points"]
+                metrics[f"eval/{r['unit']}_win_rate_mc{r['strength']}"] = r["win_rate"]
+            for key, value in metrics.items():
+                writer.add_scalar(key, value, step)
             writer.flush()
+            if mlflow_client:
+                try:
+                    for key, value in metrics.items():
+                        mlflow_client.log_metric(run_args["mlflow_run_id"], key, value, step=step)
+                except Exception as e:  # a server problem must not stop the evaluations
+                    print(f"Unable to log to MLflow: {e}")
             continue
         if any(p.endswith("final.pth") for p in glob.glob(os.path.join(run_dir, "model_*.pth"))):
             break  # the run is over and all its checkpoints have been evaluated

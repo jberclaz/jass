@@ -1,3 +1,4 @@
+import logging
 from typing import Optional, Tuple, Dict, List
 import random
 import gymnasium as gym
@@ -10,6 +11,8 @@ from model import JassFormerActorCritic
 from rl.player import Player
 from rl.rl_agent import RLAgent
 from rl.strategy import Strategy, RandomStrategy, HeuristicStrategy
+
+logger = logging.getLogger(__name__)
 
 JASSFORMER_MODEL_PATH = "/home/jrb/src/external/jass/python/model/state_dict.pth"
 
@@ -95,11 +98,11 @@ class JassEnv(gym.Env):
         """Starts a new game with a new roster, up to the first opponent's turn (if any)."""
         super().reset(seed=seed)
 
-        print(" <<<<<<<<<<<<<<<<<<<<<<<< New Game >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        logger.debug(" <<<<<<<<<<<<<<<<<<<<<<<< New Game >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
         # randomly assign player strategies
         self.players = self.randomize_players()
-        print(f"Roster: {",".join(map(lambda p:str(p._strategy), self.players))}")
+        logger.debug(f"Roster: {",".join(map(lambda p:str(p._strategy), self.players))}")
         self._controller.set_players(self.players)
 
         # Reset game state and initial scores
@@ -162,7 +165,7 @@ class JassEnv(gym.Env):
                 reward = -10.0
             else:
                 reward = 0.0
-            print(f"Reward after game: {reward}")
+            logger.debug(f"Reward after game: {reward}")
             observation = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
         else:
             observation = self.agent_observation()
@@ -173,13 +176,13 @@ class JassEnv(gym.Env):
                     game_scores = self._controller.last_game_scores
                     diff = game_scores[0] - game_scores[1]
                     reward = diff / 157
-                    print(f"Reward after round finished: {reward}")
+                    logger.debug(f"Reward after round finished: {reward}")
                 else:
                     if last_trick.owner % 2 == 0:
                         reward = self._controller.last_trick.score / 157 * 0.1
                     else:
                         reward = self._controller.last_trick.score / 157 * -0.1
-                    print(f"Reward after trick: {reward}")
+                    logger.debug(f"Reward after trick: {reward}")
 
         # We are using a fully-defined game (Jass), so 'truncated' is generally False.
         truncated = False
@@ -202,7 +205,7 @@ class JassEnv(gym.Env):
 
     def update_opponent_model(self, state_dict):
         self._student_model.load_state_dict(state_dict)
-        print("✅ Policy weights successfully updated into Actor-Critic model.")
+        logger.debug("✅ Policy weights successfully updated into Actor-Critic model.")
 
     def randomize_players(self) -> list[Player]:
         weights = [0.95, 0.05, 0, 0]

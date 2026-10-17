@@ -1,8 +1,11 @@
+import logging
 import numpy as np
 
 from rl.jass_rules import Card, DIAMOND_SEVEN, Suit, WINNING_SCORE, ANNOUNCE_STOECK
 from rl.player import Player
 from rl.trick import Trick
+
+logger = logging.getLogger(__name__)
 
 
 class Controller:
@@ -35,7 +38,7 @@ class Controller:
         self._game_scores = [0, 0]
 
     def _new_round(self):
-        print(f">>>>>>>>> new round: score {self._scores} <<<<<<<<<<")
+        logger.debug(f">>>>>>>>> new round: score {self._scores} <<<<<<<<<<")
         self._shuffle_deck()
         self._trump_selection_first_turn = True
         self._announcements = []
@@ -67,13 +70,13 @@ class Controller:
                 assert forced_action < 5
             self._trump_suit = self._players[self._current_player].choose_trump_suit(self._trump_selection_first_turn) if forced_action is None else Suit(forced_action)
             if self._trump_suit == Suit.PASS:
-                print(f"Player {self._current_player} passed")
+                logger.debug(f"Player {self._current_player} passed")
                 if not self._trump_selection_first_turn:
                     raise RuntimeError("Second player cannot pass during trump selection")
                 self._move_to_partner()
                 self._trump_selection_first_turn = False
             else:
-                print(f"Player {self._current_player} chose trump suit: {Suit(self._trump_suit)}")
+                logger.debug(f"Player {self._current_player} chose trump suit: {Suit(self._trump_suit)}")
                 for p in range(4):
                     pos = self._relative_position(self._current_player, p)
                     self._players[p].set_trump_suit(self._trump_suit, pos, self._trump_selection_first_turn)
@@ -81,7 +84,7 @@ class Controller:
                     self._move_to_partner()
             return self._trump_suit, False
         move = self._players[self._current_player].choose_card() if forced_action is None else forced_action
-        print(f"Player {self._current_player} played {Card(move)}")
+        logger.debug(f"Player {self._current_player} played {Card(move)}")
         for p in range(4):
             self._players[p].played(Card(move), self._relative_position(self._current_player, p))
         announcements = self._players[self._current_player].get_announcements()
@@ -114,7 +117,7 @@ class Controller:
             self._scores[team_id] += self._trick.score
             self._game_scores[team_id] += self._trick.score
             self._trick_counts[team_id] += 1
-            print(f"Trick goes to player {self._trick.owner}")
+            logger.debug(f"Trick goes to player {self._trick.owner}")
             # handle announcements
             if self._announcements:
                 self._handle_announcements()
@@ -158,7 +161,7 @@ class Controller:
                 self._scores[player % 2] += value
                 valid_announcements.append((player, announcement))
         if valid_announcements:
-            print(f"Announcements: {valid_announcements}")
+            logger.debug(f"Announcements: {valid_announcements}")
             for p in range(4):
                 localized = [(self._relative_position(pp, p), a) for pp, a in valid_announcements]
                 self._players[p].set_announcements(localized)
