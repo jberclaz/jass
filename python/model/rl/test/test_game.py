@@ -1,3 +1,4 @@
+import os
 import unittest
 
 from rl.controller import Controller
@@ -9,6 +10,7 @@ from model import JassFormerActorCritic
 
 JASSFORMER_MODEL_PATH = "/home/jrb/src/external/jass/python/model/state_dict.pth"
 
+@unittest.skipUnless(os.path.exists(JASSFORMER_MODEL_PATH), "no supervised model checkpoint")
 class TestGame(unittest.TestCase):
     def test_game(self):
         model = JassFormerActorCritic(d_model=256)

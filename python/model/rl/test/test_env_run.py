@@ -2,18 +2,7 @@ import numpy as np
 import random
 import gymnasium as gym
 
-# Import the environment and game components (assuming they are in the current path)
-try:
-    from jass_env import JassEnv
-    from rl_agent import RLAgent
-    from model import JassFormerActorCritic
-    from controller import Controller
-    from player import Player
-    from strategy import RandomStrategy
-except ImportError as e:
-    print(f"Error importing game components: {e}")
-    print("Please ensure all necessary files (jass_env.py, rl_agent.py, controller.py, player.py, etc.) are available.")
-    exit()
+from rl.jass_env import JassEnv
 
 
 def run_env_sanity_check(env: gym.Env, num_games: int = 2):

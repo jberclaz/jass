@@ -11,3 +11,13 @@ pom.xml.releaseBackup
 release.properties
 **/__pycache__
 dependency-reduced-pom.xml
+# training outputs (see TRAIN.md)
+python/model/training_data/
+python/model/runs/
+python/model/mlruns/
+python/model/mlflow.db
+python/model/.venv/
+*.pt
+*.pth
+*.onnx
+!src/main/resources/model/*.onnx
