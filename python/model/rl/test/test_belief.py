@@ -182,6 +182,61 @@ class TestPlayerBeliefs(unittest.TestCase):
         # Verify a non-Heart card is not modified
         self.assertAlmostEqual(self.player._deck_probs[1, 0], 1/3, places=5)
 
+    def test_announcement_non_spade_sequence(self):
+        """Test a sequence in another suit than spade, with a neighbouring card in our own hand."""
+        heart_10_id = 13
+        self._init_hand([heart_10_id])
+        # Opponent RIGHT (index 0) announces heart 9-8-7 (cards 12, 11, 10)
+        self.player.set_announcements([(PlayerPosition.RIGHT, Announcement(ANNOUNCE_THREE, Card(HEART_9_ID)))])
+
+        for card_id in [10, 11, 12]:
+            np.testing.assert_array_equal(self.player._deck_probs[card_id], [1.0, 0.0, 0.0])
+        self.assertListEqual(sorted(self.player._known_cards_in_hand[0]), [10, 11, 12])
+        # the card above the sequence is ours: it must stay out of play
+        np.testing.assert_array_equal(self.player._deck_probs[heart_10_id], [0.0, 0.0, 0.0])
+        # the card below the sequence cannot be held by the announcer
+        np.testing.assert_allclose(self.player._deck_probs[HEART_6_ID], [0.0, 0.5, 0.5], atol=1e-5)
+
+    def test_announcement_of_already_played_card(self):
+        """Announcements are revealed after the first trick: a card already played must stay out of play."""
+        spade_as_id = 8
+        self._init_hand([HEART_6_ID])
+        self.player.played(Card(spade_as_id), PlayerPosition.RIGHT)
+        self.player.set_announcements([(PlayerPosition.RIGHT, Announcement(ANNOUNCE_THREE, Card(spade_as_id)))])
+
+        np.testing.assert_array_equal(self.player._deck_probs[spade_as_id], [0.0, 0.0, 0.0])
+        self.assertListEqual(sorted(self.player._known_cards_in_hand[0]), [6, 7])
+
+    def test_not_following_keeps_cards_out_of_play(self):
+        """Not following must not give back probability to our own cards or to already played cards."""
+        self.player._current_trump = Suit.DIAMOND
+        self._init_hand([HEART_9_ID, SPADE_8_ID])
+        self.player.played(Card(HEART_6_ID), PlayerPosition.ACROSS)
+        self.player.played(Card(CLUB_6_ID), PlayerPosition.LEFT)  # index 2 has no heart
+
+        np.testing.assert_array_equal(self.player._deck_probs[HEART_9_ID], [0.0, 0.0, 0.0])
+        np.testing.assert_array_equal(self.player._deck_probs[HEART_6_ID], [0.0, 0.0, 0.0])
+        np.testing.assert_allclose(self.player._deck_probs[10], [0.5, 0.5, 0.0], atol=1e-5)
+
+    def test_not_following_twice_reveals_holder(self):
+        """When two opponents do not follow, the remaining cards of the suit are known to be with the third."""
+        self.player._current_trump = Suit.DIAMOND
+        self._init_hand([SPADE_8_ID])
+        self.player.played(Card(HEART_6_ID), PlayerPosition.ACROSS)
+        self.player.played(Card(CLUB_6_ID), PlayerPosition.RIGHT)  # index 0 has no heart
+        self.player._trick = None
+        self.player.played(Card(10), PlayerPosition.ACROSS)  # heart 7
+        self.player.played(Card(19), PlayerPosition.LEFT)  # club 7, index 2 has no heart
+
+        remaining_hearts = list(range(11, 18))
+        for card_id in remaining_hearts:
+            np.testing.assert_allclose(self.player._deck_probs[card_id], [0.0, 1.0, 0.0], atol=1e-5)
+        self.assertListEqual(sorted(self.player._known_cards_in_hand[1]), remaining_hearts)
+
+        # known cards must not be returned again as "likely" cards
+        card_ids, _ = self.player._get_k_most_likely_cards(1, 4)
+        self.assertFalse(set(card_ids.tolist()) & set(remaining_hearts))
+
     # --- Test Probability Query Logic ---
 
     def test_get_k_most_likely_cards_standard(self):

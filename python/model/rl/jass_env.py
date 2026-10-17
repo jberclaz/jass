@@ -26,9 +26,11 @@ class JassEnv(gym.Env):
         # 1. Initialize Player and Controller components
         self._teacher_model = JassFormerActorCritic(d_model=256)
         JassFormerActorCritic.load_policy_weights(self._teacher_model, JASSFORMER_MODEL_PATH)
+        self._teacher_model.eval()
 
         self._student_model = JassFormerActorCritic(d_model=256)
         JassFormerActorCritic.load_policy_weights(self._student_model, JASSFORMER_MODEL_PATH)
+        self._student_model.eval()
 
         self.players = None
 

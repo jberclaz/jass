@@ -39,14 +39,16 @@ class JassFormer(nn.Module):
 
 
 class JassFormerActorCritic(nn.Module):
-    def __init__(self, vocab_size=VOCABULARY_SIZE, seq_len=TOKEN_LENGTH, d_model=128, nhead=8, num_layers=6):
+    # dropout defaults to 0: with dropout, the log-probs computed during rollout and during the PPO update
+    # use different masks, which makes the importance ratio noisy
+    def __init__(self, vocab_size=VOCABULARY_SIZE, seq_len=TOKEN_LENGTH, d_model=128, nhead=8, num_layers=6, dropout=0.0):
         super().__init__()
         # --- Shared Body ---
         self.embedding = nn.Embedding(vocab_size, d_model, padding_idx=0)
         self.pos_embedding = nn.Parameter(torch.randn(1, seq_len, d_model) * 0.02)
 
         encoder_layer = nn.TransformerEncoderLayer(
-            d_model=d_model, nhead=nhead, dim_feedforward=4*d_model, dropout=0.1, activation="gelu", batch_first=True
+            d_model=d_model, nhead=nhead, dim_feedforward=4*d_model, dropout=dropout, activation="gelu", batch_first=True
         )
         self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
 

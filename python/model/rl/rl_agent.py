@@ -33,6 +33,7 @@ class RLAgent(Strategy):
     def __str__(self):
         return "transformers" if self.name is None else f"{self.name}-former"
 
+    @torch.no_grad()
     def _get_action(self, tokens: np.ndarray, is_trump_phase: bool):
         """
         Processes tokens, runs the model, applies mask, and samples an action.

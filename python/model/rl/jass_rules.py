@@ -206,13 +206,15 @@ class Announcement:
     @property
     def card_ids(self) -> Iterable[int]:
         if self.type in [ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED]:
-            for rank in range(self.type + 2):
-                yield self.highest_card.rank - rank
+            # sequence, from the highest card down
+            for offset in range(self.type + 2):
+                yield self.highest_card.number - offset
         elif self.type in [ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS]:
             for suit in range(4):
                 yield self.highest_card.rank + suit * 9
-        for rank in [RANK_DAME, RANK_ROI]:
-            yield self.highest_card.suit * 9 + rank
+        elif self.type == ANNOUNCE_STOECK:
+            for rank in [RANK_DAME, RANK_ROI]:
+                yield self.highest_card.suit * 9 + rank
 
     @staticmethod
     def _find_squares(hand: list[Card]) -> list['Announcement']:

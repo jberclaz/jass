@@ -54,17 +54,26 @@ class Player:
                 target_row = np.zeros(3, dtype=np.float32)
                 target_row[player] = 1.0
                 card_ids = list(a.card_ids)
-                self._deck_probs[card_ids, :] = target_row
-                self._known_cards_in_hand[player].extend(card_ids)
+                for c in card_ids:
+                    # announcements are only revealed after the first trick: skip cards already played
+                    if self._deck_probs[c].sum() == 0:
+                        continue
+                    self._deck_probs[c, :] = target_row
+                    if c not in self._known_cards_in_hand[player]:
+                        self._known_cards_in_hand[player].append(c)
                 if a.type in [ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED]:
+                    # the sequence would have been longer if the player held the neighbouring cards
+                    # (unless it is part of another announced sequence, for very long runs)
                     low_rank = card_ids[-1] % 9
                     high_rank = card_ids[0] % 9
-                    target_row = np.ones(3, dtype=np.float32) * 0.5
-                    target_row[player] = 0
+                    neighbours = []
                     if low_rank > 0 and a.type != ANNOUNCE_HUNDRED:
-                        self._deck_probs[card_ids[-1] - 1, :] = target_row
+                        neighbours.append(card_ids[-1] - 1)
                     if high_rank < 8:
-                        self._deck_probs[card_ids[0] + 1, :] = target_row
+                        neighbours.append(card_ids[0] + 1)
+                    for c in neighbours:
+                        if c not in self._known_cards_in_hand[player]:
+                            self._exclude_card(c, player)
 
     def get_announcements(self):
         if len(self._hand) == 8:  # after playing the first card
@@ -93,12 +102,10 @@ class Player:
             if self._trick.count > 1 and self._trick.lead_suit != card.suit and card.suit != self._current_trump:
                 # doesn't follow -> doesn't have cards from the lead suit, except maybe from the bourg sec
                 current_bourg = self._current_trump * 9 + RANK_BOURG
-                target_row = np.ones(3, dtype=np.float32) * 0.5
-                target_row[player] = 0
                 for r in range(9):
                     c = self._trick.lead_suit * 9 + r
                     if c != current_bourg:
-                        self._deck_probs[c, :] = target_row
+                        self._exclude_card(c, player)
 
         if self._trick.is_full:
             team_id = self._trick.owner % 2
@@ -243,9 +250,30 @@ class Player:
     def get_scores(self):
         return self._scores
 
+    def _exclude_card(self, card_id: int, player_idx: int):
+        """
+        Records that the given opponent (0-2) cannot hold the card, and redistributes its probability
+        over the remaining possible holders (mirrors GameView.playerDoesNotHaveCard in Java).
+        """
+        row = self._deck_probs[card_id]
+        if row[player_idx] == 0:
+            return  # already excluded, known elsewhere, or out of play (own hand / already played)
+        row[player_idx] = 0
+        total = row.sum()
+        if total == 0:
+            raise RuntimeError(f"Contradictory beliefs: no player can hold card {card_id}")
+        row /= total
+        holders = np.flatnonzero(row)
+        if len(holders) == 1:
+            holder = int(holders[0])
+            if card_id not in self._known_cards_in_hand[holder]:
+                self._known_cards_in_hand[holder].append(card_id)
+
     def _get_k_most_likely_cards(self, player_idx: int, k: int, threshold: float =0.34) -> tuple[list[int], list[float]]:
         # 1. Select the player's probability column
-        player_probs = self._deck_probs[:, player_idx]
+        player_probs = self._deck_probs[:, player_idx].copy()
+        # known cards are already listed with full confidence, do not repeat them
+        player_probs[self._known_cards_in_hand[player_idx]] = 0
 
         # 2. Boolean Masking: Get the indices (Card IDs) of all candidates above the threshold
         candidate_card_ids = np.where(player_probs > threshold)[0]

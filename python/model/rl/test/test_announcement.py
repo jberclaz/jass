@@ -4,7 +4,7 @@ from rl.jass_rules import (
     Card, Suit, Announcement,
     RANK_6, RANK_7, RANK_8, RANK_NELL, RANK_10, RANK_BOURG, RANK_DAME, RANK_ROI, RANK_AS,
     ANNOUNCE_THREE, ANNOUNCE_FIFTY, ANNOUNCE_HUNDRED,
-    ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS
+    ANNOUNCE_CARRE, ANNOUNCE_NELL, ANNOUNCE_BOURGS, ANNOUNCE_STOECK
 )
 
 
@@ -226,3 +226,19 @@ class TestAnnouncement(unittest.TestCase):
         self.assertFalse(announcement_a < announcement_h)
         self.assertFalse(announcement_a > announcement_h)
         self.assertTrue(announcement_a == announcement_h)
+
+    # --- Test Announcement Cards ---
+
+    def test_card_ids(self):
+        """Test that the announced card IDs are the actual cards, for every suit."""
+        tierce = Announcement(ANNOUNCE_THREE, get_card(RANK_ROI, Suit.HEART))
+        self.assertListEqual(list(tierce.card_ids), [16, 15, 14])
+
+        hundred = Announcement(ANNOUNCE_HUNDRED, get_card(RANK_AS, Suit.DIAMOND))
+        self.assertListEqual(list(hundred.card_ids), [35, 34, 33, 32, 31])
+
+        carre = Announcement(ANNOUNCE_CARRE, get_card(RANK_AS, Suit.SPADE))
+        self.assertListEqual(list(carre.card_ids), [8, 17, 26, 35])
+
+        stoeck = Announcement(ANNOUNCE_STOECK, get_card(RANK_ROI, Suit.CLUB))
+        self.assertListEqual(list(stoeck.card_ids), [24, 25])

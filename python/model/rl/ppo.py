@@ -160,7 +160,14 @@ if __name__ == "__main__":
     next_obs = torch.from_numpy(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
+    warmup_steps = args.total_timesteps * args.warmup_ratio
     for iteration in range(1, args.num_iterations + 1):
+        # During warmup, only the value head is trained. Freezing the shared backbone is required as well,
+        # otherwise the value loss would still change the policy through it.
+        in_warmup = global_step < warmup_steps
+        for name, param in agent.named_parameters():
+            param.requires_grad = not in_warmup or name.startswith("value_head.")
+
         # Annealing the rate if instructed to do so.
         if args.anneal_lr:
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
@@ -266,12 +273,8 @@ if __name__ == "__main__":
 
                 entropy_loss = entropy.mean()
 
-                warmup_steps = args.total_timesteps * args.warmup_ratio
-                if global_step < warmup_steps:
-                    # WARMUP PHASE: Only optimize Value Loss
-                    # We zero out the policy gradient and entropy terms.
-                    # This effectively freezes the Policy Head, while the Value Head
-                    # and the shared Backbone train to predict rewards.
+                if in_warmup:
+                    # WARMUP PHASE: Only optimize Value Loss (all other parameters are frozen above)
                     loss = v_loss * args.vf_coef
                 else:
                     # STANDARD PPO: Train everything
@@ -310,32 +313,32 @@ if __name__ == "__main__":
             mlflow.log_metric("losses/approx_kl", approx_kl.item(), step=global_step)
             mlflow.log_metric("charts/SPS", int(global_step / (time.time() - start_time)), step=global_step)
 
-            # --- SELF-PLAY LEAGUE UPDATE ---
-            if iteration % args.opponent_update_freq == 0:
-                print(f">>> Saving Checkpoint at Iteration {iteration} <<<")
+        # --- SELF-PLAY LEAGUE UPDATE ---
+        if iteration % args.opponent_update_freq == 0:
+            print(f">>> Saving Checkpoint at Iteration {iteration} <<<")
 
-                # 1. Save locally
-                ckpt_name = f"model_iter_{iteration}.pth"
-                save_path = os.path.join(f"runs/{run_name}", ckpt_name)
-                os.makedirs(os.path.dirname(save_path), exist_ok=True)
-                torch.save(agent.state_dict(), save_path)
+            # 1. Save locally
+            ckpt_name = f"model_iter_{iteration}.pth"
+            save_path = os.path.join(f"runs/{run_name}", ckpt_name)
+            os.makedirs(os.path.dirname(save_path), exist_ok=True)
+            torch.save(agent.state_dict(), save_path)
 
-                # 2. Upload to MLflow
+            # 2. Upload to MLflow
+            if args.track:
                 mlflow.log_artifact(save_path, artifact_path="opponent_checkpoints")
                 print(f"Logged artifact: {ckpt_name}")
 
-                # 3. Update Environment (The step we discussed previously)
-                # You need to implement 'update_opponent_model' in your JassEnv
-                current_weights = agent.state_dict()
-                for env_idx in range(args.num_envs):
-                    # Handle the vector wrapper to get to the real env
-                    if hasattr(envs.envs[env_idx], "unwrapped"):
-                        envs.envs[env_idx].unwrapped.update_opponent_model(current_weights)
-                    else:
-                        envs.envs[env_idx].update_opponent_model(current_weights)
+            # 3. Update the opponent model in the environments
+            current_weights = agent.state_dict()
+            for env_idx in range(args.num_envs):
+                # Handle the vector wrapper to get to the real env
+                if hasattr(envs.envs[env_idx], "unwrapped"):
+                    envs.envs[env_idx].unwrapped.update_opponent_model(current_weights)
+                else:
+                    envs.envs[env_idx].update_opponent_model(current_weights)
 
     print(f">>> Saving Final model <<<<")
-    ckpt_name = f"model_{mlflow_run.info.experiment_id}_final.pth"
+    ckpt_name = f"model_{mlflow_run.info.experiment_id}_final.pth" if args.track else "model_final.pth"
     save_path = os.path.join(f"runs/{run_name}", ckpt_name)
     os.makedirs(os.path.dirname(save_path), exist_ok=True)
     torch.save(agent.state_dict(), save_path)
