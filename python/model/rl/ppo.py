@@ -14,7 +14,8 @@ import tyro
 from torch.utils.tensorboard import SummaryWriter
 
 from model import JassFormerActorCritic
-from rl.jass_env import JassEnv, JASSFORMER_MODEL_PATH
+from rl.jass_env import JASSFORMER_MODEL_PATH
+from rl.jass_vec_env import JassVecEnv
 
 
 @dataclass
@@ -43,7 +44,7 @@ class Args:
     """total timesteps of the experiments"""
     learning_rate: float = 1e-5
     """the learning rate of the optimizer"""
-    num_envs: int = 1
+    num_envs: int = 16
     """the number of parallel game environments"""
     num_steps: int = 128
     """the number of steps to run in each environment per policy rollout"""
@@ -53,7 +54,7 @@ class Args:
     """the discount factor gamma"""
     gae_lambda: float = 0.95
     """the lambda for the general advantage estimation"""
-    num_minibatches: int = 4
+    num_minibatches: int = 8
     """the number of mini-batches"""
     update_epochs: int = 4
     """the K epochs to update the policy"""
@@ -81,21 +82,8 @@ class Args:
     """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
-    opponent_update_freq: int = 100
+    opponent_update_freq: int = 10
     """Number of iterations between saving the model as a new opponent"""
-
-
-def make_env(env_id, idx, capture_video, run_name):
-    def thunk():
-        if capture_video and idx == 0:
-            env = gym.make(env_id, render_mode="rgb_array")
-            env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
-        else:
-            env = JassEnv()
-        env = gym.wrappers.RecordEpisodeStatistics(env)
-        return env
-
-    return thunk
 
 
 def layer_init(layer, std=np.sqrt(2), bias_const=0.0):
@@ -134,12 +122,8 @@ if __name__ == "__main__":
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
     # env setup
-    # SAME_STEP: when a game ends, the returned observation is already the first one of the next game.
-    # The default (NEXT_STEP) inserts an extra step whose action is ignored, which would end up in the rollout buffer.
-    envs = gym.vector.SyncVectorEnv(
-        [make_env(args.env_id, i, args.capture_video, run_name) for i in range(args.num_envs)],
-        autoreset_mode=gym.vector.AutoresetMode.SAME_STEP,
-    )
+    # all the games run in lockstep, with the opponents' moves batched on the training device
+    envs = JassVecEnv(args.num_envs, device)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = JassFormerActorCritic(d_model=256)
@@ -336,12 +320,7 @@ if __name__ == "__main__":
 
             # 3. Update the opponent model in the environments
             current_weights = agent.state_dict()
-            for env_idx in range(args.num_envs):
-                # Handle the vector wrapper to get to the real env
-                if hasattr(envs.envs[env_idx], "unwrapped"):
-                    envs.envs[env_idx].unwrapped.update_opponent_model(current_weights)
-                else:
-                    envs.envs[env_idx].update_opponent_model(current_weights)
+            envs.update_opponent_model(current_weights)
 
     print(f">>> Saving Final model <<<<")
     ckpt_name = f"model_{mlflow_run.info.experiment_id}_final.pth" if args.track else "model_final.pth"

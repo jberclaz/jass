@@ -24,7 +24,7 @@ class RLAgent(Strategy):
         if device is not None:
             self.device = device
         else:
-            self.device =  torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            self.device = next(model.parameters()).device
         # Player reference is crucial for state extraction
         self.action_size = 36  # Card actions
         self.trump_action_size = 5  # 4 suits + pass
@@ -40,7 +40,7 @@ class RLAgent(Strategy):
         Returns the chosen index, log_prob, and state value.
         """
         # Convert state tokens to a PyTorch tensor (batch size 1)
-        state_tensor = torch.from_numpy(tokens.reshape(1, -1))
+        state_tensor = torch.from_numpy(tokens.reshape(1, -1)).to(self.device)
 
         # 1. Get the legal mask
         if is_trump_phase:

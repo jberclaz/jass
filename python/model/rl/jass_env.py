@@ -17,24 +17,26 @@ class JassEnv(gym.Env):
     """
     A multi-agent (simulated) Jass environment wrapped in the Gymnasium API.
     The environment is designed to train Agent 0 against three static opponents.
+
+    step() and reset() are split into parts (apply_agent_action, play_opponent_turn, finish_step, ...)
+    so that JassVecEnv can drive several games and batch the opponents' model inference.
     """
     metadata = {"render_modes": ["human"], "render_fps": 30}
 
-    def __init__(self, render_mode: Optional[str] = None):
+    def __init__(self, render_mode: Optional[str] = None,
+                 teacher_model: Optional[JassFormerActorCritic] = None,
+                 student_model: Optional[JassFormerActorCritic] = None):
         super().__init__()
 
-        # 1. Initialize Player and Controller components
-        self._teacher_model = JassFormerActorCritic(d_model=256)
-        JassFormerActorCritic.load_policy_weights(self._teacher_model, JASSFORMER_MODEL_PATH)
-        self._teacher_model.eval()
-
-        self._student_model = JassFormerActorCritic(d_model=256)
-        JassFormerActorCritic.load_policy_weights(self._student_model, JASSFORMER_MODEL_PATH)
-        self._student_model.eval()
+        # 1. Initialize Player and Controller components (opponent models can be shared between environments)
+        self._teacher_model = teacher_model if teacher_model is not None else self._load_opponent_model()
+        self._student_model = student_model if student_model is not None else self._load_opponent_model()
 
         self.players = None
 
         self._controller = Controller(self.players)
+        self._terminated = False
+        self._last_action_was_trump = False
 
         # 2. Define Observation Space (State Tokens)
         # Assuming TOKEN_LENGTH is defined in your dataset/model setup
@@ -49,7 +51,43 @@ class JassEnv(gym.Env):
 
         self.render_mode = render_mode
 
+    @staticmethod
+    def _load_opponent_model() -> JassFormerActorCritic:
+        model = JassFormerActorCritic(d_model=256)
+        JassFormerActorCritic.load_policy_weights(model, JASSFORMER_MODEL_PATH)
+        model.eval()
+        return model
+
     def reset(self, seed: Optional[int] = None, options: Optional[Dict] = None) -> Tuple[np.ndarray, Dict]:
+        self.start_game(seed)
+        while self.waiting_player is not None:
+            self.play_opponent_turn()
+
+        observation = self.agent_observation()
+        info = {}
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, info
+
+    def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+        # action is the single integer from the action_space (0-40)
+        self.apply_agent_action(action)
+
+        # play other players' turn
+        while self.waiting_player is not None:
+            self.play_opponent_turn()
+
+        observation, reward, terminated, truncated, info = self.finish_step()
+
+        if self.render_mode == "human":
+            self._render_frame()
+
+        return observation, reward, terminated, truncated, info
+
+    def start_game(self, seed: Optional[int] = None):
+        """Starts a new game with a new roster, up to the first opponent's turn (if any)."""
         super().reset(seed=seed)
 
         print(" <<<<<<<<<<<<<<<<<<<<<<<< New Game >>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
@@ -61,20 +99,10 @@ class JassEnv(gym.Env):
 
         # Reset game state and initial scores
         self._controller.reset()
-        while self._controller.current_player != 0:
-            self._controller.play_next_turn()
+        self._terminated = False
 
-        observation = self._controller.get_current_observation(0)
-        info = {}
-
-        if self.render_mode == "human":
-            self._render_frame()
-
-        return observation, info
-
-    def step(self, action: int) -> Tuple[np.ndarray, float, bool, bool, Dict]:
-        # action is the single integer from the action_space (0-40)
-        terminated = False
+    def apply_agent_action(self, action: int):
+        """Plays the agent's (player 0) action: a card (0-35) or a trump choice (36-40)."""
         # 1. Check if the action is a Card Play (0-35) or Trump Choice (36-40)
         is_trump_action = action >= 36
 
@@ -84,18 +112,39 @@ class JassEnv(gym.Env):
                 f"(trump_selection={self._controller.is_trump_selection})"
             )
 
-        reward = 0
-
         # 2. Execute the move for the current player (Agent 0)
+        self._last_action_was_trump = is_trump_action
         if is_trump_action:
             chosen_suit = action - 36  # 0-3 are Suits, 4 is Pass/None
             self._controller.play_next_turn(chosen_suit)
         else:  # Card Action
-            _, terminated = self._controller.play_next_turn(action)
+            _, self._terminated = self._controller.play_next_turn(action)
 
-        # play other players' turn
-        while not terminated and self._controller.current_player != 0:
-            _, terminated = self._controller.play_next_turn()
+    @property
+    def waiting_player(self) -> Optional[int]:
+        """The opponent (1-3) who has to play next, or None if it is the agent's turn or the game is over."""
+        if self._terminated or self._controller.current_player == 0:
+            return None
+        return self._controller.current_player
+
+    def opponent_observation(self) -> np.ndarray:
+        return self._controller.get_current_observation(self.waiting_player)
+
+    def play_opponent_turn(self, forced_action: Optional[int] = None):
+        """
+        Plays the waiting opponent's turn, with its own strategy or with the given action
+        (a card 0-35, or a suit 0-4 during trump selection).
+        """
+        _, game_over = self._controller.play_next_turn(forced_action)
+        self._terminated = self._terminated or game_over
+
+    def agent_observation(self) -> np.ndarray:
+        return self._controller.get_current_observation(0)
+
+    def finish_step(self) -> Tuple[np.ndarray, float, bool, bool, Dict]:
+        """Computes the result of the agent's last action, once it is the agent's turn again (or the game is over)."""
+        reward = 0
+        terminated = self._terminated
 
         if terminated:
             # Reward is based on team scores at the end of the game
@@ -111,9 +160,9 @@ class JassEnv(gym.Env):
             print(f"Reward after game: {reward}")
             observation = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
         else:
-            observation = self._controller.get_current_observation(0)
+            observation = self.agent_observation()
             last_trick = self._controller.last_trick
-            if not is_trump_action:
+            if not self._last_action_was_trump:
                 if last_trick is None:
                     # hand finished
                     game_scores = self._controller.last_game_scores
@@ -131,9 +180,6 @@ class JassEnv(gym.Env):
         truncated = False
 
         info = {"score": self._controller.scores}
-
-        if self.render_mode == "human":
-            self._render_frame()
 
         return observation, reward, terminated, truncated, info
 
