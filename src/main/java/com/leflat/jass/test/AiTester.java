@@ -11,7 +11,7 @@ import java.io.FileNotFoundException;
 import java.util.concurrent.Callable;
 
 @Command(name = "AiTester", mixinStandardHelpOptions = true, version = "1.0")
-public class AiTester implements Callable<Void> {
+public class AiTester implements Callable<Integer> {
 
     @Parameters(index = "0", arity = "0..1", description = "Model path")
     private String modelPath;
@@ -28,13 +28,18 @@ public class AiTester implements Callable<Void> {
     }
 
     @Override
-    public Void call() throws PlayerLeftExpection, InterruptedException, FileNotFoundException {
+    public Integer call() throws PlayerLeftExpection, InterruptedException, FileNotFoundException {
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
 
         IJassStrategy firstStrategy = new MonteCarloStrategy(strength);
-        IJassStrategy secondStrategy = modelPath == null ? new TransformersStrategy() : new TransformersStrategy(modelPath);
+        var secondStrategy = modelPath == null ? new TransformersStrategy() : new TransformersStrategy(modelPath);
+        if (!secondStrategy.isModelLoaded()) {
+            // otherwise the transformers players silently fall back to MonteCarlo
+            System.err.println("Unable to load model " + (modelPath == null ? "from the classpath" : modelPath));
+            return 1;
+        }
 
         for (int i = 0; i < 4; i++) {
             String name = i % 2 == 0 ? firstStrategy + "-" + i : secondStrategy + "-" + i;
@@ -47,7 +52,7 @@ public class AiTester implements Callable<Void> {
         game.playKGames(games);
         game.start();
         game.join();
-        return null;
+        return 0;
     }
 
     private static String baseName(String path) {

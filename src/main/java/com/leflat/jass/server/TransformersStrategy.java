@@ -32,6 +32,8 @@ public class TransformersStrategy implements IJassStrategy {
 
     public String toString() { return "transformers"; }
 
+    public boolean isModelLoaded() { return modelLoader != null; }
+
     @Override
     public Card chooseCard(List<Card> validCards,
                            GameView gameView,

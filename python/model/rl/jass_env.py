@@ -25,12 +25,17 @@ class JassEnv(gym.Env):
 
     def __init__(self, render_mode: Optional[str] = None,
                  teacher_model: Optional[JassFormerActorCritic] = None,
-                 student_model: Optional[JassFormerActorCritic] = None):
+                 student_model: Optional[JassFormerActorCritic] = None,
+                 supervised_model_path: str = JASSFORMER_MODEL_PATH):
         super().__init__()
 
         # 1. Initialize Player and Controller components (opponent models can be shared between environments)
-        self._teacher_model = teacher_model if teacher_model is not None else self._load_opponent_model()
-        self._student_model = student_model if student_model is not None else self._load_opponent_model()
+        if teacher_model is None:
+            teacher_model = self._load_opponent_model(supervised_model_path)
+        if student_model is None:
+            student_model = self._load_opponent_model(supervised_model_path)
+        self._teacher_model = teacher_model
+        self._student_model = student_model
 
         self.players = None
 
@@ -52,9 +57,9 @@ class JassEnv(gym.Env):
         self.render_mode = render_mode
 
     @staticmethod
-    def _load_opponent_model() -> JassFormerActorCritic:
+    def _load_opponent_model(supervised_model_path: str = None) -> JassFormerActorCritic:
         model = JassFormerActorCritic(d_model=256)
-        JassFormerActorCritic.load_policy_weights(model, JASSFORMER_MODEL_PATH)
+        JassFormerActorCritic.load_policy_weights(model, supervised_model_path or JASSFORMER_MODEL_PATH)
         model.eval()
         return model
 

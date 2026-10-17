@@ -40,6 +40,8 @@ class Args:
     # Algorithm specific arguments
     env_id: str = "JassFormer-v1"
     """the id of the environment"""
+    supervised_model: str = JASSFORMER_MODEL_PATH
+    """state dict of the supervised JassFormer, used to initialize the agent and the opponents"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
     learning_rate: float = 1e-5
@@ -123,11 +125,11 @@ if __name__ == "__main__":
 
     # env setup
     # all the games run in lockstep, with the opponents' moves batched on the training device
-    envs = JassVecEnv(args.num_envs, device)
+    envs = JassVecEnv(args.num_envs, device, args.supervised_model)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = JassFormerActorCritic(d_model=256)
-    JassFormerActorCritic.load_policy_weights(agent, JASSFORMER_MODEL_PATH)
+    JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
     agent = agent.to(device)
 
     optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)

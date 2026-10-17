@@ -25,7 +25,7 @@
 ## AI / ML (ONNX)
 - Java runs inference via `com.microsoft.onnxruntime:onnxruntime`.
 - Default model loaded from classpath: `cp:/model/jassformer.onnx`. It is **not** in the repo: without it (or an explicit model path), `TransformersStrategy` falls back to Monte Carlo.
-- **Python training pipeline** is in `python/model/`. It is independent — not built by Maven. Versions are pinned in `python/model/requirements.txt`; run tests from `python/model/` with `python -m pytest`.
+- **Python training pipeline** is in `python/model/`. It is independent — not built by Maven. Versions are pinned in `python/model/requirements.txt`; run tests from `python/model/` with `python -m pytest`. Run the scripts from `python/model/` too; those in `rl/` as modules (e.g. `python -m rl.ppo --supervised-model <state_dict>`, `python -m rl.export_checkpoint_to_onnx --rl --checkpoint <pth>`).
 - **Token vocabulary must match exactly** between `python/model/rl/tokens.py` and Java's `Tokens.java`. Any mismatch causes silent AI misbehavior.
 - ONNX export uses **opset 18**; ensure Java onnxruntime version supports it.
 

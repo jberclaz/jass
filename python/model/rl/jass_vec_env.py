@@ -21,11 +21,11 @@ class JassVecEnv(gym.vector.VectorEnv):
 
     metadata = {"autoreset_mode": AutoresetMode.SAME_STEP}
 
-    def __init__(self, num_envs: int, device: torch.device | str = "cpu"):
+    def __init__(self, num_envs: int, device: torch.device | str = "cpu", supervised_model_path: Optional[str] = None):
         self.device = torch.device(device)
         # a single teacher and a single student model, shared by all the games
-        self._teacher_model = JassEnv._load_opponent_model().to(self.device)
-        self._student_model = JassEnv._load_opponent_model().to(self.device)
+        self._teacher_model = JassEnv._load_opponent_model(supervised_model_path).to(self.device)
+        self._student_model = JassEnv._load_opponent_model(supervised_model_path).to(self.device)
         self.envs = [JassEnv(teacher_model=self._teacher_model, student_model=self._student_model)
                      for _ in range(num_envs)]
 
