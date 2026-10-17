@@ -20,6 +20,7 @@
 - JaCoCo coverage reports generated during `test` phase.
 - Integration tests in `com.leflat.jass.server`; functional test at `src/test/java/FunctionalTest.java`.
 - CLI test tools live in **`com.leflat.jass.test`** (main source, not test source): `AiTester`, `TokenExtractor`, `AutomaticClientTesting`.
+- Supervised training data: `java -cp target/jass-*.jar com.leflat.jass.test.TokenExtractor -o <dir> -g <games> -s <strength>` (one `<run>_seat<i>.dat` file per seat; never overwrites).
 
 ## AI / ML (ONNX)
 - Java runs inference via `com.microsoft.onnxruntime:onnxruntime`.
