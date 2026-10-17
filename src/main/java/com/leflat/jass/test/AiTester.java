@@ -21,9 +21,11 @@ import java.util.stream.Collectors;
  * Plays a transformers model against MonteCarlo players, at one or several MonteCarlo strengths. The model can also
  * be a MonteCarlo player ({@code mc:<strength>}), e.g. to measure how strong the teacher of the supervised training is.
  * <p>
- * By default, the games are played in pairs with the same deals (duplicate): each deal is played once with the model
- * in team 1 and once in team 0, so that both sides get the same cards and most of the luck cancels out. Reports the
- * win rate and the point difference per game (model - MonteCarlo), with their 95% confidence intervals.
+ * By default, plays single hands (from a score of 0 - 0) rather than games to 1500 points: the hands are independent,
+ * and a game adds the luck of several hands and a threshold. The hands (or games) are played in pairs with the same
+ * deals (duplicate): each deal is played once with the model in team 1 and once in team 0, so that both sides get the
+ * same cards and most of the luck cancels out. Reports the point difference per hand (model - MonteCarlo) and the
+ * share of hands won, with their 95% confidence intervals.
  */
 @Command(name = "AiTester", mixinStandardHelpOptions = true, version = "1.0")
 public class AiTester implements Callable<Integer> {
@@ -32,9 +34,12 @@ public class AiTester implements Callable<Integer> {
             description = "Model path (default: the classpath model), or mc:<strength> to play MonteCarlo instead")
     private String modelPath;
 
-    @Option(names = {"-g", "--games"}, defaultValue = "10",
-            description = "Number of games per strength, rounded up to an even number with duplicate deals (default: ${DEFAULT-VALUE})")
-    private int games;
+    @Option(names = {"-n", "--hands"},
+            description = "Number of hands per strength, rounded up to an even number with duplicate deals (default: 200)")
+    private Integer hands;
+
+    @Option(names = {"-g", "--games"}, description = "Play this number of full games to 1500 points instead of hands")
+    private Integer games;
 
     @Option(names = {"-s", "--strength"}, split = ",", defaultValue = "100",
             description = "MonteCarlo strength, or comma-separated strengths (default: ${DEFAULT-VALUE})")
@@ -52,8 +57,8 @@ public class AiTester implements Callable<Integer> {
     @Option(names = {"-v", "--verbose"}, description = "Show the game logs (moves, announcements) instead of a progress bar")
     private boolean verbose;
 
-    /** One game, from the point of view of the model. */
-    record Game(boolean won, int pointDifference) {
+    /** One hand or game, from the point of view of the model: won 1, tie 0.5 (single hands only) or lost 0. */
+    record Game(double won, int pointDifference) {
     }
 
     /** Mean and 95% confidence interval. */
@@ -63,7 +68,8 @@ public class AiTester implements Callable<Integer> {
             int n = samples.size();
             if (n == 0) return new Estimate(Double.NaN, Double.NaN, Double.NaN);
             double mean = samples.stream().mapToDouble(Double::doubleValue).average().orElseThrow();
-            double variance = n < 2 ? 0 : samples.stream().mapToDouble(x -> (x - mean) * (x - mean)).sum() / (n - 1);
+            if (n < 2) return new Estimate(mean, Double.NaN, Double.NaN);  // no estimate of the spread
+            double variance = samples.stream().mapToDouble(x -> (x - mean) * (x - mean)).sum() / (n - 1);
             double margin = 1.96 * Math.sqrt(variance / n);
             return new Estimate(mean, mean - margin, mean + margin);
         }
@@ -82,7 +88,7 @@ public class AiTester implements Callable<Integer> {
         }
     }
 
-    record Result(int strength, boolean duplicate, int games, int wins, Estimate winRate, Estimate points) {
+    record Result(int strength, String unit, boolean duplicate, int count, double wins, Estimate winRate, Estimate points) {
     }
 
     public static void main(String[] args) {
@@ -92,6 +98,10 @@ public class AiTester implements Callable<Integer> {
 
     @Override
     public Integer call() throws PlayerLeftExpection, InterruptedException, IOException {
+        if (hands != null && games != null) {
+            System.err.println("Give either --hands or --games, not both");
+            return 2;
+        }
         if (!verbose) {
             ProgressBar.hideInfoLogs();
         }
@@ -129,15 +139,18 @@ public class AiTester implements Callable<Integer> {
     private Result play(IJassStrategy monteCarlo, IJassStrategy candidate, int strength)
             throws PlayerLeftExpection, InterruptedException {
         boolean duplicate = !independent;
-        int gamesPerPass = duplicate ? (games + 1) / 2 : games;
+        boolean singleHands = games == null;
+        int count = singleHands ? (hands != null ? hands : 200) : games;
+        String unit = singleHands ? "hand" : "game";
+        int gamesPerPass = duplicate ? (count + 1) / 2 : count;
         int passes = duplicate ? 2 : 1;
         long dealSeed = seed != null ? seed : new Random().nextLong();
 
-        System.out.printf("Playing %,d games%s | %s vs %s%n", gamesPerPass * passes,
+        System.out.printf("Playing %,d %ss%s | %s vs %s%n", gamesPerPass * passes, unit,
                 duplicate ? " (" + gamesPerPass + " deals, each played from both sides)" : "", candidate, monteCarlo);
 
         List<List<Game>> played = new ArrayList<>();
-        var progress = verbose ? null : new ProgressBar(gamesPerPass * passes, "games");
+        var progress = verbose ? null : new ProgressBar(gamesPerPass * passes, unit + "s");
         if (progress != null) {
             progress.update(0, "");
         }
@@ -148,6 +161,7 @@ public class AiTester implements Callable<Integer> {
             game.setNoWait(true);
             game.enableTeamSelection(false);
             game.setDealSeed(dealSeed);
+            game.setSingleHandGames(singleHands);
             for (int i = 0; i < 4; i++) {
                 var strategy = i % 2 == candidateTeam ? candidate : monteCarlo;
                 game.addPlayer(new ArtificialPlayer(i, strategy + "-" + i, strategy, true));
@@ -157,15 +171,18 @@ public class AiTester implements Callable<Integer> {
             played.add(passGames);
             game.setGameDoneListener(() -> {
                 var teams = game.getTeams();
-                // same rule as GameController: team 0 wins if it reached the winning score
-                boolean won = teams[0].hasWon() == (candidateTeam == 0);
-                passGames.add(new Game(won, teams[candidateTeam].getScore() - teams[1 - candidateTeam].getScore()));
+                int difference = teams[candidateTeam].getScore() - teams[1 - candidateTeam].getScore();
+                double won = singleHands
+                        ? Math.signum(difference) / 2 + 0.5
+                        // same rule as GameController: team 0 wins if it reached the winning score
+                        : (teams[0].hasWon() == (candidateTeam == 0) ? 1 : 0);
+                passGames.add(new Game(won, difference));
                 if (progress != null) {
                     var all = played.stream().flatMap(List::stream).toList();
-                    long wins = all.stream().filter(Game::won).count();
+                    double wins = all.stream().mapToDouble(Game::won).sum();
                     double points = all.stream().mapToInt(Game::pointDifference).average().orElse(0);
-                    progress.update(all.size(), String.format(Locale.ROOT, "%s %d : %d %s | %+.0f points/game",
-                            candidate, wins, all.size() - wins, monteCarlo, points));
+                    progress.update(all.size(), String.format(Locale.ROOT, "%s %+.1f points/%s | won %.0f%%",
+                            candidate, points, unit, 100 * wins / all.size()));
                 }
             });
 
@@ -174,50 +191,54 @@ public class AiTester implements Callable<Integer> {
             game.join();
         }
 
-        var result = summarize(strength, duplicate, played);
+        var result = summarize(strength, unit, duplicate, played);
         System.out.println(candidate + " vs " + format(result));
         return result;
     }
 
-    private static Result summarize(int strength, boolean duplicate, List<List<Game>> played) {
-        // the samples are the deal pairs with duplicate deals (the two games of a pair are not independent)
+    private static Result summarize(int strength, String unit, boolean duplicate, List<List<Game>> played) {
+        // the samples are the deal pairs with duplicate deals (the two hands of a pair are not independent)
         int units = played.stream().mapToInt(List::size).min().orElse(0);
         List<Double> winSamples = new ArrayList<>();
         List<Double> pointSamples = new ArrayList<>();
-        int games = 0, wins = 0;
+        int count = 0;
+        double wins = 0;
         for (int k = 0; k < units; k++) {
             double unitWins = 0, unitPoints = 0;
             for (var pass : played) {
                 var game = pass.get(k);
-                unitWins += game.won() ? 1 : 0;
+                unitWins += game.won();
                 unitPoints += game.pointDifference();
-                games++;
-                wins += game.won() ? 1 : 0;
+                count++;
+                wins += game.won();
             }
             winSamples.add(unitWins / played.size());
             pointSamples.add(unitPoints / played.size());
         }
         // the normal approximation has no width when all the pairs have the same result (e.g. all lost)
         boolean allEqual = winSamples.stream().distinct().count() <= 1;
-        var winRate = duplicate && !allEqual ? Estimate.of(winSamples).clamp(0, 1) : Estimate.wilson(wins, games);
-        return new Result(strength, duplicate, games, wins, winRate, Estimate.of(pointSamples));
+        var winRate = duplicate && !allEqual
+                ? Estimate.of(winSamples).clamp(0, 1)
+                : Estimate.wilson((int) Math.round(wins), count);
+        return new Result(strength, unit, duplicate, count, wins, winRate, Estimate.of(pointSamples));
     }
 
     private static String format(Result result) {
         var w = result.winRate();
         var p = result.points();
-        return String.format(Locale.ROOT, "MonteCarlo-%d: won %.1f%% [%.1f%%, %.1f%%] | %+.0f [%+.0f, %+.0f] points/game | %d games%s",
-                result.strength(), 100 * w.mean(), 100 * w.low(), 100 * w.high(), p.mean(), p.low(), p.high(),
-                result.games(), result.duplicate() ? " (" + result.games() / 2 + " deal pairs)" : "");
+        String unit = result.unit();
+        return String.format(Locale.ROOT, "MonteCarlo-%d: %+.1f [%+.1f, %+.1f] points/%s | won %.1f%% [%.1f%%, %.1f%%] | %d %ss%s",
+                result.strength(), p.mean(), p.low(), p.high(), unit, 100 * w.mean(), 100 * w.low(), 100 * w.high(),
+                result.count(), unit, result.duplicate() ? " (" + result.count() / 2 + " deal pairs)" : "");
     }
 
     private String toJson(List<Result> results) {
         String model = modelPath == null ? "classpath" : modelPath.replace("\\", "\\\\").replace("\"", "\\\"");
         return results.stream().map(r -> String.format(Locale.ROOT,
-                "    {\"strength\": %d, \"duplicate\": %b, \"games\": %d, \"wins\": %d, "
+                "    {\"strength\": %d, \"unit\": \"%s\", \"duplicate\": %b, \"count\": %d, \"wins\": %.1f, "
                         + "\"win_rate\": %.4f, \"ci_low\": %.4f, \"ci_high\": %.4f, "
                         + "\"points\": %.2f, \"points_ci_low\": %.2f, \"points_ci_high\": %.2f}",
-                r.strength(), r.duplicate(), r.games(), r.wins(),
+                r.strength(), r.unit(), r.duplicate(), r.count(), r.wins(),
                 r.winRate().mean(), r.winRate().low(), r.winRate().high(),
                 r.points().mean(), r.points().low(), r.points().high())
         ).collect(Collectors.joining(",\n", "{\n  \"model\": \"" + model + "\",\n  \"results\": [\n", "\n  ]\n}\n"));

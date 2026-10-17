@@ -27,6 +27,7 @@ public class GameController extends Thread {
     private Long dealSeed = null;
     private Random dealRandom = new Random();
     private int gamesPlayed = 0;
+    private boolean singleHandGames = false;
 
     public GameController(int id) {
         this.gameId = id;
@@ -122,7 +123,7 @@ public class GameController extends Thread {
         int firstToPlay = drawCards();
         boolean gameOver;
         do {
-            gameOver = playOneHand(firstToPlay);
+            gameOver = playOneHand(firstToPlay) || singleHandGames;
 
             setTeamsScoreAsync();
 
@@ -138,7 +139,9 @@ public class GameController extends Thread {
         } while (!gameOver);
 
         // Sends the winner to all player
-        var winners = teams[0].hasWon() ? teams[0] : teams[1];
+        var winners = singleHandGames
+                ? (teams[0].getScore() >= teams[1].getScore() ? teams[0] : teams[1])
+                : (teams[0].hasWon() ? teams[0] : teams[1]);
         oneWayAsync(p -> p.setGameResult(winners));
         matchWinCount.put(winners.getId(), matchWinCount.getOrDefault(winners.getId(), 0) + 1);
 
@@ -550,6 +553,14 @@ public class GameController extends Thread {
      */
     public void setDealSeed(long seed) {
         dealSeed = seed;
+    }
+
+    /**
+     * Each game is a single hand, from a score of 0 - 0, won by the team with the most points (team 0 on a tie). For
+     * evaluations: hands are independent, a game to 1500 points adds the luck of several hands and a threshold.
+     */
+    public void setSingleHandGames(boolean enable) {
+        singleHandGames = enable;
     }
 
     public int getMatchWinCount(int teamId) {

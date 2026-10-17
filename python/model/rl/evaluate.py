@@ -2,10 +2,10 @@
 Evaluates models against MonteCarlo players, by exporting them to ONNX and playing them in Java (AiTester).
 
     # one or several checkpoints (supervised .pt or RL .pth, detected automatically)
-    python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --games 200 --strengths 100 300
+    python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --hands 1000 --strengths 100 300
 
     # every checkpoint of a PPO run, as they are written; the win rates are logged to the run's TensorBoard
-    python -m rl.evaluate --watch runs/<run> --games 200 --strengths 100
+    python -m rl.evaluate --watch runs/<run> --hands 1000 --strengths 100
 
 The results are appended to eval.jsonl, in the run directory with --watch, in the current directory otherwise.
 Runs one game at a time; MonteCarlo already uses all the CPU cores.
@@ -36,8 +36,10 @@ class Args:
     """supervised (.pt) or RL (.pth) state dicts to evaluate"""
     watch: Optional[str] = None
     """a PPO run directory (runs/<run>): evaluates each model_iter_<n>.pth as it appears, until the final model"""
-    games: int = 200
-    """games per MonteCarlo strength (played as pairs of games with the same deals)"""
+    hands: int = 1000
+    """hands per MonteCarlo strength, each from a score of 0 - 0 (played as pairs of hands with the same deals)"""
+    games: Optional[int] = None
+    """play this number of full games to 1500 points instead of hands"""
     strengths: list[int] = field(default_factory=lambda: [100])
     """MonteCarlo strengths to play against"""
     jar: Optional[str] = None
@@ -66,15 +68,15 @@ def export_to_onnx(checkpoint: str, output: str):
 
 def evaluate(checkpoint: str, args: Args, jar: str) -> list[dict]:
     """
-    Returns one result per strength: {strength, duplicate, games, wins, win_rate, ci_low, ci_high, points,
-    points_ci_low, points_ci_high}, points being the point difference per game (model - MonteCarlo).
+    Returns one result per strength: {strength, unit, duplicate, count, wins, win_rate, ci_low, ci_high, points,
+    points_ci_low, points_ci_high}, points being the point difference per hand (or game): model - MonteCarlo.
     """
     with tempfile.TemporaryDirectory() as tmp:
         onnx_path = os.path.join(tmp, "model.onnx")
         results_path = os.path.join(tmp, "results.json")
         export_to_onnx(checkpoint, onnx_path)
         command = ["java", "--enable-native-access=ALL-UNNAMED", "-cp", jar, "com.leflat.jass.test.AiTester",
-                   "-g", str(args.games), "-s", ",".join(map(str, args.strengths)), "-r", results_path, onnx_path]
+                   *(["-g", str(args.games)] if args.games else ["-n", str(args.hands)]), "-s", ",".join(map(str, args.strengths)), "-r", results_path, onnx_path]
         sys.stdout.flush()  # keeps our output in order with Java's when piped
         subprocess.run(command, check=True)
         with open(results_path) as f:
@@ -96,9 +98,9 @@ def evaluated_checkpoints(path: str) -> set[str]:
 
 def print_results(checkpoint: str, results: list[dict]):
     for r in results:
-        print(f"{checkpoint} vs MonteCarlo-{r['strength']}: won {r['win_rate']:.1%} "
-              f"[{r['ci_low']:.1%}, {r['ci_high']:.1%}] | {r['points']:+.0f} "
-              f"[{r['points_ci_low']:+.0f}, {r['points_ci_high']:+.0f}] points/game | {r['games']} games")
+        print(f"{checkpoint} vs MonteCarlo-{r['strength']}: {r['points']:+.1f} "
+              f"[{r['points_ci_low']:+.1f}, {r['points_ci_high']:+.1f}] points/{r['unit']} | won {r['win_rate']:.1%} "
+              f"[{r['ci_low']:.1%}, {r['ci_high']:.1%}] | {r['count']} {r['unit']}s")
 
 
 def checkpoint_step(path: str, run_args: dict) -> Optional[int]:
@@ -137,8 +139,8 @@ def watch(args: Args, jar: str):
             print_results(checkpoint, results)
             append_results(eval_log, os.path.basename(checkpoint), results, step)
             for r in results:
-                writer.add_scalar(f"eval/win_rate_mc{r['strength']}", r["win_rate"], step)
-                writer.add_scalar(f"eval/points_mc{r['strength']}", r["points"], step)
+                writer.add_scalar(f"eval/points_per_{r['unit']}_mc{r['strength']}", r["points"], step)
+                writer.add_scalar(f"eval/{r['unit']}_win_rate_mc{r['strength']}", r["win_rate"], step)
             writer.flush()
             continue
         if any(p.endswith("final.pth") for p in glob.glob(os.path.join(run_dir, "model_*.pth"))):
