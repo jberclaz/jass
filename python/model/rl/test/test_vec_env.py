@@ -79,6 +79,42 @@ class TestJassVecEnv(unittest.TestCase):
         self.assertGreater(finished_episodes, 0)
         self.assertLess(forward_calls, opponent_moves, "opponent moves should be batched")
 
+    def test_hand_episodes(self):
+        num_envs = 4
+        final_scores = {}
+        original_finish_step = JassEnv.finish_step
+
+        def recording_finish_step(env):
+            result = original_finish_step(env)
+            if result[2]:  # terminated: the scores of the hand, before the autoreset
+                final_scores[id(env)] = list(env._controller.scores)
+            return result
+
+        with patch.object(JassEnv, "finish_step", recording_finish_step):
+            envs = JassVecEnv(num_envs, hand_episodes=True)
+            obs, _ = envs.reset(seed=1)
+            returns = np.zeros(num_envs)
+            finished_hands = 0
+            for _ in range(60):
+                with torch.no_grad():
+                    actions, _, _, _ = self.agent.get_action_and_value(torch.from_numpy(obs))
+                obs, rewards, terminations, truncations, infos = envs.step(actions.numpy())
+                returns += rewards
+                for i in np.flatnonzero(terminations):
+                    episode = infos["final_info"]["episode"]
+                    ours, theirs = final_scores[id(envs.envs[i])]
+                    # the return is the point difference of the hand, announcements, last trick and match included
+                    self.assertAlmostEqual(returns[i] * 157, ours - theirs, places=3)
+                    self.assertGreaterEqual(ours + theirs, 157)
+                    # 9 cards, plus a trump choice when the agent chooses
+                    self.assertIn(episode["l"][i], (9, 10))
+                    self.assertEqual(episode["won"][i], 0.5 + np.sign(ours - theirs) / 2)
+                    returns[i] = 0
+                    finished_hands += 1
+            envs.close()
+
+        self.assertGreaterEqual(finished_hands, 4 * 5)
+
 
 if __name__ == "__main__":
     unittest.main()

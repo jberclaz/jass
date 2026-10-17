@@ -9,8 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class Controller:
-    def __init__(self, players: list[Player]=None):
+    def __init__(self, players: list[Player]=None, single_hand: bool = False):
+        """With single_hand, the game is over at the end of the first hand (played from 0 - 0)."""
         self._players = players
+        self._single_hand = single_hand
         self._current_player = None
         self._trump_suit = Suit.NONE
         self._scores = [0, 0]
@@ -138,6 +140,9 @@ class Controller:
                 elif self._trick_counts[1] == 9:
                     self._scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
                     self._game_scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
+                if self._single_hand:
+                    self._game_over = True
+                    return
                 self._new_round()
                 return
         else:

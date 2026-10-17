@@ -17,17 +17,19 @@ class JassVecEnv(gym.vector.VectorEnv):
 
     Autoresets like SyncVectorEnv with AutoresetMode.SAME_STEP, and reports episode statistics the same way as
     RecordEpisodeStatistics does in that mode (infos["final_info"]["episode"], masked by infos["final_info"]["_episode"]),
-    plus "won": 1 if the agent's team won the game, 0.5 on a tie, 0 if it lost.
+    plus "won": 1 if the agent's team won the episode (game or hand), 0.5 on a tie, 0 if it lost.
     """
 
     metadata = {"autoreset_mode": AutoresetMode.SAME_STEP}
 
-    def __init__(self, num_envs: int, device: torch.device | str = "cpu", supervised_model_path: Optional[str] = None):
+    def __init__(self, num_envs: int, device: torch.device | str = "cpu", supervised_model_path: Optional[str] = None,
+                 hand_episodes: bool = False):
         self.device = torch.device(device)
         # a single teacher and a single student model, shared by all the games
         self._teacher_model = JassEnv._load_opponent_model(supervised_model_path).to(self.device)
         self._student_model = JassEnv._load_opponent_model(supervised_model_path).to(self.device)
-        self.envs = [JassEnv(teacher_model=self._teacher_model, student_model=self._student_model)
+        self.envs = [JassEnv(teacher_model=self._teacher_model, student_model=self._student_model,
+                             hand_episodes=hand_episodes)
                      for _ in range(num_envs)]
 
         self.num_envs = num_envs

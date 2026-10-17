@@ -21,6 +21,11 @@ class JassEnv(gym.Env):
     A multi-agent (simulated) Jass environment wrapped in the Gymnasium API.
     The environment is designed to train Agent 0 against three static opponents.
 
+    With hand_episodes, an episode is a single hand from a score of 0 - 0, and each step is rewarded with the change of
+    the point difference (agent's team - opponents, announcements, last trick and match included) / 157 since the
+    agent's previous step: the return of an episode is the point difference of the hand / 157. Otherwise an episode is
+    a game to 1500 points, rewarded +-10 at the end, with the point difference of each hand and a bonus per trick.
+
     step() and reset() are split into parts (apply_agent_action, play_opponent_turn, finish_step, ...)
     so that JassVecEnv can drive several games and batch the opponents' model inference.
     """
@@ -29,8 +34,11 @@ class JassEnv(gym.Env):
     def __init__(self, render_mode: Optional[str] = None,
                  teacher_model: Optional[JassFormerActorCritic] = None,
                  student_model: Optional[JassFormerActorCritic] = None,
-                 supervised_model_path: str = JASSFORMER_MODEL_PATH):
+                 supervised_model_path: str = JASSFORMER_MODEL_PATH,
+                 hand_episodes: bool = False):
         super().__init__()
+        self._hand_episodes = hand_episodes
+        self._last_score_difference = 0
 
         # 1. Initialize Player and Controller components (opponent models can be shared between environments)
         if teacher_model is None:
@@ -42,7 +50,7 @@ class JassEnv(gym.Env):
 
         self.players = None
 
-        self._controller = Controller(self.players)
+        self._controller = Controller(self.players, single_hand=hand_episodes)
         self._terminated = False
         self._last_action_was_trump = False
 
@@ -108,6 +116,7 @@ class JassEnv(gym.Env):
         # Reset game state and initial scores
         self._controller.reset()
         self._terminated = False
+        self._last_score_difference = 0
 
     def apply_agent_action(self, action: int):
         """Plays the agent's (player 0) action: a card (0-35) or a trump choice (36-40)."""
@@ -154,7 +163,16 @@ class JassEnv(gym.Env):
         reward = 0
         terminated = self._terminated
 
-        if terminated:
+        if self._hand_episodes:
+            our_team_score, opp_team_score = self._controller.scores
+            difference = our_team_score - opp_team_score
+            reward = (difference - self._last_score_difference) / 157
+            self._last_score_difference = difference
+            if terminated:
+                observation = np.zeros(self.observation_space.shape, dtype=self.observation_space.dtype)
+            else:
+                observation = self.agent_observation()
+        elif terminated:
             # Reward is based on team scores at the end of the game
             our_team_score, opp_team_score = self._controller.scores
 

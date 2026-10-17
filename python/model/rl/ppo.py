@@ -50,8 +50,15 @@ class Args:
     """state dict of the supervised JassFormer, used to initialize the agent and the opponents"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
-    learning_rate: float = 1e-5
-    """the learning rate of the optimizer"""
+    learning_rate: float = 3e-5
+    """the learning rate of the policy (the transformer and the card and trump heads)"""
+    value_learning_rate: float = 1e-4
+    """the learning rate of the value head, after the warmup"""
+    warmup_value_learning_rate: float = 1e-3
+    """the learning rate of the value head during the warmup (it starts from random weights)"""
+    hand_episodes: bool = True
+    """episodes are single hands from 0 - 0, rewarded with their point difference / 157; otherwise games to 1500
+    points, rewarded +-10 at the end (plus the point difference of each hand and a bonus per trick)"""
     num_envs: int = 16
     """the number of parallel game environments"""
     num_steps: int = 128
@@ -70,7 +77,7 @@ class Args:
     """Toggles advantages normalization"""
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
-    clip_vloss: bool = True
+    clip_vloss: bool = False
     """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
     ent_coef: float = 0.01
     """coefficient of the entropy"""
@@ -78,7 +85,7 @@ class Args:
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
-    target_kl: float = None
+    target_kl: Optional[float] = 0.02
     """the target KL divergence threshold"""
     warmup_ratio: float = 0.2
     """ratio of total timesteps to strictly train the value function (freeze policy)"""
@@ -148,14 +155,17 @@ if __name__ == "__main__":
 
     # env setup
     # all the games run in lockstep, with the opponents' moves batched on the training device
-    envs = JassVecEnv(args.num_envs, device, args.supervised_model)
+    envs = JassVecEnv(args.num_envs, device, args.supervised_model, hand_episodes=args.hand_episodes)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
 
     agent = JassFormerActorCritic(d_model=256)
     JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
     agent = agent.to(device)
 
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    # the value head starts from random weights: it gets its own, higher learning rate (param group 1)
+    policy_params = [p for name, p in agent.named_parameters() if not name.startswith("value_head.")]
+    optimizer = optim.Adam([{"params": policy_params, "lr": args.learning_rate},
+                            {"params": agent.value_head.parameters(), "lr": args.warmup_value_learning_rate}], eps=1e-5)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape,dtype=torch.int64).to(device)
@@ -181,10 +191,10 @@ if __name__ == "__main__":
             param.requires_grad = not in_warmup or name.startswith("value_head.")
 
         # Annealing the rate if instructed to do so.
-        if args.anneal_lr:
-            frac = 1.0 - (iteration - 1.0) / args.num_iterations
-            lrnow = frac * args.learning_rate
-            optimizer.param_groups[0]["lr"] = lrnow
+        frac = 1.0 - (iteration - 1.0) / args.num_iterations if args.anneal_lr else 1.0
+        optimizer.param_groups[0]["lr"] = frac * args.learning_rate
+        optimizer.param_groups[1]["lr"] = frac * (args.warmup_value_learning_rate if in_warmup
+                                                  else args.value_learning_rate)
 
         episode_returns, episode_lengths, episode_wins = [], [], []
         for step in range(0, args.num_steps):
@@ -304,6 +314,7 @@ if __name__ == "__main__":
         sps = int(global_step / (time.time() - start_time))
         metrics = {
             "charts/learning_rate": optimizer.param_groups[0]["lr"],
+            "charts/value_learning_rate": optimizer.param_groups[1]["lr"],
             "charts/SPS": sps,
             "charts/warmup": float(in_warmup),
             "losses/value_loss": v_loss.item(),
@@ -315,16 +326,26 @@ if __name__ == "__main__":
             "losses/explained_variance": float(explained_var),
         }
         if episode_returns:
-            # averaged over the games finished during this iteration (against the teacher and the student)
+            # averaged over the episodes (hands or games) finished during this iteration, against the opponents
+            # (the teacher and the student)
             metrics |= {
                 "charts/episodic_return": float(np.mean(episode_returns)),
                 "charts/episodic_length": float(np.mean(episode_lengths)),
-                "charts/game_win_rate": float(np.mean(episode_wins)),
-                "charts/games": len(episode_returns),
+                "charts/episode_win_rate": float(np.mean(episode_wins)),
+                "charts/episodes": len(episode_returns),
             }
+            if args.hand_episodes:
+                metrics["charts/points_per_hand"] = float(np.mean(episode_returns)) * 157
         log_metrics(metrics, global_step)
-        games_summary = (f"return {np.mean(episode_returns):+.2f}, won {np.mean(episode_wins):.0%} of "
-                         f"{len(episode_returns)} games" if episode_returns else "no game finished")
+        unit = "hands" if args.hand_episodes else "games"
+        if not episode_returns:
+            games_summary = f"no {unit[:-1]} finished"
+        elif args.hand_episodes:
+            games_summary = (f"{np.mean(episode_returns) * 157:+.1f} points/hand, won {np.mean(episode_wins):.0%} "
+                             f"of {len(episode_returns)} hands")
+        else:
+            games_summary = (f"return {np.mean(episode_returns):+.2f}, won {np.mean(episode_wins):.0%} of "
+                             f"{len(episode_returns)} games")
         print(f"iter {iteration}/{args.num_iterations} | step {global_step:,} | {sps} SPS"
               f"{' | warmup' if in_warmup else ''} | {games_summary} | value loss {v_loss.item():.3f}, "
               f"explained var {explained_var:.2f}, approx kl {approx_kl.item():.4f}, clipfrac {np.mean(clipfracs):.3f}")
