@@ -33,6 +33,7 @@ class Config:
     onnx_model_path = "jassformer.onnx"
     mlflow_run_name = "jassformer_v2"
     mlflow_experiment = "JassFormer"
+    mlflow_tracking_uri = "sqlite:///mlflow.db"
 
 
 class Metrics:
@@ -134,6 +135,10 @@ def train():
     cfg.lr = args.lr
     cfg.d_model = args.d_model
     cfg.val_fraction = args.val_fraction
+    # MLflow keeps defaulting to the deprecated ./mlruns file store whenever that directory still holds runs
+    # (e.g. after `mlflow migrate-filestore`), so pick the database explicitly unless MLFLOW_TRACKING_URI is set
+    if not mlflow.is_tracking_uri_set():
+        mlflow.set_tracking_uri(cfg.mlflow_tracking_uri)
     mlflow.set_experiment(cfg.mlflow_experiment)
 
     with mlflow.start_run(run_name=cfg.mlflow_run_name) as run:
