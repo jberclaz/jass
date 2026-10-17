@@ -1,4 +1,5 @@
 # docs and experiment results can be found at https://docs.cleanrl.dev/rl-algorithms/ppo/#ppopy
+import json
 import os
 import random
 import time
@@ -114,6 +115,9 @@ if __name__ == "__main__":
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
+    # read by rl.evaluate, to place the checkpoints (model_iter_<n>.pth) on the global_step axis
+    with open(f"runs/{run_name}/args.json", "w") as f:
+        json.dump(vars(args), f, indent=2)
 
     # TRY NOT TO MODIFY: seeding
     random.seed(args.seed)

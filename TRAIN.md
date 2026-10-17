@@ -28,12 +28,29 @@ python -m pytest                                   # 2 tests are skipped without
 | 2. Check data | `python validate_dataset.py --data training_data/` | | Must finish without error: every recorded action is legal under the Python masks. |
 | 3. Supervised training | `python train.py --data training_data/ --epochs 10` | `--epochs 3` (~5 min on CPU) | See *Reading the metrics*. Writes `jassformer_best.pt` (best validation loss) and `jassformer.onnx` (that model, exported). |
 | 4. Check checkpoint | see [below](#checking-a-checkpoint) | | `d_model: 256, layers: 6, trump head: True` (RL expects d_model 256) |
-| 5. Test in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 20 -s 100 python/model/jassformer.onnx` | `-g 3 -s 15` | Plays Monte Carlo (team 0) vs transformers (team 1), shows a progress bar with the running score, then the games won by each team. Exits with an error if the model cannot be loaded. `-v` shows the game logs instead (only the transformers players log their moves). |
+| 5. Test in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 200 -s 100,300 python/model/jassformer.onnx` | `-g 3 -s 15` | Plays Monte Carlo (team 0) vs transformers (team 1) at each strength, shows a progress bar with the running score, then the transformers win rate with its 95% confidence interval. Exits with an error if the model cannot be loaded. `-v` shows the game logs instead (only the transformers players log their moves); `-r <file>` also writes the results as JSON. Or `python -m rl.evaluate jassformer_best.pt --strengths 100 300`, see [Evaluating](#evaluating-against-monte-carlo). |
 | 6. RL fine-tuning | `python -m rl.ppo --supervised-model jassformer_best.pt --total-timesteps 5000000` | `--total-timesteps 6144 --opponent-update-freq 1` (~3.5 min on CPU) | Logs `episodic_return` and losses to `runs/<run>/` (TensorBoard), checkpoints `model_iter_<n>.pth` every `--opponent-update-freq` iterations, and `model_final.pth`. Add `--track` for the MLflow server. |
 | 7. Export RL model | `python -m rl.export_checkpoint_to_onnx --rl --checkpoint runs/<run>/model_final.pth --output rl_jass_agent.onnx` | | `✅ Export success!` |
-| 8. Test RL model in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 20 -s 100 python/model/rl_jass_agent.onnx` | `-g 3 -s 15` | Compare with step 5. |
+| 8. Test RL model in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 200 -s 100,300 python/model/rl_jass_agent.onnx` | `-g 3 -s 15` | Compare with step 5. Steps 7–8 in one go, during or after training: `python -m rl.evaluate --watch runs/<run>`. |
 
 To ship a model with the client, copy it to `src/main/resources/model/jassformer.onnx` (the default `cp:/model/jassformer.onnx`) and rebuild.
+
+## Evaluating against Monte Carlo
+
+`rl.evaluate` exports checkpoints to ONNX and plays them against Monte Carlo with AiTester (build the jar first). It accepts supervised (`.pt`) and RL (`.pth`) state dicts, and finds `d_model` itself.
+
+```bash
+# fixed checkpoints, e.g. the supervised base and an RL model
+python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --games 200 --strengths 100 300
+
+# a PPO run, in a second terminal: evaluates each model_iter_<n>.pth as it is written (newest first), until the final model
+python -m rl.evaluate --watch runs/<run> --games 200 --strengths 100
+```
+
+- Results are appended to `eval.jsonl` (in the run directory with `--watch`). With `--watch`, they are also logged to the run's TensorBoard as `eval/win_rate_mc<strength>`, on the same `global_step` axis as the training charts.
+- 200 games give a 95% interval of about ±7 points around 50%: enough to see real progress, not small differences. 20 games give ±20 points.
+- Monte Carlo uses all CPU cores, so evaluating slows down a PPO run on the same machine (and vice versa). With `--watch`, `--opponent-update-freq` sets how often checkpoints appear; if evaluation can't keep up, the newest checkpoint is evaluated first.
+- Evaluate the supervised base model at the same strengths first: that's the baseline RL has to beat.
 
 ## Checking a checkpoint
 
