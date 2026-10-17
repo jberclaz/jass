@@ -37,7 +37,7 @@ class Args:
     watch: Optional[str] = None
     """a PPO run directory (runs/<run>): evaluates each model_iter_<n>.pth as it appears, until the final model"""
     games: int = 200
-    """games per MonteCarlo strength"""
+    """games per MonteCarlo strength (played as pairs of games with the same deals)"""
     strengths: list[int] = field(default_factory=lambda: [100])
     """MonteCarlo strengths to play against"""
     jar: Optional[str] = None
@@ -65,7 +65,10 @@ def export_to_onnx(checkpoint: str, output: str):
 
 
 def evaluate(checkpoint: str, args: Args, jar: str) -> list[dict]:
-    """Returns one result per strength: {strength, games, wins, win_rate, ci_low, ci_high}."""
+    """
+    Returns one result per strength: {strength, duplicate, games, wins, win_rate, ci_low, ci_high, points,
+    points_ci_low, points_ci_high}, points being the point difference per game (model - MonteCarlo).
+    """
     with tempfile.TemporaryDirectory() as tmp:
         onnx_path = os.path.join(tmp, "model.onnx")
         results_path = os.path.join(tmp, "results.json")
@@ -93,8 +96,9 @@ def evaluated_checkpoints(path: str) -> set[str]:
 
 def print_results(checkpoint: str, results: list[dict]):
     for r in results:
-        print(f"{checkpoint} vs MonteCarlo-{r['strength']}: {r['win_rate']:.1%} "
-              f"[{r['ci_low']:.1%}, {r['ci_high']:.1%}] over {r['games']} games")
+        print(f"{checkpoint} vs MonteCarlo-{r['strength']}: won {r['win_rate']:.1%} "
+              f"[{r['ci_low']:.1%}, {r['ci_high']:.1%}] | {r['points']:+.0f} "
+              f"[{r['points_ci_low']:+.0f}, {r['points_ci_high']:+.0f}] points/game | {r['games']} games")
 
 
 def checkpoint_step(path: str, run_args: dict) -> Optional[int]:
@@ -134,6 +138,7 @@ def watch(args: Args, jar: str):
             append_results(eval_log, os.path.basename(checkpoint), results, step)
             for r in results:
                 writer.add_scalar(f"eval/win_rate_mc{r['strength']}", r["win_rate"], step)
+                writer.add_scalar(f"eval/points_mc{r['strength']}", r["points"], step)
             writer.flush()
             continue
         if any(p.endswith("final.pth") for p in glob.glob(os.path.join(run_dir, "model_*.pth"))):

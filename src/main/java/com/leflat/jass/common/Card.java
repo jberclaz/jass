@@ -111,11 +111,14 @@ public class Card implements Comparable<Card> {
     }
 
     public static List<Card> shuffle(int number) {
+        return shuffle(number, new Random());
+    }
+
+    public static List<Card> shuffle(int number, Random rand) {
         List<Card> cards = new ArrayList<>();
         for (int i = 0; i < number; i++) {
             cards.add(new Card(i));
         }
-        Random rand = new Random();
         for (int i = number - 1; i > 0; i--) {
             int j = rand.nextInt(i + 1);
             if (i != j) {

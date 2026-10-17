@@ -24,6 +24,9 @@ public class GameController extends Thread {
     private int playKGames = -1;
     private final Map<Integer, Integer> matchWinCount = new HashMap<>();
     private Runnable gameDoneListener = () -> {};
+    private Long dealSeed = null;
+    private Random dealRandom = new Random();
+    private int gamesPlayed = 0;
 
     public GameController(int id) {
         this.gameId = id;
@@ -73,7 +76,9 @@ public class GameController extends Thread {
 
                 chooseTeam();     // détermine les équipes
 
+                seedDeals(gamesPlayed);
                 playOneGame();
+                gamesPlayed++;
 
                 LOGGER.info("Game done");
                 gameDoneListener.run();
@@ -283,9 +288,16 @@ public class GameController extends Thread {
         return choice;
     }
 
+    void seedDeals(int gameIndex) {
+        if (dealSeed != null) {
+            // same deals for game k whatever happened in the previous games
+            dealRandom = new Random(dealSeed + gameIndex);
+        }
+    }
+
     int drawCards() throws PlayerLeftExpection {
         int playerWithDiamondSeven = 0;      // 7 de carreau
-        var cards = Card.shuffle(Card.DECK_SIZE);     // choisir les cartes au hasard
+        var cards = Card.shuffle(Card.DECK_SIZE, dealRandom);     // choisir les cartes au hasard
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 9; j++) {
                 if (cards.get(i * 9 + j).getNumber() == Card.DIAMOND_SEVEN) {    // 7 de carreau
@@ -530,6 +542,14 @@ public class GameController extends Thread {
     /** Called on the game thread after each game (match). */
     public void setGameDoneListener(Runnable listener) {
         gameDoneListener = listener;
+    }
+
+    /**
+     * Makes the deals reproducible: game k (counted from 0) is dealt from a Random seeded with seed + k, so two
+     * controllers with the same seed deal the same cards to the same seats, hand after hand.
+     */
+    public void setDealSeed(long seed) {
+        dealSeed = seed;
     }
 
     public int getMatchWinCount(int teamId) {
