@@ -51,6 +51,7 @@ python -m rl.evaluate --watch runs/<run> --games 200 --strengths 100
 - 200 games give a 95% interval of about ±7 points around 50%: enough to see real progress, not small differences. 20 games give ±20 points.
 - Monte Carlo uses all CPU cores, so evaluating slows down a PPO run on the same machine (and vice versa). With `--watch`, `--opponent-update-freq` sets how often checkpoints appear; if evaluation can't keep up, the newest checkpoint is evaluated first.
 - Evaluate the supervised base model at the same strengths first: that's the baseline RL has to beat.
+- To see how much better the teacher is (the ceiling of supervised training), play Monte Carlo against Monte Carlo: `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 200 -s 100 mc:1000` (team 1 is MonteCarlo-1000). Slow: MC-1000 takes ~10 times longer per move than MC-100.
 
 ## Checking a checkpoint
 

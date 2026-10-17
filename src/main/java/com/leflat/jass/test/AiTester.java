@@ -18,11 +18,14 @@ import java.util.stream.Collectors;
 
 /**
  * Plays a transformers model (team 1) against MonteCarlo players (team 0), at one or several MonteCarlo strengths.
+ * Team 1 can also be a MonteCarlo player ({@code mc:<strength>}), e.g. to measure how strong the teacher of the
+ * supervised training is.
  */
 @Command(name = "AiTester", mixinStandardHelpOptions = true, version = "1.0")
 public class AiTester implements Callable<Integer> {
 
-    @Parameters(index = "0", arity = "0..1", description = "Model path")
+    @Parameters(index = "0", arity = "0..1",
+            description = "Model path (default: the classpath model), or mc:<strength> to play MonteCarlo instead")
     private String modelPath;
 
     @Option(names = {"-g", "--games"}, defaultValue = "10", description = "Number of games per strength (default: ${DEFAULT-VALUE})")
@@ -63,21 +66,27 @@ public class AiTester implements Callable<Integer> {
         if (!verbose) {
             ProgressBar.hideInfoLogs();
         }
-        var transformers = modelPath == null ? new TransformersStrategy() : new TransformersStrategy(modelPath);
-        if (!transformers.isModelLoaded()) {
-            // otherwise the transformers players silently fall back to MonteCarlo
-            System.err.println("Unable to load model " + (modelPath == null ? "from the classpath" : modelPath));
-            return 1;
+        IJassStrategy candidate;
+        if (modelPath != null && modelPath.startsWith("mc:")) {
+            candidate = new MonteCarloStrategy(Integer.parseInt(modelPath.substring(3)));
+        } else {
+            var transformers = modelPath == null ? new TransformersStrategy() : new TransformersStrategy(modelPath);
+            if (!transformers.isModelLoaded()) {
+                // otherwise the transformers players silently fall back to MonteCarlo
+                System.err.println("Unable to load model " + (modelPath == null ? "from the classpath" : modelPath));
+                return 1;
+            }
+            candidate = transformers;
         }
 
         List<Result> results = new ArrayList<>();
         for (int strength : strengths) {
-            results.add(play(new MonteCarloStrategy(strength), transformers, strength));
+            results.add(play(new MonteCarloStrategy(strength), candidate, strength));
         }
 
         if (results.size() > 1) {
             System.out.println();
-            System.out.println("Transformers win rate (95% confidence interval):");
+            System.out.println(candidate + " win rate (95% confidence interval):");
             for (var result : results) {
                 System.out.println("  vs " + format(result));
             }
@@ -88,18 +97,18 @@ public class AiTester implements Callable<Integer> {
         return 0;
     }
 
-    private Result play(IJassStrategy monteCarlo, IJassStrategy transformers, int strength)
+    private Result play(IJassStrategy monteCarlo, IJassStrategy candidate, int strength)
             throws PlayerLeftExpection, InterruptedException {
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
         for (int i = 0; i < 4; i++) {
-            var strategy = i % 2 == 0 ? monteCarlo : transformers;
+            var strategy = i % 2 == 0 ? monteCarlo : candidate;
             game.addPlayer(new ArtificialPlayer(i, strategy + "-" + i, strategy, true));
         }
 
-        System.out.printf("Playing %,d games | team 0: %s vs team 1: %s%n", games, monteCarlo, transformers);
-        String[] teamNames = {monteCarlo.toString(), transformers.toString()};
+        System.out.printf("Playing %,d games | team 0: %s vs team 1: %s%n", games, monteCarlo, candidate);
+        String[] teamNames = {monteCarlo.toString(), candidate.toString()};
         if (!verbose) {
             var progress = new ProgressBar(games, "games");
             int[] gamesDone = {0};
@@ -120,7 +129,7 @@ public class AiTester implements Callable<Integer> {
                     team, teamNames[team], wins, played, played > 0 ? 100.0 * wins / played : 0.0);
         }
         var result = new Result(strength, played, game.getMatchWinCount(1));
-        System.out.println("Transformers vs " + format(result));
+        System.out.println(candidate + " vs " + format(result));
         return result;
     }
 
