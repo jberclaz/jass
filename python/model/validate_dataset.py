@@ -20,7 +20,7 @@ def main():
         legal_mask = lm.get_legal_mask_with_rules_batch(tokens)
         trump_legal_mask = lm.get_trump_mask_batch(tokens)
 
-        for b in range(args.batch):
+        for b in range(action.size(0)):
             a = action[b]
             if tokens[b][2] == 125:
                 if not legal_mask[b, a]:

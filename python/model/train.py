@@ -1,19 +1,20 @@
 # train.py
 import argparse
 import subprocess
-from pathlib import Path
+from collections import defaultdict
 
 import mlflow
 import mlflow.pytorch
 import torch
 import torch.nn.functional as F
-from torch.export import Dim  # <-- 1. Import Dim
-from torch.utils.data import DataLoader, random_split
+from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from dataset import JassBinaryDataset, TOKEN_LENGTH, VOCABULARY_SIZE
+from dataset import JassBinaryDataset, split_train_val
 from legal_mask import get_legal_mask_with_rules_batch, get_trump_mask_batch
 from model import JassFormer
+from rl.export_checkpoint_to_onnx import export_supervised_model_to_onnx
+from rl.tokens import Tokens
 
 
 class Config:
@@ -23,91 +24,128 @@ class Config:
     lr = 3e-4
     weight_decay = 1e-5
     grad_clip = 1.0
+    d_model = 256
+    val_fraction = 0.05
     device = "cuda" if torch.cuda.is_available() else "cpu"
     log_every = 100
-    eval_every = 1000  # currently unused
     save_every = 5000
+    best_model_path = "jassformer_best.pt"
+    onnx_model_path = "jassformer.onnx"
     mlflow_run_name = "jassformer_v2"
     mlflow_experiment = "JassFormer"
 
 
-def evaluate(val_loader, model, device) -> float:
+class Metrics:
+    """
+    Accumulates loss and accuracies. Forced moves (a single legal card) are always "correct" and teach nothing,
+    so card accuracy is also reported on the other moves, next to the accuracy of a uniformly random legal move.
+    """
+
+    def __init__(self):
+        self._sums = defaultdict(float)
+
+    def update(self, tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask, loss_sum):
+        is_card_play = tokens[:, 2] == Tokens.CHOOSE_NEXT_CARD
+        is_trump_choice = tokens[:, 2] == Tokens.CHOOSE_TRUMP_SUIT
+        num_legal_cards = legal_mask.sum(dim=-1)
+        is_unforced = is_card_play & (num_legal_cards > 1)
+        card_correct = card_log_probs.argmax(dim=-1) == action
+        trump_correct = trump_log_probs.argmax(dim=-1) == action
+
+        s = self._sums
+        s["samples"] += action.size(0)
+        s["loss"] += loss_sum
+        s["card"] += is_card_play.sum().item()
+        s["card_correct"] += (card_correct & is_card_play).sum().item()
+        s["unforced"] += is_unforced.sum().item()
+        s["unforced_correct"] += (card_correct & is_unforced).sum().item()
+        s["unforced_random"] += (1.0 / num_legal_cards[is_unforced].float()).sum().item()
+        s["trump"] += is_trump_choice.sum().item()
+        s["trump_correct"] += (trump_correct & is_trump_choice).sum().item()
+        s["trump_random"] += (1.0 / trump_legal_mask.sum(dim=-1)[is_trump_choice].float()).sum().item()
+
+    def summary(self, prefix: str) -> dict[str, float]:
+        s = self._sums
+        ratio = lambda num, den: s[num] / s[den] if s[den] > 0 else float("nan")
+        return {
+            f"{prefix}/loss": ratio("loss", "samples"),
+            f"{prefix}/card_acc": ratio("card_correct", "card"),
+            f"{prefix}/card_acc_unforced": ratio("unforced_correct", "unforced"),
+            f"{prefix}/card_acc_unforced_random": ratio("unforced_random", "unforced"),
+            f"{prefix}/trump_acc": ratio("trump_correct", "trump"),
+            f"{prefix}/trump_acc_random": ratio("trump_random", "trump"),
+        }
+
+
+def format_summary(summary: dict[str, float]) -> str:
+    values = {k.split("/", 1)[1]: v for k, v in summary.items()}
+    return (f"loss {values['loss']:.4f} | card {values['card_acc'] * 100:.2f}% | "
+            f"unforced card {values['card_acc_unforced'] * 100:.2f}% (random {values['card_acc_unforced_random'] * 100:.2f}%) | "
+            f"trump {values['trump_acc'] * 100:.2f}% (random {values['trump_acc_random'] * 100:.2f}%)")
+
+
+def log_model(model, name: str):
+    # pickle: MLflow's default format (pt2) traces the model and requires an input example
+    mlflow.pytorch.log_model(model, name=name, serialization_format="pickle")
+
+
+def forward_and_loss(model, tokens, action):
+    legal_mask = get_legal_mask_with_rules_batch(tokens)
+    trump_legal_mask = get_trump_mask_batch(tokens)
+    card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask)
+
+    # each sample uses the head of its phase
+    is_trump_choice = tokens[:, 2] == Tokens.CHOOSE_TRUMP_SUIT
+    card_nll = F.nll_loss(card_log_probs, action.clamp(max=35), reduction="none")
+    trump_nll = F.nll_loss(trump_log_probs, action.clamp(max=4), reduction="none")
+    loss_sum = torch.where(is_trump_choice, trump_nll, card_nll).sum()
+    return loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask
+
+
+def evaluate(val_loader, model, device) -> dict[str, float]:
     model.eval()
-    val_correct = 0
-    val_total = 0
+    metrics = Metrics()
     with torch.no_grad():
         for tokens, action in tqdm(val_loader, desc="Validating"):
             tokens = tokens.to(device)
             action = action.to(device)
-
-            legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
-            trump_legal_mask = get_trump_mask_batch(tokens).to(device)
-
-            card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask                                                    )
-
-            is_card_play = (tokens[:, 2] == 125)
-            is_trump_choice = (tokens[:, 2] == 126)
-            card_play_indices = is_card_play.nonzero(as_tuple=True)[0]
-            trump_choice_indices = is_trump_choice.nonzero(as_tuple=True)[0]
-
-            correct_card = 0
-            correct_trump = 0
-
-            # 1. Calculate accuracy for the card-play samples (if any exist)
-            if card_play_indices.numel() > 0:
-                # Get predictions for card-play phase
-                pred_card = card_log_probs[card_play_indices].argmax(dim=-1)
-
-                # Compare with correct actions for this phase
-                correct_card = (pred_card == action[card_play_indices]).sum().item()
-
-            # 2. Calculate accuracy for the trump-choice samples (if any exist)
-            if trump_choice_indices.numel() > 0:
-                # Get predictions for trump-choice phase
-                pred_trump = trump_log_probs[trump_choice_indices].argmax(dim=-1)
-
-                # Compare with correct actions for this phase
-                correct_trump = (pred_trump == action[trump_choice_indices]).sum().item()
-
-            # 3. Add correct predictions from *both* phases
-            val_correct += (correct_card + correct_trump)
-            val_total += action.size(0)
-
+            loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(model, tokens, action)
+            metrics.update(tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask, loss_sum.item())
     model.train()
-    return val_correct / val_total
+    return metrics.summary("val")
 
 
 def train():
     parser = argparse.ArgumentParser()
     parser.add_argument("--data", type=str, default="data/")
-    parser.add_argument("--batch", type=int, default=512)
-    parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--lr", type=float, default=3e-4)
+    parser.add_argument("--batch", type=int, default=Config.batch_size)
+    parser.add_argument("--epochs", type=int, default=Config.epochs)
+    parser.add_argument("--lr", type=float, default=Config.lr)
+    parser.add_argument("--d_model", type=int, default=Config.d_model)
+    parser.add_argument("--val_fraction", type=float, default=Config.val_fraction,
+                        help="fraction of each data file (its last games) used for validation")
     parser.add_argument("--description", "-d", type=str, default="")
     args = parser.parse_args()
 
     cfg = Config()
-    if args.data:
-        cfg.data_path = args.data
-    if args.batch:
-        cfg.batch_size = args.batch
-    if args.epochs:
-        cfg.epochs = args.epochs
-    if args.lr:
-        cfg.lr = args.lr
+    cfg.data_path = args.data
+    cfg.batch_size = args.batch
+    cfg.epochs = args.epochs
+    cfg.lr = args.lr
+    cfg.d_model = args.d_model
+    cfg.val_fraction = args.val_fraction
     mlflow.set_experiment(cfg.mlflow_experiment)
 
     with mlflow.start_run(run_name=cfg.mlflow_run_name) as run:
         dataset = JassBinaryDataset(cfg.data_path)
-        train_size = int(0.95 * len(dataset))
-        val_size = len(dataset) - train_size
-        train_set, val_set = random_split(dataset, [train_size, val_size])
+        train_set, val_set = split_train_val(dataset, cfg.val_fraction)
+        print(f"Training samples: {len(train_set):,} | validation samples: {len(val_set):,}")
 
         train_loader = DataLoader(train_set, batch_size=cfg.batch_size, shuffle=True, num_workers=8, pin_memory=True)
         val_loader = DataLoader(val_set, batch_size=cfg.batch_size, shuffle=False, num_workers=8)
 
         device = torch.device(cfg.device)
-        model = JassFormer().to(device)
+        model = JassFormer(d_model=cfg.d_model).to(device)
         optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.lr, weight_decay=cfg.weight_decay)
         scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=cfg.epochs)
 
@@ -117,148 +155,84 @@ def train():
                 "epochs": cfg.epochs,
                 "lr": cfg.lr,
                 "weight_decay": cfg.weight_decay,
+                "d_model": cfg.d_model,
+                "val_fraction": cfg.val_fraction,
                 "device": cfg.device,
                 "data_samples": dataset.total_samples,
+                "train_samples": len(train_set),
+                "val_samples": len(val_set),
                 "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
             }
         )
         run_description = f"""
             ## Run: `{run.info.run_id}`
-            - **Data**: `{cfg.data_path}` ({len(dataset)} samples)
-            - **Legal Mask**: `get_legal_mask_fast` (vectorized)
+            - **Data**: `{cfg.data_path}` ({len(dataset)} samples, last {cfg.val_fraction:.0%} of each file for validation)
+            - **Legal Mask**: `get_legal_mask_with_rules_batch` (vectorized)
             - **Description**: `{args.description}`
         """
         mlflow.set_tag("mlflow.note.content", run_description)
 
         step = 0
-        best_acc = 0
+        best_val_loss = float("inf")
+        best_summary = None
         for epoch in range(cfg.epochs):
             model.train()
-            total_loss = 0
-            correct = 0
-            total = 0
+            epoch_metrics = Metrics()
+            log_metrics = Metrics()
 
             for tokens, action in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
                 step += 1
                 tokens = tokens.to(device)
                 action = action.to(device)
 
-                legal_mask = get_legal_mask_with_rules_batch(tokens).to(device)
-                trump_legal_mask = get_trump_mask_batch(tokens).to(device)
-
-                card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask)
-
-                is_card_play = (tokens[:, 2] == 125)
-                is_trump_choice = (tokens[:, 2] == 126)
-                card_play_indices = is_card_play.nonzero(as_tuple=True)[0]
-                trump_choice_indices = is_trump_choice.nonzero(as_tuple=True)[0]
-
-                # 3. Initialize loss components
-                loss_card = torch.tensor(0.0, device=device)
-                loss_trump = torch.tensor(0.0, device=device)
-
-                # 4. Calculate the total loss for the card-play samples (if any exist)
-                if card_play_indices.numel() > 0:
-                    loss_card = F.nll_loss(
-                        card_log_probs[card_play_indices],  # Select "card play" rows
-                        action[card_play_indices],  # Select corresponding actions
-                        reduction='sum'  # We get the sum of losses for this group
-                    )
-
-                # 5. Calculate the total loss for the trump-choice samples (if any exist)
-                if trump_choice_indices.numel() > 0:
-                    loss_trump = F.nll_loss(
-                        trump_log_probs[trump_choice_indices],  # Select "trump choice" rows
-                        action[trump_choice_indices],  # Select corresponding actions
-                        reduction='sum'  # We get the sum of losses for this group
-                    )
-
-                # 6. Combine the sums and average over the *total* batch size
-                loss = (loss_card + loss_trump) / cfg.batch_size
+                loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(model, tokens, action)
+                loss = loss_sum / action.size(0)
 
                 optimizer.zero_grad()
                 loss.backward()
-                torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
+                torch.nn.utils.clip_grad_norm_(model.parameters(), cfg.grad_clip)
                 optimizer.step()
 
-                total_loss += loss.item()
-
-                correct_card = 0
-                correct_trump = 0
-
-                # 1. Calculate accuracy for the card-play samples (if any exist)
-                if card_play_indices.numel() > 0:
-                    # Get predictions for card-play phase
-                    pred_card = card_log_probs[card_play_indices].argmax(dim=-1)
-
-                    # Compare with correct actions for this phase
-                    correct_card = (pred_card == action[card_play_indices]).sum().item()
-
-                # 2. Calculate accuracy for the trump-choice samples (if any exist)
-                if trump_choice_indices.numel() > 0:
-                    # Get predictions for trump-choice phase
-                    pred_trump = trump_log_probs[trump_choice_indices].argmax(dim=-1)
-
-                    # Compare with correct actions for this phase
-                    correct_trump = (pred_trump == action[trump_choice_indices]).sum().item()
-
-                # 3. Add correct predictions from *both* phases
-                correct += (correct_card + correct_trump)
-                total += action.size(0)
+                with torch.no_grad():
+                    for metrics in (epoch_metrics, log_metrics):
+                        metrics.update(tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask,
+                                       loss_sum.item())
 
                 # === LOGGING ===
                 if step % cfg.log_every == 0:
-                    acc = correct / total
-                    mlflow.log_metrics(
-                        {
-                            "train/loss": loss.item(),
-                            "train/acc": acc,
-                            "train/lr": optimizer.param_groups[0]["lr"],
-                        },
-                        step=step,
-                    )
+                    mlflow.log_metrics(log_metrics.summary("train") | {"train/lr": optimizer.param_groups[0]["lr"]},
+                                       step=step)
+                    log_metrics = Metrics()
 
                 if step % cfg.save_every == 0:
-                    mlflow.pytorch.log_model(model, f"model_step{step}")
+                    log_model(model, f"model_step{step}")
 
-            acc = correct / total
-            print(f"Train Loss: {total_loss / len(train_loader):.4f} | Acc: {acc * 100:.2f}%")
-            mlflow.log_metric("epoch/acc", acc, step=step)
+            train_summary = epoch_metrics.summary("epoch")
+            print(f"Train: {format_summary(train_summary)}")
+            mlflow.log_metrics(train_summary, step=step)
 
             # Validation
-            val_acc = evaluate(val_loader, model, device)
-            mlflow.log_metric("val/acc", val_acc, step=step)
-            print(f"Val Acc: {val_acc * 100:.2f}%")
-            if val_acc > best_acc:
-                best_acc = val_acc
-                torch.save(model.state_dict(), "jassformer_best.pt")
+            val_summary = evaluate(val_loader, model, device)
+            mlflow.log_metrics(val_summary, step=step)
+            print(f"Val:   {format_summary(val_summary)}")
+            if val_summary["val/loss"] < best_val_loss:
+                best_val_loss = val_summary["val/loss"]
+                best_summary = val_summary
+                torch.save(model.state_dict(), cfg.best_model_path)
                 mlflow.pytorch.log_state_dict(model.state_dict(), f"best_model_step{step}")
-                mlflow.log_artifact("jassformer_best.pt")
+                mlflow.log_artifact(cfg.best_model_path)
                 print("SAVED BEST MODEL")
 
             scheduler.step()
 
-        onnx_model = "jassformer.onnx"
-        onnx_model_data = onnx_model + ".data"
-        print(f"Training complete! Best val acc: {best_acc * 100:.2f}%")
-        torch.onnx.export(
-            model,
-            (torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH)).cuda(),),
-            onnx_model,
-            opset_version=18,
-            input_names=["tokens"],
-            output_names=["card_logits", "trump_logits"],
-            dynamic_shapes=({0: Dim("batch", min=1)},),
-            external_data=False,
-        )
-        print(f"Exported to {onnx_model}")
-        mlflow.log_metric("final/best_acc", best_acc)
-        mlflow.pytorch.log_model(model, "final_model")
-        mlflow.log_artifact(onnx_model)
-        if Path(onnx_model_data).exists():
-            data_size = Path(onnx_model_data).stat().st_size / (1024 * 1024)  # MB
-            if data_size > 1.0:  # only if external
-                mlflow.log_artifact(onnx_model_data)
+        print(f"Training complete! Best val: {format_summary(best_summary)}")
+        mlflow.log_metrics({k.replace("val/", "final/best_"): v for k, v in best_summary.items()})
+
+        # export the best model (in eval mode, on CPU) for the Java client
+        export_supervised_model_to_onnx(cfg.best_model_path, cfg.onnx_model_path, cfg.d_model)
+        print(f"Exported to {cfg.onnx_model_path}")
+        log_model(model, "final_model")
+        mlflow.log_artifact(cfg.onnx_model_path)
 
 
 if __name__ == "__main__":

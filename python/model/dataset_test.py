@@ -1,92 +1,98 @@
-# test_dataset.py
-import unittest
-import numpy as np
-import torch
+# dataset_test.py
 import os
-from dataset import JassBinaryDataset, TOKEN_LENGTH
+import tempfile
+import unittest
+
+import numpy as np
+
+from dataset import JassBinaryDataset, split_train_val, TOKEN_LENGTH
+from rl.tokens import Tokens
+
+
+def make_sample(phase: int, hand_size: int, action: int, marker: int = 0) -> bytes:
+    """A sample: 96 token bytes followed by the action byte. `marker` is stored in an unused position for tracking."""
+    tokens = np.zeros(TOKEN_LENGTH, dtype=np.uint8)
+    tokens[0] = Tokens.CLS
+    tokens[2] = phase
+    tokens[11:11 + hand_size] = [Tokens.card_token(c) for c in range(hand_size)]
+    tokens[95] = marker
+    return tokens.tobytes() + bytes([action])
+
+
+def make_round(round_number: int, choose_trump: bool) -> bytes:
+    data = b""
+    if choose_trump:
+        data += make_sample(Tokens.CHOOSE_TRUMP_SUIT, 9, 2, marker=round_number)
+    for hand_size in range(9, 0, -1):
+        data += make_sample(Tokens.CHOOSE_NEXT_CARD, hand_size, hand_size, marker=round_number)
+    return data
 
 
 class TestJassBinaryDataset(unittest.TestCase):
-    DATA_DIR = "test_data"
-    SAMPLE_FILE = f"{DATA_DIR}/sample.dat"
+    def setUp(self):
+        self._tmp_dir = tempfile.TemporaryDirectory()
+        self.data_dir = self._tmp_dir.name
 
-    @classmethod
-    def setUpClass(cls):
-        os.makedirs(cls.DATA_DIR, exist_ok=True)
-        cls._create_sample_file()
+    def tearDown(self):
+        self._tmp_dir.cleanup()
 
-    @classmethod
-    def tearDownClass(cls):
-        import shutil
-
-        shutil.rmtree(cls.DATA_DIR)
-
-    @classmethod
-    def _create_sample_file(cls):
-        # 3 perfect samples
-        data = bytearray()
-        for i in range(3):
-            # num_tokens = 99
-            data.extend(np.int32(TOKEN_LENGTH).tobytes())
-            # tokens: CLS + 8 globals + SECTION_HAND + 9 cards + ... (simplified)
-            tokens = list(range(1, 96))
-            data.extend(np.array(tokens, dtype=np.uint8).tobytes())
-            # action: card token 25 → index 15
-            data.extend(np.int32(20 + i).tobytes())
-        with open(cls.SAMPLE_FILE, "wb") as f:
+    def _write(self, name: str, data: bytes):
+        with open(os.path.join(self.data_dir, name), "wb") as f:
             f.write(data)
 
-    def test_load_correct_number(self):
-        dataset = JassBinaryDataset(self.DATA_DIR)
+    def test_samples(self):
+        self._write("a.dat", make_sample(Tokens.CHOOSE_NEXT_CARD, 9, 20) + make_sample(Tokens.CHOOSE_NEXT_CARD, 8, 21))
+        self._write("b.dat", make_sample(Tokens.CHOOSE_TRUMP_SUIT, 9, 4))
+        dataset = JassBinaryDataset(self.data_dir)
         self.assertEqual(len(dataset), 3)
 
-    def test_first_sample_correct(self):
-        dataset = JassBinaryDataset(self.DATA_DIR)
         tokens, action = dataset[0]
         self.assertEqual(tokens.shape, (TOKEN_LENGTH,))
-        for i in range(TOKEN_LENGTH):
-            self.assertEqual(tokens[i].item(), i + 1)  # CLS
-        self.assertEqual(action.item(), 20)  # 25 - 10 = 15
+        self.assertEqual(tokens[0].item(), Tokens.CLS)
+        self.assertEqual(tokens[19].item(), Tokens.card_token(8))
+        self.assertEqual(action.item(), 20)
+        self.assertEqual(dataset[1][1].item(), 21)
 
-    def test_last_sample_correct(self):
-        dataset = JassBinaryDataset(self.DATA_DIR)
+        # sample of the second file
         tokens, action = dataset[2]
-        self.assertEqual(action.item(), 22)
+        self.assertEqual(tokens[2].item(), Tokens.CHOOSE_TRUMP_SUIT)
+        self.assertEqual(action.item(), 4)
 
-    def test_memory_efficient(self):
-        dataset = JassBinaryDataset(self.DATA_DIR)
-        # Should not load all into RAM
-        self.assertLess(dataset.mmaps[0].nbytes, 500)  # only one file
+    def test_incomplete_file_ignored(self):
+        self._write("a.dat", make_sample(Tokens.CHOOSE_NEXT_CARD, 9, 20))
+        self._write("corrupted.dat", b"garbage")
+        dataset = JassBinaryDataset(self.data_dir)
+        self.assertEqual(len(dataset), 1)
 
-    def test_invalid_file_skipped_gracefully(self):
-        # Create corrupted file
-        with open(f"{self.DATA_DIR}/corrupted.dat", "wb") as f:
-            f.write(b"garbage")
-        dataset = JassBinaryDataset(self.DATA_DIR)
-        self.assertEqual(len(dataset), 3)  # still loads good ones
+    def test_split_at_round_start(self):
+        # 2 files of 20 rounds, the player sometimes chooses trump
+        for name in ["seat0.dat", "seat1.dat"]:
+            self._write(name, b"".join(make_round(r, choose_trump=(r % 3 == 0)) for r in range(20)))
+        dataset = JassBinaryDataset(self.data_dir)
+        train_set, val_set = split_train_val(dataset, 0.1)
 
-    def test_different_action_values(self):
-        # Create file with pass and different actions
-        data = bytearray()
-        actions = [10, 20, 45, 30]  # card tokens
-        for act in actions:
-            data.extend(np.int32(TOKEN_LENGTH).tobytes())
-            data.extend(np.array([1] + [0] * (TOKEN_LENGTH - 1), dtype=np.uint8).tobytes())
-            data.extend(np.int32(act).tobytes())
-        with open(f"{self.DATA_DIR}/zactions.dat", "wb") as f:
-            f.write(data)
+        train_indices, val_indices = set(train_set.indices), set(val_set.indices)
+        self.assertFalse(train_indices & val_indices)
+        self.assertEqual(len(train_indices) + len(val_indices), len(dataset))
+        self.assertGreaterEqual(len(val_indices), 0.08 * len(dataset))
 
-        dataset = JassBinaryDataset(self.DATA_DIR)
-        expected = actions
-        for i, exp in enumerate(expected):
-            _, action = dataset[3 + i]
-            self.assertEqual(action.item(), exp)
+        # no round is shared between training and validation, and validation holds the last rounds of each file
+        for file_idx in range(2):
+            first, end = dataset.offsets[file_idx], dataset.offsets[file_idx + 1]
+            train_rounds = {dataset[i][0][95].item() for i in range(first, end) if i in train_indices}
+            val_rounds = {dataset[i][0][95].item() for i in range(first, end) if i in val_indices}
+            self.assertFalse(train_rounds & val_rounds)
+            self.assertGreater(min(val_rounds), max(train_rounds))
 
-        os.remove(f"{self.DATA_DIR}/zactions.dat")
-
+    @unittest.skipUnless(os.path.isdir("training_data"), "no local training data")
     def test_real_dataset(self):
         dataset = JassBinaryDataset("training_data/")
-        self.assertEqual(len(dataset), 33744)
-        for i in range(100):
+        self.assertGreater(len(dataset), 0)
+        for i in range(min(100, len(dataset))):
             tokens, action = dataset[i]
-            print("hello")
+            self.assertEqual(tokens[0].item(), Tokens.CLS)
+            self.assertIn(tokens[2].item(), [Tokens.CHOOSE_NEXT_CARD, Tokens.CHOOSE_TRUMP_SUIT])
+
+
+if __name__ == "__main__":
+    unittest.main()
