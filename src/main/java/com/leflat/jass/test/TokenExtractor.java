@@ -34,6 +34,9 @@ public class TokenExtractor implements Callable<Integer> {
     @Option(names = {"-n", "--name"}, description = "Run name, used as file prefix (default: current date and time)")
     private String runName;
 
+    @Option(names = {"-v", "--verbose"}, description = "Show the game logs (moves, announcements) instead of a progress bar")
+    private boolean verbose;
+
     public static void main(String[] args) {
         int exitCode = new CommandLine(new TokenExtractor()).execute(args);
         System.exit(exitCode);
@@ -41,6 +44,9 @@ public class TokenExtractor implements Callable<Integer> {
 
     @Override
     public Integer call() throws Exception {
+        if (!verbose) {
+            ProgressBar.hideInfoLogs();
+        }
         if (runName == null) {
             runName = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMdd-HHmmss"));
         }
@@ -64,6 +70,12 @@ public class TokenExtractor implements Callable<Integer> {
         game.setNoWait(true);
         game.enableTeamSelection(false);
         game.playKGames(games);
+        if (!verbose) {
+            var progress = new ProgressBar(games, "games");
+            int[] gamesDone = {0};
+            game.setGameDoneListener(() -> progress.update(++gamesDone[0], ""));
+            progress.update(0, "");
+        }
         List<ArtificialPlayer> players = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             var player = new ArtificialPlayer(i, String.valueOf(i), new MonteCarloStrategy(strength), true);
@@ -76,6 +88,7 @@ public class TokenExtractor implements Callable<Integer> {
         for (var player : players) {
             player.close();
         }
+        System.out.printf("Done: %s/%s_seat*.dat%n", outputDir, runName);
         return 0;
     }
 }

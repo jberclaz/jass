@@ -23,6 +23,7 @@ public class GameController extends Thread {
     private boolean teamSelectionEnabled = true;
     private int playKGames = -1;
     private final Map<Integer, Integer> matchWinCount = new HashMap<>();
+    private Runnable gameDoneListener = () -> {};
 
     public GameController(int id) {
         this.gameId = id;
@@ -75,6 +76,7 @@ public class GameController extends Thread {
                 playOneGame();
 
                 LOGGER.info("Game done");
+                gameDoneListener.run();
 
                 if (playKGames < 0) {
                     playAnotherGame = getPlayerById(0).getNewGame();
@@ -88,8 +90,8 @@ public class GameController extends Thread {
             } while (playAnotherGame);
 
             if (!teamSelectionEnabled) {
-                LOGGER.info("Scores: team 0 (" + teams[0].getPlayer(0).getName() + " - " + teams[0].getPlayer(1).getName() + ") won " + matchWinCount.get(teams[0].getId()) + " matches.");
-                LOGGER.info("team 1 (" + teams[1].getPlayer(0).getName() + " - " + teams[1].getPlayer(1).getName() + ") won " + matchWinCount.get(teams[1].getId()) + " matches.");
+                LOGGER.info("Scores: team 0 (" + teams[0].getPlayer(0).getName() + " - " + teams[0].getPlayer(1).getName() + ") won " + getMatchWinCount(teams[0].getId()) + " matches.");
+                LOGGER.info("team 1 (" + teams[1].getPlayer(0).getName() + " - " + teams[1].getPlayer(1).getName() + ") won " + getMatchWinCount(teams[1].getId()) + " matches.");
             }
 
             LOGGER.info("No longer playing");
@@ -523,5 +525,14 @@ public class GameController extends Thread {
 
     public void playKGames(int k) {
         playKGames = k;
+    }
+
+    /** Called on the game thread after each game (match). */
+    public void setGameDoneListener(Runnable listener) {
+        gameDoneListener = listener;
+    }
+
+    public int getMatchWinCount(int teamId) {
+        return matchWinCount.getOrDefault(teamId, 0);
     }
 }

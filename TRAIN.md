@@ -4,6 +4,7 @@ Pipeline: Monte Carlo self-play (Java) → supervised training (imitation of Mon
 
 - Java commands run from the **repo root**, Python commands from **`python/model/`**.
 - The `rl/` scripts must be run as modules (`python -m rl.…`), otherwise imports like `dataset` fail.
+- `TokenExtractor` and `AiTester` show a progress bar; `-v` prints the game logs instead.
 - Outputs (data, checkpoints, ONNX files, MLflow and TensorBoard logs) are written to the current directory and are git-ignored.
 
 ## 0. Setup
@@ -27,7 +28,7 @@ python -m pytest                                   # 2 tests are skipped without
 | 2. Check data | `python validate_dataset.py --data training_data/` | | Must finish without error: every recorded action is legal under the Python masks. |
 | 3. Supervised training | `python train.py --data training_data/ --epochs 10` | `--epochs 3` (~5 min on CPU) | See *Reading the metrics*. Writes `jassformer_best.pt` (best validation loss) and `jassformer.onnx` (that model, exported). |
 | 4. Check checkpoint | see [below](#checking-a-checkpoint) | | `d_model: 256, layers: 6, trump head: True` (RL expects d_model 256) |
-| 5. Test in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 20 -s 100 python/model/jassformer.onnx` | `-g 3 -s 15` | Plays Monte Carlo (team 0) vs transformers (team 1) and prints the matches won. Exits with an error if the model cannot be loaded. |
+| 5. Test in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 20 -s 100 python/model/jassformer.onnx` | `-g 3 -s 15` | Plays Monte Carlo (team 0) vs transformers (team 1), shows a progress bar with the running score, then the games won by each team. Exits with an error if the model cannot be loaded. `-v` shows the game logs instead (only the transformers players log their moves). |
 | 6. RL fine-tuning | `python -m rl.ppo --supervised-model jassformer_best.pt --total-timesteps 5000000` | `--total-timesteps 6144 --opponent-update-freq 1` (~3.5 min on CPU) | Logs `episodic_return` and losses to `runs/<run>/` (TensorBoard), checkpoints `model_iter_<n>.pth` every `--opponent-update-freq` iterations, and `model_final.pth`. Add `--track` for the MLflow server. |
 | 7. Export RL model | `python -m rl.export_checkpoint_to_onnx --rl --checkpoint runs/<run>/model_final.pth --output rl_jass_agent.onnx` | | `✅ Export success!` |
 | 8. Test RL model in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -g 20 -s 100 python/model/rl_jass_agent.onnx` | `-g 3 -s 15` | Compare with step 5. |

@@ -22,6 +22,9 @@ public class AiTester implements Callable<Integer> {
     @Option(names = {"-s", "--strength"}, defaultValue = "100", description = "MonteCarlo strength (default: ${DEFAULT-VALUE})")
     private int strength;
 
+    @Option(names = {"-v", "--verbose"}, description = "Show the game logs (moves, announcements) instead of a progress bar")
+    private boolean verbose;
+
     public static void main(String[] args) {
         int exitCode = new CommandLine(new AiTester()).execute(args);
         System.exit(exitCode);
@@ -29,6 +32,9 @@ public class AiTester implements Callable<Integer> {
 
     @Override
     public Integer call() throws PlayerLeftExpection, InterruptedException, FileNotFoundException {
+        if (!verbose) {
+            ProgressBar.hideInfoLogs();
+        }
         var game = new GameController(0);
         game.setNoWait(true);
         game.enableTeamSelection(false);
@@ -47,11 +53,26 @@ public class AiTester implements Callable<Integer> {
             game.addPlayer(player);
         }
 
-        System.out.printf("Playing %,d games | %s vs %s\n", games, firstStrategy, secondStrategy);
+        System.out.printf("Playing %,d games | team 0: %s vs team 1: %s%n", games, firstStrategy, secondStrategy);
+
+        String[] teamNames = {firstStrategy.toString(), secondStrategy.toString()};
+        if (!verbose) {
+            var progress = new ProgressBar(games, "games");
+            int[] gamesDone = {0};
+            game.setGameDoneListener(() -> progress.update(++gamesDone[0],
+                    teamNames[0] + " " + game.getMatchWinCount(0) + " : " + game.getMatchWinCount(1) + " " + teamNames[1]));
+            progress.update(0, "");
+        }
 
         game.playKGames(games);
         game.start();
         game.join();
+
+        for (int team = 0; team < 2; team++) {
+            int wins = game.getMatchWinCount(team);
+            System.out.printf("Team %d (%s): won %d of %d games (%.0f%%)%n",
+                    team, teamNames[team], wins, games, games > 0 ? 100.0 * wins / games : 0.0);
+        }
         return 0;
     }
 
