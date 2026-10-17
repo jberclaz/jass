@@ -9,3 +9,4 @@ target/
 logs/
 pom.xml.releaseBackup
 release.properties
+**/__pycache__
