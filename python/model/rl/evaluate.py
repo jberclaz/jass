@@ -43,6 +43,9 @@ class Args:
     """play this number of full games to 1500 points instead of hands"""
     strengths: list[int] = field(default_factory=lambda: [100])
     """MonteCarlo strengths to play against"""
+    seed: Optional[int] = 1
+    """seed of the deals: with the same seed, all the models are evaluated on the same deals, so that the differences
+    between them do not depend on the cards (MonteCarlo still plays randomly). None for random deals"""
     jar: Optional[str] = None
     """the jass fat jar (default: the newest target/jass-*.jar of the repository)"""
     poll_seconds: int = 60
@@ -77,17 +80,19 @@ def evaluate(checkpoint: str, args: Args, jar: str) -> list[dict]:
         results_path = os.path.join(tmp, "results.json")
         export_to_onnx(checkpoint, onnx_path)
         command = ["java", "--enable-native-access=ALL-UNNAMED", "-cp", jar, "com.leflat.jass.test.AiTester",
-                   *(["-g", str(args.games)] if args.games else ["-n", str(args.hands)]), "-s", ",".join(map(str, args.strengths)), "-r", results_path, onnx_path]
+                   *(["-g", str(args.games)] if args.games else ["-n", str(args.hands)]),
+                   *(["--seed", str(args.seed)] if args.seed is not None else []), "-s", ",".join(map(str, args.strengths)), "-r", results_path, onnx_path]
         sys.stdout.flush()  # keeps our output in order with Java's when piped
         subprocess.run(command, check=True)
         with open(results_path) as f:
             return json.load(f)["results"]
 
 
-def append_results(path: str, checkpoint: str, results: list[dict], global_step: Optional[int] = None):
+def append_results(path: str, checkpoint: str, results: list[dict], seed: Optional[int],
+                   global_step: Optional[int] = None):
     with open(path, "a") as f:
         for r in results:
-            f.write(json.dumps({"checkpoint": checkpoint, "global_step": global_step, **r}) + "\n")
+            f.write(json.dumps({"checkpoint": checkpoint, "global_step": global_step, "seed": seed, **r}) + "\n")
 
 
 def evaluated_checkpoints(path: str) -> set[str]:
@@ -143,7 +148,7 @@ def watch(args: Args, jar: str):
             step = checkpoint_step(checkpoint, run_args)
             results = evaluate(checkpoint, args, jar)
             print_results(checkpoint, results)
-            append_results(eval_log, os.path.basename(checkpoint), results, step)
+            append_results(eval_log, os.path.basename(checkpoint), results, args.seed, step)
             metrics = {}
             for r in results:
                 metrics[f"eval/points_per_{r['unit']}_mc{r['strength']}"] = r["points"]
@@ -175,7 +180,7 @@ def main():
     all_results = {}
     for checkpoint in args.checkpoints:
         all_results[checkpoint] = evaluate(checkpoint, args, jar)
-        append_results("eval.jsonl", checkpoint, all_results[checkpoint])
+        append_results("eval.jsonl", checkpoint, all_results[checkpoint], args.seed)
     print()
     for checkpoint, results in all_results.items():
         print_results(checkpoint, results)

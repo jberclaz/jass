@@ -47,6 +47,7 @@ python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --hands 1000
 python -m rl.evaluate --watch runs/<run> --hands 1000 --strengths 100
 ```
 
+- **Same deals for every model**: `rl.evaluate` uses `--seed 1` by default, so the baseline and all the checkpoints are played on the same deals and their differences do not depend on the cards (Monte Carlo still plays randomly). Compare results with the same `--hands`: deal k is the same in every run, so a larger `--hands` adds deals to the same first ones. `--seed None` for random deals.
 - Results are appended to `eval.jsonl` (in the run directory with `--watch`). With `--watch`, they are also logged to the run's TensorBoard as `eval/points_per_hand_mc<strength>` and `eval/hand_win_rate_mc<strength>`, on the same `global_step` axis as the training charts.
 - **Hands, not games** (default): each hand is played on its own, from a score of 0 - 0. Hands are independent; a game to 1500 points adds up the luck of several hands and then keeps only who crossed the line first. `-g <n>` (`--games` in `rl.evaluate`) plays full games instead.
 - **Duplicate deals** (default): each deal is played twice, with the model in either team, so both sides get the same cards and most of the luck cancels out. `--no-duplicate` uses independent deals; `--seed <n>` replays the same deals, e.g. to compare two models on identical hands.
