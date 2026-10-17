@@ -1,6 +1,7 @@
 import torch
 
 from rl.jass_rules import TRUMP_RANK_MAP, TRUMP_RANK_LIST, RANK_BOURG
+from rl.tokens import Tokens
 
 
 def get_legal_mask(hand_tokens):
@@ -15,7 +16,7 @@ def get_legal_mask(hand_tokens):
 
 def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
     phase = tokens[2]
-    if phase == 126:
+    if phase == Tokens.CHOOSE_TRUMP_SUIT:
         return torch.zeros(36, dtype=torch.bool)
     trump = tokens[5] - 56
     hand_tokens = tokens[11:20]
@@ -56,7 +57,7 @@ def get_legal_mask_with_rules(tokens: torch.Tensor) -> torch.Tensor:
                 continue
             has_non_trump_cards = any((c // 9) != trump for c in card_ids)
             if not has_non_trump_cards:
-                has_higher_trump = any((c % 9) > highest_cut_rank for c in card_ids)
+                has_higher_trump = any(TRUMP_RANK_MAP[int(c) % 9] > highest_cut_rank for c in card_ids)
                 if not has_higher_trump:
                     continue
         elif not has_suit:
@@ -87,12 +88,11 @@ def get_legal_mask_with_rules_batch(tokens: torch.Tensor) -> torch.Tensor:
     # Constants
     # 5 is the standard raw index for Jack (6,7,8,9,10,J,Q,K,A -> 0,1,2,3,4,5,6,7,8)
     RAW_RANK_JACK = 5
-    TRUMP_RANK_LIST = [0, 1, 2, 7, 3, 8, 4, 5, 6] # Example mapping, ensure this matches your global constant
 
     # Initialize the rank lookup tensor
     rank_lookup = torch.tensor(TRUMP_RANK_LIST, device=device, dtype=torch.long)
 
-    is_card_play_phase = (tokens[:, 2] == 125).unsqueeze(1)
+    is_card_play_phase = (tokens[:, 2] == Tokens.CHOOSE_NEXT_CARD).unsqueeze(1)
 
     # 1. Get trump suit (B, 1)
     trump = tokens[:, 5].sub(56).unsqueeze(1)
@@ -259,7 +259,7 @@ def get_trump_mask_batch(tokens: torch.Tensor) -> torch.Tensor:
     # --- Select the correct mask based on conditions ---
 
     # Conditions (broadcastable to (B, 1))
-    is_phase_2 = (phase == 126).unsqueeze(1)
+    is_phase_2 = (phase == Tokens.CHOOSE_TRUMP_SUIT).unsqueeze(1)
     is_turn_1 = (trump_turn == 50).unsqueeze(1)
 
     # 1. First, determine the correct mask *if* we are in Phase 2

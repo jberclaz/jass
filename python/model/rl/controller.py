@@ -188,6 +188,10 @@ class Controller:
         return self._current_player
 
     @property
+    def is_trump_selection(self) -> bool:
+        return self._trump_suit in [Suit.NONE, Suit.PASS]
+
+    @property
     def scores(self) -> list[int]:
         return self._scores
 

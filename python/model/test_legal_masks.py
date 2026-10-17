@@ -217,6 +217,24 @@ class TestFastLegalMask(unittest.TestCase):
         all_correct = torch.all(mask == batch_mask).item()
         self.assertTrue(all_correct)
 
+    def test_undercut_with_higher_trump_in_hand(self):
+        # All-trump hand holding the Jack of trumps, current trick has a Nell-of-trumps cut.
+        # Under-trumping with a low trump must be illegal because the Jack beats the Nell.
+        tokens = torch.tensor([0] * TOKEN_LENGTH)
+        tokens[2] = 125          # card play phase
+        tokens[5] = 56           # trump spades (suit 0)
+        tokens[11] = 10          # six of spade (card 0)
+        tokens[12] = 15          # jack of spade (card 5)
+        tokens[22] = 19          # leading card: heart six (card 9, suit 1)
+        tokens[24] = 13          # cut: nell of spade (card 3)
+
+        mask = legal_mask.get_legal_mask_with_rules(tokens)
+        self.assertFalse(mask[0], "under-trump with a higher trump (Jack) in hand must be illegal")
+        self.assertTrue(mask[5], "Jack of trumps must beat the Nell cut and stay legal")
+
+        batch_mask = legal_mask.get_legal_mask_with_rules_batch(tokens.reshape(1, -1)).squeeze(0)
+        self.assertTrue(torch.all(mask == batch_mask))
+
     def test_third_corner_case(self):
         hand =  [0, 8]
         legal=  [8]

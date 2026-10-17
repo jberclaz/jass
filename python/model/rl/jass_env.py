@@ -76,6 +76,12 @@ class JassEnv(gym.Env):
         # 1. Check if the action is a Card Play (0-35) or Trump Choice (36-40)
         is_trump_action = action >= 36
 
+        if is_trump_action != self._controller.is_trump_selection:
+            raise ValueError(
+                f"Action {action} inconsistent with phase "
+                f"(trump_selection={self._controller.is_trump_selection})"
+            )
+
         reward = 0
 
         # 2. Execute the move for the current player (Agent 0)

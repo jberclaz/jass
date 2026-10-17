@@ -74,9 +74,8 @@ class HeuristicStrategy(Strategy):
         trump_suit = self._player._current_trump
         current_trick = self._player._trick
 
-        # Sort moves by rank (power) ascending
-        # Assuming card.rank is the power value
-        sorted_moves = sorted(legal_moves, key=lambda c: c.rank)
+        # Sort moves by effective rank (trump-aware power) ascending
+        sorted_moves = sorted(legal_moves, key=lambda c: c.get_effective_rank(trump_suit))
 
         # Rule 2: Leading a new trick (Trick is empty)
         if current_trick is None or current_trick.is_empty:
@@ -179,9 +178,7 @@ class HeuristicStrategy(Strategy):
 
         # 3. Same suit
         if new_card.suit == old_card.suit:
-            # Assuming rank is ordered such that higher is better
-            # OR you need a specific Jass rank comparison
-            return new_card.rank > old_card.rank
+            return Card.compare(new_card, old_card, trump_suit) > 0
 
         # 4. Different suits, neither is trump
         # New card loses because it didn't follow suit of the first card (old_card)

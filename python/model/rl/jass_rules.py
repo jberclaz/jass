@@ -109,7 +109,7 @@ class Card:
             return VALUES_ATOUT[self.rank]
         return VALUES[self.rank]
 
-    def _get_rank(self, trump: Suit):
+    def get_effective_rank(self, trump: Suit):
         rank = self.rank
         if self.suit != trump:
             return rank
@@ -118,7 +118,7 @@ class Card:
     @staticmethod
     def compare(a: 'Card', b: 'Card', trump: Suit):
         assert a.suit == b.suit
-        return a._get_rank(trump) - b._get_rank(trump)
+        return a.get_effective_rank(trump) - b.get_effective_rank(trump)
 
     def __eq__(self, other):
         if not isinstance(other, Card):
