@@ -2,8 +2,6 @@ package com.leflat.jass.server;
 
 import ai.onnxruntime.*;
 import com.leflat.jass.common.Card;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.io.IOException;
@@ -12,9 +10,11 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
 import java.util.List;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class JassModelLoader {
-    private static final Logger LOGGER = LoggerFactory.getLogger(JassModelLoader.class);
+    private static final Logger LOGGER = Logger.getLogger(JassModelLoader.class.getName());
     private final OrtEnvironment env;
     private final OrtSession session;
     private static final int TOKEN_LENGTH = 96;
@@ -46,9 +46,9 @@ public class JassModelLoader {
                     throw new RuntimeException("Unable to load ONNX model " + modelPath + " from jar");
                 }
             }
-            LOGGER.info("Loaded JassFormer ONNX model from {} with {} inputs", modelPath, session.getInputInfo().size());
+            LOGGER.info("Loaded JassFormer ONNX model from " + modelPath + " with " + session.getInputInfo().size() + " inputs");
         } catch (OrtException e) {
-            LOGGER.error("Failed to load ONNX model from {}", modelPath, e);
+            LOGGER.log(Level.SEVERE, "Failed to load ONNX model from " + modelPath, e);
             throw new RuntimeException("ONNX load failed — check model file and version", e);
         }
     }
@@ -103,7 +103,7 @@ public class JassModelLoader {
             }
 
         } catch (OrtException e) {
-            LOGGER.error("Inference failed", e);
+            LOGGER.log(Level.SEVERE, "Inference failed", e);
             throw new RuntimeException("ONNX inference error", e);
         }
     }

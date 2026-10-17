@@ -10,3 +10,4 @@ logs/
 pom.xml.releaseBackup
 release.properties
 **/__pycache__
+dependency-reduced-pom.xml

@@ -9,22 +9,22 @@
 - **Release:** `mvn release:prepare` then `mvn release:perform`
 
 ## Architecture
-- **Java 21** Maven project (targets `release 21`). CI uses **JDK 11** (actions/setup-java@v1); tests run on both.
+- **Java 21** Maven project (targets `release 21`), needs a full JDK (not just a JRE). CI uses Temurin JDK 21.
 - **3 packages:** `com.leflat.jass.common` (shared model), `client` (Swing GUI), `server` (game logic + AI).
 - **Fat JAR** via maven-shade-plugin. Main class in manifest: `com.leflat.jass.client.JassClient`.
 - **Server entry point** (not in manifest): `java -cp target/jass-*.jar com.leflat.jass.server.JassServer`. Server listens on **port 23107** (hardcoded).
 - **Branch is `master`** (not `main`).
 
 ## Testing
-- Mix of **JUnit 4** (`junit:junit`) and **JUnit 5** (`junit-jupiter`). Both coexist.
+- **JUnit 5** (`junit-jupiter`) with Mockito.
 - JaCoCo coverage reports generated during `test` phase.
 - Integration tests in `com.leflat.jass.server`; functional test at `src/test/java/FunctionalTest.java`.
 - CLI test tools live in **`com.leflat.jass.test`** (main source, not test source): `AiTester`, `TokenExtractor`, `AutomaticClientTesting`.
 
 ## AI / ML (ONNX)
 - Java runs inference via `com.microsoft.onnxruntime:onnxruntime`.
-- Default model loaded from classpath: `cp:/model/jassformer.onnx` (packaged inside JAR).
-- **Python training pipeline** is in `python/model/`. It is independent — not built by Maven.
+- Default model loaded from classpath: `cp:/model/jassformer.onnx`. It is **not** in the repo: without it (or an explicit model path), `TransformersStrategy` falls back to Monte Carlo.
+- **Python training pipeline** is in `python/model/`. It is independent — not built by Maven. Versions are pinned in `python/model/requirements.txt`; run tests from `python/model/` with `python -m pytest`.
 - **Token vocabulary must match exactly** between `python/model/rl/tokens.py` and Java's `Tokens.java`. Any mismatch causes silent AI misbehavior.
 - ONNX export uses **opset 18**; ensure Java onnxruntime version supports it.
 
