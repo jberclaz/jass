@@ -18,6 +18,7 @@ class ProgressBar {
     private final String unit;
     private final long startNanos = System.nanoTime();
     private final PrintStream out = System.err;
+    private int previousLength = 0;
 
     ProgressBar(int total, String unit) {
         this.total = total;
@@ -34,10 +35,12 @@ class ProgressBar {
         long elapsed = System.nanoTime() - startNanos;
         String eta = done > 0 && done < total ? " (ETA " + format(elapsed / done * (total - done)) + ")" : "";
         int digits = String.valueOf(total).length();
-        // trailing spaces erase what is left of a longer previous line (e.g. when the ETA gets shorter)
-        out.printf("\r[%s%s] %" + digits + "d/%d %s | %s%s%s   ",
+        String line = String.format("[%s%s] %" + digits + "d/%d %s | %s%s%s",
                 "#".repeat(filled), ".".repeat(WIDTH - filled), done, total, unit, format(elapsed), eta,
                 status.isEmpty() ? "" : " | " + status);
+        // trailing spaces erase what is left of a longer previous line (e.g. when the ETA disappears)
+        out.print("\r" + line + " ".repeat(Math.max(0, previousLength - line.length())));
+        previousLength = line.length();
         if (done >= total) {
             out.println();
         }
