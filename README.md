@@ -40,7 +40,7 @@ It runs in Java with ONNX Runtime. To reproduce the training, see [TRAIN.md](TRA
 **The Monte Carlo player** (`MonteCarloStrategy`), the previous AI and the teacher here:
 - **Card choice:** for each legal card, it deals the unseen cards at random (consistent with what it knows) and plays the hand out `10 × strength` times. It then plays the card with the best average result.
 - **Trump choice:** the same, with `5 × strength` playouts per card in hand and suit.
-- **Strength:** MonteCarlo-1000 is the default AI on `master`. Lower strengths are faster and weaker.
+- **Strength:** MonteCarlo-1000 was the AI of the client before JassFormer. Lower strengths are faster and weaker.
 
 ### Input: 96 tokens
 
@@ -106,7 +106,7 @@ Each decision is encoded as a fixed-length sequence of 96 tokens, from a vocabul
 
 What the curves show:
 - **Against its teacher**, the gain levels off at about +10 points per hand, measured during training.
-- **Against MonteCarlo-100**, the gain keeps rising, from −2.6 for the supervised model to about +15 from 5M steps on. The final model scores +17.1 points per hand and wins 58% of hands.
+- **Against MonteCarlo-100**, the gain keeps rising, from −2.6 for the supervised model to about +15 from 5M steps on. The final model scores +17.1 points per hand and wins 58% of hands on these deals, used for every checkpoint during training; see below for new deals.
 - So the model learned to play better in general, not only to exploit its teacher's weaknesses.
 
 ### Evaluation
@@ -116,12 +116,16 @@ What the curves show:
 - **Results:** the point difference per hand and the share of hands won, each with a 95% confidence interval.
 - **Same deals for every model:** `python -m rl.evaluate` exports checkpoints to ONNX and runs AiTester on the same fixed deals for every model, against Monte Carlo strengths or other models.
 
-| Model, against MonteCarlo-100 | Points per hand | Hands won |
-|---|---|---|
-| Supervised (stage 1) | −2.6 | – |
-| PPO, final (`jassformer-v1`, the client's AI) | **+17.1** | **58.1%** |
+`jassformer-v1` (the PPO model, the client's AI), on deals not used during training (seed 2):
 
-Not measured yet: the comparison with MonteCarlo-1000, the default AI on `master`.
+| Opponent | Hands | Points per hand (95% CI) | Hands won (95% CI) |
+|---|---|---|---|
+| MonteCarlo-100 | 2000 | +14.1 [+11.0, +17.2] | 55.4% [53.9%, 56.9%] |
+| MonteCarlo-300 | 2000 | +13.1 [+10.1, +16.1] | 55.9% [54.4%, 57.3%] |
+| MonteCarlo-1000 (the previous AI) | 500 | +14.2 [+7.8, +20.6] | 57.2% [54.6%, 59.8%] |
+| Supervised model (stage 1) | 2000 | +17.4 [+14.0, +20.7] | 56.3% [54.7%, 57.8%] |
+
+More playouts don't help Monte Carlo against this model: its weakness is structural. Each playout is played as if every player could see all the cards, so Monte Carlo can't value hiding information or reading the other players, and more playouts don't change that.
 
 ## Development
 
