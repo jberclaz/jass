@@ -65,8 +65,8 @@ class Args:
     """the number of steps to run in each environment per policy rollout"""
     anneal_lr: bool = True
     """Toggle learning rate annealing for policy and value networks"""
-    gamma: float = 0.99
-    """the discount factor gamma"""
+    gamma: Optional[float] = None
+    """the discount factor gamma (default: 1 with hand episodes, which are short and always end; 0.99 otherwise)"""
     gae_lambda: float = 0.95
     """the lambda for the general advantage estimation"""
     num_minibatches: int = 8
@@ -85,10 +85,10 @@ class Args:
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
     """the maximum norm for the gradient clipping"""
-    target_kl: Optional[float] = 0.02
-    """the target KL divergence threshold"""
-    warmup_ratio: float = 0.2
-    """ratio of total timesteps to strictly train the value function (freeze policy)"""
+    target_kl: Optional[float] = 0.01
+    """the update stops at the first minibatch where the KL divergence from the rollout policy exceeds this (None: never)"""
+    warmup_steps: int = 200_000
+    """number of steps (at the start) that only train the value function, the policy being frozen"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -114,6 +114,8 @@ if __name__ == "__main__":
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
+    if args.gamma is None:
+        args.gamma = 1.0 if args.hand_episodes else 0.99
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     run_dir = f"runs/{run_name}"
     run_info = {}
@@ -182,11 +184,10 @@ if __name__ == "__main__":
     next_obs = torch.from_numpy(next_obs).to(device)
     next_done = torch.zeros(args.num_envs).to(device)
 
-    warmup_steps = args.total_timesteps * args.warmup_ratio
     for iteration in range(1, args.num_iterations + 1):
         # During warmup, only the value head is trained. Freezing the shared backbone is required as well,
         # otherwise the value loss would still change the policy through it.
-        in_warmup = global_step < warmup_steps
+        in_warmup = global_step < args.warmup_steps
         for name, param in agent.named_parameters():
             param.requires_grad = not in_warmup or name.startswith("value_head.")
 
@@ -250,6 +251,8 @@ if __name__ == "__main__":
         # Optimizing the policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
+        minibatch_updates = 0
+        kl_exceeded = False
         for epoch in range(args.update_epochs):
             np.random.shuffle(b_inds)
             for start in range(0, args.batch_size, args.minibatch_size):
@@ -265,6 +268,11 @@ if __name__ == "__main__":
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
+                # stops before a minibatch that would move the policy further: checking at the end of each epoch only
+                # lets a whole epoch overshoot
+                if args.target_kl is not None and approx_kl > args.target_kl:
+                    kl_exceeded = True
+                    break
 
                 mb_advantages = b_advantages[mb_inds]
                 if args.norm_adv:
@@ -303,8 +311,9 @@ if __name__ == "__main__":
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
                 optimizer.step()
+                minibatch_updates += 1
 
-            if args.target_kl is not None and approx_kl > args.target_kl:
+            if kl_exceeded:
                 break
 
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
@@ -323,6 +332,7 @@ if __name__ == "__main__":
             "losses/old_approx_kl": old_approx_kl.item(),
             "losses/approx_kl": approx_kl.item(),
             "losses/clipfrac": float(np.mean(clipfracs)),
+            "losses/minibatch_updates": minibatch_updates,
             "losses/explained_variance": float(explained_var),
         }
         if episode_returns:
@@ -348,7 +358,8 @@ if __name__ == "__main__":
                              f"{len(episode_returns)} games")
         print(f"iter {iteration}/{args.num_iterations} | step {global_step:,} | {sps} SPS"
               f"{' | warmup' if in_warmup else ''} | {games_summary} | value loss {v_loss.item():.3f}, "
-              f"explained var {explained_var:.2f}, approx kl {approx_kl.item():.4f}, clipfrac {np.mean(clipfracs):.3f}")
+              f"explained var {explained_var:.2f}, approx kl {approx_kl.item():.4f}, clipfrac {np.mean(clipfracs):.3f}, "
+              f"{minibatch_updates}/{args.update_epochs * args.num_minibatches} minibatches")
 
         # --- SELF-PLAY LEAGUE UPDATE ---
         if iteration % args.opponent_update_freq == 0:
