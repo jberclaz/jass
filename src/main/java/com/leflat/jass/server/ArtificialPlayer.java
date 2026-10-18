@@ -2,6 +2,7 @@ package com.leflat.jass.server;
 
 import com.leflat.jass.common.*;
 
+import java.io.BufferedOutputStream;
 import java.io.DataOutputStream;
 import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
@@ -25,6 +26,10 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     private int numberOfPliesWonByOwnTeam;
     private boolean noWait = false;
     private DataOutputStream tokensDos = null;
+    private boolean extractScores = false;
+    private float[] lastCardScores = null;  // MonteCarlo's scores of the last card choice, null if it was forced
+    /** In the training data, marks a card (or suit) without score: illegal, or a forced move. */
+    public static final short NO_SCORE = Short.MIN_VALUE;
     private IJassStrategy playStrategy;
 
     public ArtificialPlayer(int id, String name) {
@@ -43,7 +48,28 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
     }
 
     public void extractTransformersTokens(String filename) throws FileNotFoundException {
-        this.tokensDos = new DataOutputStream(new FileOutputStream(filename, false));
+        extractTransformersTokens(filename, false);
+    }
+
+    /**
+     * Writes the tokens of each decision followed by the chosen action (1 byte). With scores, also writes the
+     * MonteCarlo scores of the decision: 36 big-endian shorts in tenths of a point, by card number for a card choice,
+     * the first 4 by suit for a trump choice, {@link #NO_SCORE} for the others (all of them for a forced card).
+     */
+    public void extractTransformersTokens(String filename, boolean withScores) throws FileNotFoundException {
+        if (withScores && !(playStrategy instanceof MonteCarloStrategy)) {
+            throw new IllegalArgumentException("Only MonteCarlo players have scores to extract");
+        }
+        this.tokensDos = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(filename, false)));
+        this.extractScores = withScores;
+    }
+
+    private void writeScores(float[] scores) throws IOException {
+        for (int i = 0; i < Card.DECK_SIZE; i++) {
+            float score = scores != null && i < scores.length ? scores[i] : Float.NaN;
+            tokensDos.writeShort(Float.isNaN(score) ? NO_SCORE
+                    : (short) Math.max(-Short.MAX_VALUE, Math.min(Short.MAX_VALUE, Math.round(score * 10))));
+        }
     }
 
     @Override
@@ -117,6 +143,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             try {
                 tokensDos.write(tokens);
                 tokensDos.write((byte)trumpSuit);
+                if (extractScores) {
+                    writeScores(((MonteCarloStrategy) playStrategy).getLastTrumpScores());
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -154,6 +183,9 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             try {
                 tokensDos.write(tokens);
                 tokensDos.write((byte)playedCard.getNumber());
+                if (extractScores) {
+                    writeScores(lastCardScores);
+                }
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
@@ -295,10 +327,15 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
         } else {
             validCards = hand.stream().filter(c -> currentPlie.canPlay(c, hand)).collect(Collectors.toList());
         }
+        lastCardScores = null;
         if (validCards.size() == 1) {
             return validCards.getFirst();
         }
-        return playStrategy.chooseCard(validCards, gameView, currentPlie, hand, numberOfPliesWonByOwnTeam);
+        var card = playStrategy.chooseCard(validCards, gameView, currentPlie, hand, numberOfPliesWonByOwnTeam);
+        if (extractScores) {
+            lastCardScores = ((MonteCarloStrategy) playStrategy).getLastCardScores();
+        }
+        return card;
     }
 
     private boolean playedStoeck() {

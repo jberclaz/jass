@@ -24,9 +24,9 @@ python -m pytest                                   # 2 tests are skipped without
 
 | Step | Command | Smoke test values | What to check |
 |---|---|---|---|
-| 1. Generate data | `java -cp target/jass-*.jar com.leflat.jass.test.TokenExtractor -o python/model/training_data -g 5000 -s 1000` | `-g 15 -s 15`: ~5k samples in ~10 s | One `<run>_seat<i>.dat` per seat, ~350 samples per game. Never overwrites: use `-n <name>` or a new directory. Several runs can share a directory. |
+| 1. Generate data | `java -cp target/jass-*.jar com.leflat.jass.test.TokenExtractor -o python/model/training_data -g 5000 -s 1000` | `-g 15 -s 15`: ~5k samples in ~10 s | One `<run>_seat<i>.sdat` per seat (with Monte Carlo's scores, see [Soft targets](#soft-targets); `--no-scores` for the older `.dat`), ~350 samples per game. Never overwrites: use `-n <name>` or a new directory. Several runs can share a directory. |
 | 2. Check data | `python validate_dataset.py --data training_data/` | | Must finish without error: every recorded action is legal under the Python masks. |
-| 3. Supervised training | `python train.py --data training_data/ --epochs 10` | `--epochs 3` (~5 min on CPU) | See *Reading the metrics*. Writes `jassformer_best.pt` (best validation loss) and `jassformer.onnx` (that model, exported). |
+| 3. Supervised training | `python train.py --data training_data/ --epochs 10` | `--epochs 3` (~5 min on CPU) | See *Reading the metrics*. Reads `.dat` and `.sdat` files (they can be mixed). Writes `jassformer_best.pt` (best validation loss) and `jassformer.onnx` (that model, exported). |
 | 4. Check checkpoint | see [below](#checking-a-checkpoint) | | `d_model: 256, layers: 6, trump head: True` (RL expects d_model 256) |
 | 5. Test in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -n 1000 -s 100,300 python/model/jassformer.onnx` | `-n 20 -s 15` | Plays transformers vs Monte Carlo at each strength: single hands, on pairs with the same deals (see [Evaluating](#evaluating-against-monte-carlo)). Shows a progress bar, then the point difference per hand and the share of hands won, with their 95% confidence intervals. Exits with an error if the model cannot be loaded. `-v` shows the game logs instead (only the transformers players log their moves); `-r <file>` also writes the results as JSON. Or `python -m rl.evaluate jassformer_best.pt --strengths 100 300`, see [Evaluating](#evaluating-against-monte-carlo). |
 | 6. RL fine-tuning | `python -m rl.ppo --supervised-model jassformer_best.pt --total-timesteps 10000000 --num-envs 64 --num-steps 256 --opponent-update-freq 15 --track` | `--total-timesteps 6144 --warmup-steps 2048 --opponent-update-freq 1` (~3.5 min on CPU) | Prints one line per iteration (SPS, warmup, points per hand and hands won against the opponents, value loss, KL). Run `rl.evaluate --watch` next to it (see [Evaluating](#evaluating-against-monte-carlo)). Logs to `runs/<run>/` (TensorBoard), checkpoints `model_iter_<n>.pth` every `--opponent-update-freq` iterations, and `model_final.pth` + `model_final.onnx`. `--track` also logs to MLflow, see [RL notes](#rl-notes). |
@@ -75,13 +75,23 @@ python -c "import torch; sd = torch.load('jassformer_best.pt', map_location='cpu
 Each epoch prints a line like:
 
 ```
-Val: loss 1.0267 | card 51.21% | unforced card 37.95% (random 29.38%) | trump 64.29% (random 22.50%)
+Val: loss 1.0267 (nll 1.0267) | card 51.21% | unforced card 37.95% (random 29.38%) | trump 64.29% (random 22.50%)
 ```
 
 - **unforced card** is the number to watch: accuracy on card decisions with more than one legal card, next to what a uniformly random legal move would get on the same decisions. Overall **card** accuracy is inflated by forced moves (~22% of decisions).
 - **trump** is reported separately (only ~3% of the samples), also with its random baseline.
 - Validation is the last 5% of each data file (`--val_fraction`), i.e. the last games of each run, cut at a round start. When validation loss goes up while training loss keeps going down, the model is overfitting; the best checkpoint is the one with the lowest validation loss.
+- **nll** is the loss on the action played only. Without scores it equals **loss**; with soft targets, **loss** includes the spread of the targets (and depends on `--temperature`), so compare runs on **nll** and the accuracies.
 - Other options: `--d_model` (default 256), `--batch`, `--lr`, `--description`. Runs are logged to MLflow in `mlflow.db`: `mlflow ui --backend-store-uri sqlite:///mlflow.db`.
+
+## Soft targets
+
+For each card decision, Monte Carlo estimates every legal card's average point difference until the end of the hand, then plays the best one. `.sdat` files keep all these scores (forced moves have none), and `train.py` learns the distribution `softmax(score / T)` over the legal cards instead of the card played only. When two cards are almost equal, the model no longer has to bet on the one Monte Carlo happened to pick.
+
+- `--temperature` (T, in points, default 3): measured on 40 games at strength 200, the gap between the best and the second-best card is below 0.8 points in 25% of the decisions and 2.7 at the median, and the scores carry an error of about 1–2 points (averages of random rollouts). With T = 3 the card Monte Carlo played gets about 0.65 of the probability on average; with T = 1 about 0.82, with T = 10 about 0.49 (nearly uniform: the targets carry little information).
+- `--soft_weight` (default 1): weight of the distribution in the card loss, the rest on the card played. 0 gives the previous training. Samples without scores (`.dat`, forced moves) and trump choices always use the card played.
+- Trump choices also store Monte Carlo's score of each suit (the first 4 scores), not used yet: passing follows a fixed rule (best score below 80) that has no score of its own.
+- The format: each sample is the 96 tokens, the action, then 36 big-endian int16 in tenths of a point (by card number, or by suit for a trump choice), -32768 where there is no score.
 
 ## RL notes
 

@@ -3,6 +3,7 @@ package com.leflat.jass.server;
 import com.leflat.jass.common.*;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ExecutionException;
@@ -24,6 +25,10 @@ public class MonteCarloStrategy implements IJassStrategy {
     private final int strength;
     private final Random rand = new Random();
     private final HeuristicStrategy heuristicStrategy =new HeuristicStrategy();
+    // scores of the last decision, for the training data: by card number (NaN for the cards that were not evaluated),
+    // and by trump suit (spade to diamond)
+    private final float[] lastCardScores = new float[Card.DECK_SIZE];
+    private final float[] lastTrumpScores = new float[Card.COLOR_NONE];
 
     public MonteCarloStrategy(int strength) {
         this.strength = strength;
@@ -39,11 +44,13 @@ public class MonteCarloStrategy implements IJassStrategy {
                            int pliesWonByTeam) {
         Card bestCard = null;
         float bestScore = -1000;
+        Arrays.fill(lastCardScores, Float.NaN);
 
         for (Card validCard : validCards) {
             var score = evaluateMoveRewardParallel(
                     gameView, currentPlie, hand, validCard, pliesWonByTeam, strength * 10
             );
+            lastCardScores[validCard.getNumber()] = score;
             if (score > bestScore) {
                 bestScore = score;
                 bestCard = validCard;
@@ -77,12 +84,26 @@ public class MonteCarloStrategy implements IJassStrategy {
                     maxScore = score;
                 }
             }
+            lastTrumpScores[atout] = startScore + maxScore;
             if (startScore + maxScore > bestScore) {
                 bestScore = startScore + maxScore;
                 bestAtout = atout;
             }
         }
         return bestScore < 80 && first ? Card.COLOR_NONE : bestAtout;
+    }
+
+    /**
+     * The expected point difference (own team - opponents) until the end of the hand of each card evaluated by the
+     * last {@link #chooseCard} call, by card number; NaN for the cards that were not evaluated (illegal ones).
+     */
+    public float[] getLastCardScores() {
+        return lastCardScores.clone();
+    }
+
+    /** The score of each trump suit (spade to diamond) in the last {@link #chooseTrumpSuit} call, announcements included. */
+    public float[] getLastTrumpScores() {
+        return lastTrumpScores.clone();
     }
 
     // --- All private MC logic is now contained within this class ---

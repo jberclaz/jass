@@ -17,7 +17,8 @@ import java.util.concurrent.Callable;
 
 /**
  * Plays games between Monte Carlo players and records, for each seat, the transformer tokens of every decision
- * followed by the chosen action (one file per seat, in chronological order).
+ * followed by the chosen action and Monte Carlo's score of every possible action (one {@code .sdat} file per seat, in
+ * chronological order). With {@code --no-scores}, writes the older {@code .dat} format, without the scores.
  */
 @Command(name = "TokenExtractor", mixinStandardHelpOptions = true, version = "1.0")
 public class TokenExtractor implements Callable<Integer> {
@@ -33,6 +34,9 @@ public class TokenExtractor implements Callable<Integer> {
 
     @Option(names = {"-n", "--name"}, description = "Run name, used as file prefix (default: current date and time)")
     private String runName;
+
+    @Option(names = "--no-scores", description = "Older format (.dat): the tokens and the action, without Monte Carlo's scores")
+    private boolean noScores;
 
     @Option(names = {"-v", "--verbose"}, description = "Show the game logs (moves, announcements) instead of a progress bar")
     private boolean verbose;
@@ -55,7 +59,7 @@ public class TokenExtractor implements Callable<Integer> {
         }
         List<File> files = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
-            var file = new File(outputDir, runName + "_seat" + i + ".dat");
+            var file = new File(outputDir, runName + "_seat" + i + (noScores ? ".dat" : ".sdat"));
             if (file.exists()) {
                 System.err.println("File " + file + " already exists, choose another run name or output directory");
                 return 1;
@@ -63,8 +67,9 @@ public class TokenExtractor implements Callable<Integer> {
             files.add(file);
         }
 
-        System.out.printf("Playing %,d games with MonteCarlo strength %d, writing %s/%s_seat*.dat%n",
-                games, strength, outputDir, runName);
+        String extension = noScores ? ".dat" : ".sdat";
+        System.out.printf("Playing %,d games with MonteCarlo strength %d, writing %s/%s_seat*%s%n",
+                games, strength, outputDir, runName, extension);
 
         var game = new GameController(0);
         game.setNoWait(true);
@@ -79,7 +84,7 @@ public class TokenExtractor implements Callable<Integer> {
         List<ArtificialPlayer> players = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             var player = new ArtificialPlayer(i, String.valueOf(i), new MonteCarloStrategy(strength), true);
-            player.extractTransformersTokens(files.get(i).getPath());
+            player.extractTransformersTokens(files.get(i).getPath(), !noScores);
             game.addPlayer(player);
             players.add(player);
         }
@@ -88,7 +93,7 @@ public class TokenExtractor implements Callable<Integer> {
         for (var player : players) {
             player.close();
         }
-        System.out.printf("Done: %s/%s_seat*.dat%n", outputDir, runName);
+        System.out.printf("Done: %s/%s_seat*%s%n", outputDir, runName, extension);
         return 0;
     }
 }

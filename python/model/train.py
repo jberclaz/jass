@@ -23,6 +23,9 @@ class Config:
     epochs = 10
     lr = 3e-4
     weight_decay = 1e-5
+    # with Monte Carlo's scores (.sdat), the card target is softmax(score / temperature), score in points
+    temperature = 3.0  # MC's scores are averages of random rollouts, with an error of ~1-2 points
+    soft_weight = 1.0  # 0: only the card played, 1: only the score distribution
     grad_clip = 1.0
     d_model = 256
     val_fraction = 0.05
@@ -40,12 +43,13 @@ class Metrics:
     """
     Accumulates loss and accuracies. Forced moves (a single legal card) are always "correct" and teach nothing,
     so card accuracy is also reported on the other moves, next to the accuracy of a uniformly random legal move.
+    nll is the loss on the action played only: the same as loss without scores, and comparable between runs.
     """
 
     def __init__(self):
         self._sums = defaultdict(float)
 
-    def update(self, tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask, loss_sum):
+    def update(self, tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask, loss_sum, nll_sum):
         is_card_play = tokens[:, 2] == Tokens.CHOOSE_NEXT_CARD
         is_trump_choice = tokens[:, 2] == Tokens.CHOOSE_TRUMP_SUIT
         num_legal_cards = legal_mask.sum(dim=-1)
@@ -56,6 +60,7 @@ class Metrics:
         s = self._sums
         s["samples"] += action.size(0)
         s["loss"] += loss_sum
+        s["nll"] += nll_sum
         s["card"] += is_card_play.sum().item()
         s["card_correct"] += (card_correct & is_card_play).sum().item()
         s["unforced"] += is_unforced.sum().item()
@@ -70,6 +75,7 @@ class Metrics:
         ratio = lambda num, den: s[num] / s[den] if s[den] > 0 else float("nan")
         return {
             f"{prefix}/loss": ratio("loss", "samples"),
+            f"{prefix}/nll": ratio("nll", "samples"),
             f"{prefix}/card_acc": ratio("card_correct", "card"),
             f"{prefix}/card_acc_unforced": ratio("unforced_correct", "unforced"),
             f"{prefix}/card_acc_unforced_random": ratio("unforced_random", "unforced"),
@@ -80,7 +86,7 @@ class Metrics:
 
 def format_summary(summary: dict[str, float]) -> str:
     values = {k.split("/", 1)[1]: v for k, v in summary.items()}
-    return (f"loss {values['loss']:.4f} | card {values['card_acc'] * 100:.2f}% | "
+    return (f"loss {values['loss']:.4f} (nll {values['nll']:.4f}) | card {values['card_acc'] * 100:.2f}% | "
             f"unforced card {values['card_acc_unforced'] * 100:.2f}% (random {values['card_acc_unforced_random'] * 100:.2f}%) | "
             f"trump {values['trump_acc'] * 100:.2f}% (random {values['trump_acc_random'] * 100:.2f}%)")
 
@@ -90,7 +96,24 @@ def log_model(model, name: str):
     mlflow.pytorch.log_model(model, name=name, serialization_format="pickle")
 
 
-def forward_and_loss(model, tokens, action):
+def soft_card_targets(scores, legal_mask, temperature: float):
+    """
+    softmax(score / temperature) over the legal cards that have a score, and whether the sample has such a target
+    (not for forced moves and samples without scores).
+    """
+    has_score = ~torch.isnan(scores) & legal_mask
+    logits = torch.where(has_score, torch.nan_to_num(scores) / temperature, float("-inf"))
+    has_target = has_score.any(dim=-1)
+    targets = torch.softmax(torch.where(has_target[:, None], logits, 0.0), dim=-1) * has_score
+    return targets, has_target
+
+
+def forward_and_loss(model, tokens, action, scores, temperature: float, soft_weight: float):
+    """
+    The loss of each sample is the negative log-likelihood of the action played, except for card choices with Monte
+    Carlo's scores: soft_weight * cross-entropy with soft_card_targets + (1 - soft_weight) * NLL of the card played.
+    Returns the sum of the losses and the sum of the NLLs (for comparison between runs).
+    """
     legal_mask = get_legal_mask_with_rules_batch(tokens)
     trump_legal_mask = get_trump_mask_batch(tokens)
     card_log_probs, trump_log_probs = model(tokens, legal_mask, trump_legal_mask)
@@ -99,19 +122,25 @@ def forward_and_loss(model, tokens, action):
     is_trump_choice = tokens[:, 2] == Tokens.CHOOSE_TRUMP_SUIT
     card_nll = F.nll_loss(card_log_probs, action.clamp(max=35), reduction="none")
     trump_nll = F.nll_loss(trump_log_probs, action.clamp(max=4), reduction="none")
-    loss_sum = torch.where(is_trump_choice, trump_nll, card_nll).sum()
-    return loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask
+    nll = torch.where(is_trump_choice, trump_nll, card_nll)
+
+    targets, has_target = soft_card_targets(scores, legal_mask, temperature)
+    soft_ce = -(targets * card_log_probs).sum(dim=-1)
+    card_loss = torch.where(has_target, soft_weight * soft_ce + (1 - soft_weight) * card_nll, card_nll)
+    loss = torch.where(is_trump_choice, trump_nll, card_loss)
+    return loss.sum(), nll.sum(), card_log_probs, trump_log_probs, legal_mask, trump_legal_mask
 
 
-def evaluate(val_loader, model, device) -> dict[str, float]:
+def evaluate(val_loader, model, device, cfg) -> dict[str, float]:
     model.eval()
     metrics = Metrics()
     with torch.no_grad():
-        for tokens, action in tqdm(val_loader, desc="Validating"):
-            tokens = tokens.to(device)
-            action = action.to(device)
-            loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(model, tokens, action)
-            metrics.update(tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask, loss_sum.item())
+        for tokens, action, scores in tqdm(val_loader, desc="Validating"):
+            tokens, action, scores = tokens.to(device), action.to(device), scores.to(device)
+            loss_sum, nll_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(
+                model, tokens, action, scores, cfg.temperature, cfg.soft_weight)
+            metrics.update(tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask,
+                           loss_sum.item(), nll_sum.item())
     model.train()
     return metrics.summary("val")
 
@@ -125,6 +154,10 @@ def train():
     parser.add_argument("--d_model", type=int, default=Config.d_model)
     parser.add_argument("--val_fraction", type=float, default=Config.val_fraction,
                         help="fraction of each data file (its last games) used for validation")
+    parser.add_argument("--temperature", type=float, default=Config.temperature,
+                        help="with Monte Carlo's scores (.sdat), the card target is softmax(score / temperature), in points")
+    parser.add_argument("--soft_weight", type=float, default=Config.soft_weight,
+                        help="weight of the score distribution in the card loss, the rest on the card played (0 to 1)")
     parser.add_argument("--description", "-d", type=str, default="")
     args = parser.parse_args()
 
@@ -135,6 +168,8 @@ def train():
     cfg.lr = args.lr
     cfg.d_model = args.d_model
     cfg.val_fraction = args.val_fraction
+    cfg.temperature = args.temperature
+    cfg.soft_weight = args.soft_weight
     # MLflow keeps defaulting to the deprecated ./mlruns file store whenever that directory still holds runs
     # (e.g. after `mlflow migrate-filestore`), so pick the database explicitly unless MLFLOW_TRACKING_URI is set
     if not mlflow.is_tracking_uri_set():
@@ -163,7 +198,10 @@ def train():
                 "d_model": cfg.d_model,
                 "val_fraction": cfg.val_fraction,
                 "device": cfg.device,
+                "temperature": cfg.temperature,
+                "soft_weight": cfg.soft_weight,
                 "data_samples": dataset.total_samples,
+                "scored_samples": dataset.scored_samples,
                 "train_samples": len(train_set),
                 "val_samples": len(val_set),
                 "git_commit": subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip(),
@@ -185,12 +223,12 @@ def train():
             epoch_metrics = Metrics()
             log_metrics = Metrics()
 
-            for tokens, action in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
+            for tokens, action, scores in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{cfg.epochs}"):
                 step += 1
-                tokens = tokens.to(device)
-                action = action.to(device)
+                tokens, action, scores = tokens.to(device), action.to(device), scores.to(device)
 
-                loss_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(model, tokens, action)
+                loss_sum, nll_sum, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask = forward_and_loss(
+                    model, tokens, action, scores, cfg.temperature, cfg.soft_weight)
                 loss = loss_sum / action.size(0)
 
                 optimizer.zero_grad()
@@ -201,7 +239,7 @@ def train():
                 with torch.no_grad():
                     for metrics in (epoch_metrics, log_metrics):
                         metrics.update(tokens, action, card_log_probs, trump_log_probs, legal_mask, trump_legal_mask,
-                                       loss_sum.item())
+                                       loss_sum.item(), nll_sum.item())
 
                 # === LOGGING ===
                 if step % cfg.log_every == 0:
@@ -217,7 +255,7 @@ def train():
             mlflow.log_metrics(train_summary, step=step)
 
             # Validation
-            val_summary = evaluate(val_loader, model, device)
+            val_summary = evaluate(val_loader, model, device, cfg)
             mlflow.log_metrics(val_summary, step=step)
             print(f"Val:   {format_summary(val_summary)}")
             if val_summary["val/loss"] < best_val_loss:

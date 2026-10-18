@@ -16,7 +16,7 @@ def main():
 
     train_loader = DataLoader(dataset, batch_size=args.batch, shuffle=False, num_workers=8, pin_memory=True)
 
-    for tokens, action in tqdm(train_loader):
+    for tokens, action, _ in tqdm(train_loader):
         legal_mask = lm.get_legal_mask_with_rules_batch(tokens)
         trump_legal_mask = lm.get_trump_mask_batch(tokens)
 
