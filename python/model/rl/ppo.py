@@ -2,9 +2,10 @@
 import json
 import os
 import random
+import re
 import subprocess
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 import mlflow
@@ -47,7 +48,17 @@ class Args:
     env_id: str = "JassFormer-v1"
     """the id of the environment"""
     supervised_model: str = JASSFORMER_MODEL_PATH
-    """state dict of the supervised JassFormer, used to initialize the agent and the opponents"""
+    """state dict of the supervised JassFormer, used to initialize the agent (without --init-checkpoint) and as the
+    fixed opponent (without --opponent-models)"""
+    init_checkpoint: Optional[str] = None
+    """RL checkpoint (.pth, e.g. model_final.pth of a previous run) to continue from: the agent starts with its policy
+    and its trained value head, and the warmup defaults to 0"""
+    opponent_models: list[str] = field(default_factory=list)
+    """fixed opponents: supervised (.pt) or RL (.pth) state dicts (default: --supervised-model)"""
+    pool_size: int = 8
+    """number of the agent's last snapshots (one every --opponent-update-freq iterations) kept as opponents; 0 for none"""
+    fixed_opponent_fraction: float = 0.5
+    """share of the games against a fixed opponent, the others against a snapshot of the pool (once it has one)"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
     learning_rate: float = 3e-5
@@ -87,8 +98,9 @@ class Args:
     """the maximum norm for the gradient clipping"""
     target_kl: Optional[float] = 0.01
     """the update stops at the first minibatch where the KL divergence from the rollout policy exceeds this (None: never)"""
-    warmup_steps: int = 200_000
-    """number of steps (at the start) that only train the value function, the policy being frozen"""
+    warmup_steps: Optional[int] = None
+    """number of steps (at the start) that only train the value function, the policy being frozen (default: 200k,
+    0 with --init-checkpoint)"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -98,7 +110,7 @@ class Args:
     num_iterations: int = 0
     """the number of iterations (computed in runtime)"""
     opponent_update_freq: int = 10
-    """Number of iterations between saving the model as a new opponent"""
+    """number of iterations between checkpoints (model_iter_<n>.pth), each also added to the pool of opponents"""
 
 
 def git_commit() -> str:
@@ -116,6 +128,8 @@ if __name__ == "__main__":
     args.num_iterations = args.total_timesteps // args.batch_size
     if args.gamma is None:
         args.gamma = 1.0 if args.hand_episodes else 0.99
+    if args.warmup_steps is None:
+        args.warmup_steps = 0 if args.init_checkpoint else 200_000
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     run_dir = f"runs/{run_name}"
     run_info = {}
@@ -157,11 +171,20 @@ if __name__ == "__main__":
 
     # env setup
     # all the games run in lockstep, with the opponents' moves batched on the training device
-    envs = JassVecEnv(args.num_envs, device, args.supervised_model, hand_episodes=args.hand_episodes)
+    envs = JassVecEnv(args.num_envs, device, args.supervised_model, hand_episodes=args.hand_episodes,
+                      opponent_model_paths=args.opponent_models, pool_size=args.pool_size,
+                      fixed_opponent_fraction=args.fixed_opponent_fraction)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
+    print(f"Fixed opponents: {', '.join(envs.fixed_opponent_groups)}"
+          + (f" ({args.fixed_opponent_fraction:.0%} of the games once the pool of {args.pool_size} snapshots has one)"
+             if args.pool_size > 0 else ""))
 
     agent = JassFormerActorCritic(d_model=256)
-    JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
+    if args.init_checkpoint:
+        agent.load_state_dict(torch.load(args.init_checkpoint, map_location="cpu"))
+        print(f"Continuing from {args.init_checkpoint} (policy and value head)")
+    else:
+        JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
     agent = agent.to(device)
 
     # the value head starts from random weights: it gets its own, higher learning rate (param group 1)
@@ -197,7 +220,7 @@ if __name__ == "__main__":
         optimizer.param_groups[1]["lr"] = frac * (args.warmup_value_learning_rate if in_warmup
                                                   else args.value_learning_rate)
 
-        episode_returns, episode_lengths, episode_wins = [], [], []
+        episode_returns, episode_lengths, episode_wins, episode_opponents = [], [], [], []
         for step in range(0, args.num_steps):
             global_step += args.num_envs
             obs[step] = next_obs
@@ -223,6 +246,7 @@ if __name__ == "__main__":
                 episode_returns += final_info["episode"]["r"][finished].tolist()
                 episode_lengths += final_info["episode"]["l"][finished].tolist()
                 episode_wins += final_info["episode"]["won"][finished].tolist()
+                episode_opponents += final_info["episode"]["opponent"][finished].tolist()
 
         # bootstrap value if not done
         with torch.no_grad():
@@ -336,8 +360,8 @@ if __name__ == "__main__":
             "losses/explained_variance": float(explained_var),
         }
         if episode_returns:
-            # averaged over the episodes (hands or games) finished during this iteration, against the opponents
-            # (the teacher and the student)
+            # averaged over the episodes (hands or games) finished during this iteration, against all the opponents,
+            # then by opponent: each fixed opponent, and the pool
             metrics |= {
                 "charts/episodic_return": float(np.mean(episode_returns)),
                 "charts/episodic_length": float(np.mean(episode_lengths)),
@@ -346,6 +370,18 @@ if __name__ == "__main__":
             }
             if args.hand_episodes:
                 metrics["charts/points_per_hand"] = float(np.mean(episode_returns)) * 157
+            unit_name = "hand" if args.hand_episodes else "game"
+            for opponent in sorted(set(episode_opponents)):
+                selected = [i for i, o in enumerate(episode_opponents) if o == opponent]
+                returns = np.array(episode_returns)[selected]
+                key = re.sub(r"[^A-Za-z0-9_.-]", "_", opponent)
+                metrics[f"opponents/{unit_name}s_vs_{key}"] = len(selected)
+                metrics[f"opponents/win_rate_vs_{key}"] = float(np.mean(np.array(episode_wins)[selected]))
+                if args.hand_episodes:
+                    metrics[f"opponents/points_per_hand_vs_{key}"] = float(np.mean(returns)) * 157
+                else:
+                    metrics[f"opponents/return_vs_{key}"] = float(np.mean(returns))
+        metrics["opponents/pool_size"] = envs.pool_length
         log_metrics(metrics, global_step)
         unit = "hands" if args.hand_episodes else "games"
         if not episode_returns:
@@ -353,6 +389,10 @@ if __name__ == "__main__":
         elif args.hand_episodes:
             games_summary = (f"{np.mean(episode_returns) * 157:+.1f} points/hand, won {np.mean(episode_wins):.0%} "
                              f"of {len(episode_returns)} hands")
+            by_opponent = {k[len("opponents/points_per_hand_vs_"):]: v for k, v in metrics.items()
+                           if k.startswith("opponents/points_per_hand_vs_")}
+            if len(by_opponent) > 1:
+                games_summary += " (" + ", ".join(f"{o} {v:+.1f}" for o, v in by_opponent.items()) + ")"
         else:
             games_summary = (f"return {np.mean(episode_returns):+.2f}, won {np.mean(episode_wins):.0%} of "
                              f"{len(episode_returns)} games")
@@ -365,10 +405,10 @@ if __name__ == "__main__":
         if iteration % args.opponent_update_freq == 0:
             save_path = os.path.join(run_dir, f"model_iter_{iteration}.pth")
             torch.save(agent.state_dict(), save_path)
-            print(f"Saved {save_path}, now the student opponent")
+            print(f"Saved {save_path}" + (", added to the pool of opponents" if args.pool_size > 0 else ""))
             if args.track and args.mlflow_log_checkpoints:
                 mlflow.log_artifact(save_path, artifact_path="checkpoints")
-            envs.update_opponent_model(agent.state_dict())
+            envs.add_opponent_snapshot(agent.state_dict())
 
     save_path = os.path.join(run_dir, "model_final.pth")
     torch.save(agent.state_dict(), save_path)

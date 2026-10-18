@@ -1,5 +1,5 @@
 import logging
-from typing import Optional, Tuple, Dict, List
+from typing import Callable, Optional, Tuple, Dict, List
 import random
 import gymnasium as gym
 import numpy as np
@@ -47,6 +47,10 @@ class JassEnv(gym.Env):
             student_model = self._load_opponent_model(supervised_model_path)
         self._teacher_model = teacher_model
         self._student_model = student_model
+        # if set, called at the start of each game: (model, group) of the 3 other players, partner included; else
+        # each seat is drawn on its own (randomize_players)
+        self.opponent_chooser: Optional[Callable[[], Tuple[JassFormerActorCritic, str]]] = None
+        self.opponent_group: Optional[str] = None
 
         self.players = None
 
@@ -226,6 +230,9 @@ class JassEnv(gym.Env):
         logger.debug("✅ Policy weights successfully updated into Actor-Critic model.")
 
     def randomize_players(self) -> list[Player]:
+        if self.opponent_chooser is not None:
+            model, self.opponent_group = self.opponent_chooser()
+            return [Player(Strategy())] + [Player(RLAgent(model, name=self.opponent_group)) for _ in range(3)]
         weights = [0.95, 0.05, 0, 0]
         model_pool = [
             (self._teacher_model, "teacher"),

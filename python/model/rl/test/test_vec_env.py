@@ -115,6 +115,38 @@ class TestJassVecEnv(unittest.TestCase):
 
         self.assertGreaterEqual(finished_hands, 4 * 5)
 
+    def test_opponent_pool(self):
+        num_envs = 8
+        other = os.path.join(self._tmp_dir.name, "other.pth")
+        torch.save(JassFormer(d_model=256).state_dict(), other)
+        envs = JassVecEnv(num_envs, hand_episodes=True, opponent_model_paths=[rl.jass_env.JASSFORMER_MODEL_PATH, other],
+                          pool_size=2, fixed_opponent_fraction=0.5)
+        self.assertEqual(envs.fixed_opponent_groups, ["random", "other"])
+        snapshots = [JassFormerActorCritic(d_model=256).state_dict() for _ in range(3)]
+        for snapshot in snapshots:
+            envs.add_opponent_snapshot(snapshot)
+        # the oldest snapshot is dropped
+        self.assertEqual(envs.pool_length, 2)
+        self.assertTrue(torch.equal(envs._pool[0].embedding.weight.cpu(), snapshots[1]["embedding.weight"]))
+
+        obs, _ = envs.reset(seed=1)
+        opponents = []
+        for _ in range(300):
+            for env in envs.envs:
+                # one model for the 3 other players
+                models = {id(player._strategy.model) for player in env.players[1:]}
+                self.assertEqual(len(models), 1)
+            with torch.no_grad():
+                actions, _, _, _ = self.agent.get_action_and_value(torch.from_numpy(obs))
+            obs, rewards, terminations, truncations, infos = envs.step(actions.numpy())
+            if "final_info" in infos:
+                final_info = infos["final_info"]
+                opponents += final_info["episode"]["opponent"][final_info["_episode"]].tolist()
+        envs.close()
+        self.assertGreater(len(opponents), 100)
+        self.assertEqual(set(opponents), {"random", "other", "pool"})
+        self.assertAlmostEqual(opponents.count("pool") / len(opponents), 0.5, delta=0.15)
+
 
 if __name__ == "__main__":
     unittest.main()
