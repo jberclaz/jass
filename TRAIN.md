@@ -43,6 +43,9 @@ To ship a model with the client, copy it to `src/main/resources/model/jassformer
 # fixed checkpoints, e.g. the supervised base and an RL model
 python -m rl.evaluate jassformer_best.pt runs/<run>/model_final.pth --hands 1000 --strengths 100 300
 
+# head to head against other models (and/or Monte Carlo with --strengths)
+python -m rl.evaluate runs/<run>/model_final.pth --opponents jassformer_best.pt runs/<other run>/model_final.pth --hands 2000
+
 # a PPO run, in a second terminal: evaluates each model_iter_<n>.pth as it is written (newest first), until the final model
 python -m rl.evaluate --watch runs/<run> --hands 1000 --strengths 100
 ```
@@ -55,6 +58,7 @@ python -m rl.evaluate --watch runs/<run> --hands 1000 --strengths 100
 - Measured on MC-10 vs MC-10 over 400 hands: +2.8 [−3.9, +9.5] points/hand with duplicate deals, ±14 with independent deals, i.e. about 4 times fewer hands for the same precision. The interval shrinks with the square root of the number of hands: 1000 hands give about ±4 points/hand.
 - The players always see a score of 0 - 0, so play near the end of a game (close to 1500) is not tested; it changes the strategy little.
 - Monte Carlo uses all CPU cores, so evaluating slows down a PPO run on the same machine (and vice versa). With `--watch`, `--opponent-update-freq` sets how often checkpoints appear; if evaluation can't keep up, the newest checkpoint is evaluated first.
+- **Head to head** (`--opponents`, `-o <model>` in AiTester): the models play deterministically (the best card), so only the choice of the deals is random, and the same model against itself gives exactly 0. About 3–4 times faster than against MC-100 (the ONNX inference is the bottleneck). Opponents can be `.pt`, `.pth`, `.onnx` or `mc:<strength>`; with `--watch`, they are logged as `eval/points_per_hand_vs_<path>`. A model is flattered against the one it was trained against (an RL model against its teacher): Monte Carlo stays the reference to compare runs.
 - Evaluate the supervised base model at the same strengths first: that's the baseline RL has to beat.
 - To see how much better the teacher is (the ceiling of supervised training), play Monte Carlo against Monte Carlo: `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -n 1000 -s 100 mc:1000` (the model side is MonteCarlo-1000). Slow: MC-1000 takes ~10 times longer per move than MC-100.
 
