@@ -20,4 +20,3 @@ python/model/.venv/
 *.pt
 *.pth
 *.onnx
-!src/main/resources/model/*.onnx

@@ -33,7 +33,17 @@ python -m pytest                                   # 2 tests are skipped without
 | 7. Export RL model | `python -m rl.export_checkpoint_to_onnx --rl --checkpoint runs/<run>/model_iter_<n>.pth --output rl_jass_agent.onnx` | | `✅ Export success!` Only needed for a checkpoint: the final model is already exported (`model_final.onnx`). |
 | 8. Test RL model in Java | `java -cp target/jass-*.jar com.leflat.jass.test.AiTester -n 1000 -s 100,300 python/model/rl_jass_agent.onnx` | `-n 20 -s 15` | Compare with step 5. Steps 7–8 in one go, during or after training: `python -m rl.evaluate --watch runs/<run>`. |
 
-To ship a model with the client, copy it to `src/main/resources/model/jassformer.onnx` (the default `cp:/model/jassformer.onnx`) and rebuild.
+### Shipping a model with the client
+
+The jar bundles the model as `/model/jassformer.onnx` (the default `cp:/model/jassformer.onnx`), which the client's AI players use. It is not in the repository: Maven downloads it from a GitHub release (`jassformer.model.url` in `pom.xml`) and checks its SHA-256 (`jassformer.model.sha256`). To ship a new model:
+
+1. Export it with its provenance, from `python/model/`:
+   `python -m rl.export_checkpoint_to_onnx --rl --checkpoint <model_final.pth> --output jassformer.onnx --mlflow-run <MLflow run id>`.
+   This stores in the ONNX metadata the checkpoint (name and SHA-256), the MLflow run (id, name, experiment), the git commit it was trained from and its latest `eval/*` metrics. Java logs them when it loads the model (`Model metadata: ...`).
+2. Publish it: `gh release create jassformer-v<n> jassformer.onnx --title "JassFormer v<n>" --notes "<the run and its evaluation>"`.
+3. In `pom.xml`, update the URL, `sha256sum jassformer.onnx` and the comment saying where the model comes from, then rebuild.
+
+To try a model without publishing it, override the URL: `mvn package -Djassformer.model.url=<url>` with the matching `-Djassformer.model.sha256=<hash>`. The downloads are cached in `~/.m2/repository/.cache/download-maven-plugin`.
 
 ## Evaluating against Monte Carlo
 

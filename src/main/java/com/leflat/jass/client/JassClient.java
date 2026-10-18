@@ -64,7 +64,7 @@ public class JassClient {
                 Collections.shuffle(AI_PLAYER_NAMES);
                 for (int p=1; p<= dialogInfo.nbrArtificialPlayers; ++p) {
                     var aiName = AI_PLAYER_NAMES.get(p);
-                    var aiPlayer = new ArtificialPlayer(p, aiName, new MonteCarloStrategy(1000));
+                    var aiPlayer = new ArtificialPlayer(p, aiName, new TransformersStrategy());
                     var aiNetwork = new ClientNetwork();
                     aiNetwork.connect(dialogInfo.hostname, connectionInfo.gameId, aiName);
                     if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {

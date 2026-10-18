@@ -9,6 +9,11 @@
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <!-- AI model bundled in the jar as /model/jassformer.onnx, downloaded from a GitHub release (see TRAIN.md).
+             jassformer-v1: model_final.pth of the PPO run JassFormer-v1__ppo__1__1792341216 (MLflow run
+             fef41a95576c48d8aea71c4e00f51383, trained from commit e5e6b39); the ONNX metadata has the details -->
+        <jassformer.model.url>https://github.com/jberclaz/jass/releases/download/jassformer-v1/jassformer.onnx</jassformer.model.url>
+        <jassformer.model.sha256>da8a6827381a3344bab184650f447e65d6623d0ca9a9c4db4340eaf925c92a54</jassformer.model.sha256>
     </properties>
 
     <scm>
@@ -103,6 +108,27 @@
                         </manifest>
                     </archive>
                 </configuration>
+            </plugin>
+
+            <plugin>
+                <groupId>io.github.download-maven-plugin</groupId>
+                <artifactId>download-maven-plugin</artifactId>
+                <version>2.1.0</version>
+                <executions>
+                    <execution>
+                        <id>download-jassformer-model</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>wget</goal>
+                        </goals>
+                        <configuration>
+                            <uri>${jassformer.model.url}</uri>
+                            <sha256>${jassformer.model.sha256}</sha256>
+                            <outputDirectory>${project.build.outputDirectory}/model</outputDirectory>
+                            <outputFileName>jassformer.onnx</outputFileName>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>

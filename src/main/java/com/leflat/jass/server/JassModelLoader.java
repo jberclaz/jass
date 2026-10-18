@@ -47,6 +47,11 @@ public class JassModelLoader {
                 }
             }
             LOGGER.info("Loaded JassFormer ONNX model from " + modelPath + " with " + session.getInputInfo().size() + " inputs");
+            // where the model comes from (MLflow run, checkpoint...), written by export_checkpoint_to_onnx.py
+            var metadata = session.getMetadata().getCustomMetadata();
+            if (!metadata.isEmpty()) {
+                LOGGER.info("Model metadata: " + new java.util.TreeMap<>(metadata));
+            }
         } catch (OrtException e) {
             LOGGER.log(Level.SEVERE, "Failed to load ONNX model from " + modelPath, e);
             throw new RuntimeException("ONNX load failed — check model file and version", e);
