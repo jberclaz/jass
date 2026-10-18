@@ -1,0 +1,189 @@
+import argparse
+import datetime
+import hashlib
+import json
+import os
+import subprocess
+from typing import Optional
+
+import onnx
+import torch
+import torch.nn as nn
+import torch.nn.functional as F
+from torch.export import Dim
+
+from dataset import VOCABULARY_SIZE, TOKEN_LENGTH
+from model import JassFormerActorCritic, JassFormer
+
+
+def add_metadata(onnx_path: str, metadata: dict):
+    """Stores metadata in the ONNX model (metadata_props), which Java logs when it loads the model."""
+    model = onnx.load(onnx_path)
+    props = {p.key: p.value for p in model.metadata_props}
+    onnx.helper.set_model_props(model, {**props, **{key: str(value) for key, value in metadata.items()}})
+    onnx.save(model, onnx_path)
+
+
+def provenance(checkpoint_path: str, mlflow_run: Optional[str] = None, tracking_uri: Optional[str] = None) -> dict:
+    """
+    Where the model comes from: the checkpoint (name and SHA-256) and, with an MLflow run id, the run (name,
+    experiment, git commit of the training and its latest eval/* metrics).
+    """
+    with open(checkpoint_path, "rb") as f:
+        sha256 = hashlib.sha256(f.read()).hexdigest()
+    metadata = {
+        "source_checkpoint": os.path.basename(checkpoint_path),
+        "source_checkpoint_sha256": sha256,
+        "exported_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+    }
+    try:
+        metadata["export_git_commit"] = subprocess.run(["git", "rev-parse", "HEAD"], capture_output=True, text=True,
+                                                       check=True).stdout.strip()
+    except (OSError, subprocess.CalledProcessError):
+        pass
+    if mlflow_run:
+        from mlflow import MlflowClient
+        from rl.ppo import DEFAULT_MLFLOW_TRACKING_URI
+        tracking_uri = tracking_uri or os.environ.get("MLFLOW_TRACKING_URI") or DEFAULT_MLFLOW_TRACKING_URI
+        client = MlflowClient(tracking_uri=tracking_uri)
+        run = client.get_run(mlflow_run)
+        tags = run.data.tags
+        metadata.update({
+            "mlflow_run_id": run.info.run_id,
+            "mlflow_run_name": run.info.run_name,
+            "mlflow_experiment": client.get_experiment(run.info.experiment_id).name,
+            "mlflow_tracking_uri": tracking_uri,
+            "training_git_commit": tags.get("mlflow.source.git.commit", ""),
+            "training_git_branch": tags.get("mlflow.source.git.branch", ""),
+            "eval_metrics": json.dumps({k: round(v, 4) for k, v in sorted(run.data.metrics.items())
+                                        if k.startswith("eval/")}),
+        })
+    return metadata
+
+
+class JassInferenceWrapper(nn.Module):
+    def __init__(self, original_agent):
+        super().__init__()
+        self.agent = original_agent
+
+    def forward(self, x):
+        # 1. Run the Transformer Backbone
+        # x shape: (batch_size, sequence_length)
+        cls_token = self.agent.forward_backbone(x)
+
+        # 2. Get Logits from both heads
+        card_logits = self.agent.policy_head(cls_token)  # 36 cards
+        trump_logits = self.agent.trump_head(cls_token)  # 6 trumps
+
+        return F.log_softmax(card_logits, dim=-1), F.log_softmax(trump_logits, dim=-1)
+
+def export_rl_model_to_onnx(checkpoint_path, output_path="rl_jass_agent.onnx", d_model=256,
+                            metadata: Optional[dict] = None):
+    print(f"Loading checkpoint from: {checkpoint_path}")
+
+    # 1. Initialize the Full Model (Architecture must match training)
+    # Ensure arguments (d_model, etc.) match your training config
+    full_agent = JassFormerActorCritic(d_model=d_model)
+
+    # 2. Load Weights
+    # use map_location='cpu' to ensure it works even without GPU
+    state_dict = torch.load(checkpoint_path, map_location="cpu")
+    full_agent.load_state_dict(state_dict)
+    full_agent.eval() # Crucial: turns off Dropout
+
+    # 3. Wrap it
+    inference_model = JassInferenceWrapper(full_agent)
+
+    # 4. Create Dummy Input
+    # Batch size 1, 96 tokens (integers)
+    dummy_input = torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH), dtype=torch.long)
+
+    # 5. Export
+    print(f"Exporting to {output_path}...")
+    torch.onnx.export(
+        inference_model,               # The wrapper model
+        (dummy_input,),                   # Dummy input
+        output_path,                   # Output filename
+        export_params=True,            # Store the trained weights inside the file
+        opset_version=18,              # 11 or 17 are usually safest for Java
+        do_constant_folding=True,      # Optimization
+        input_names=['tokens'],  # Name the input node for Java lookup
+        output_names=['card_logits', "trump_logits"],# Name the output node for Java lookup
+        dynamic_shapes=({0: Dim("batch", min=1)},),
+        external_data=False,
+    )
+    if metadata:
+        add_metadata(output_path, metadata)
+    print("✅ Export success!")
+
+def export_supervised_model_to_onnx(checkpoint_path, output_path="supervised_jass_agent.onnx", d_model=256,
+                                    metadata: Optional[dict] = None):
+    print(f"Loading checkpoint from: {checkpoint_path}")
+
+    # 1. Initialize the Full Model (Architecture must match training)
+    # Ensure arguments (d_model, etc.) match your training config
+    full_agent = JassFormer(d_model=d_model)
+
+    # 2. Load Weights
+    # use map_location='cpu' to ensure it works even without GPU
+    state_dict = torch.load(checkpoint_path, map_location="cpu")
+    full_agent.load_state_dict(state_dict)
+    full_agent.eval() # Crucial: turns off Dropout
+
+    # 4. Create Dummy Input
+    # Batch size 1, 96 tokens (integers)
+    dummy_input = torch.randint(0, VOCABULARY_SIZE, (1, TOKEN_LENGTH), dtype=torch.long)
+
+    # 5. Export
+    print(f"Exporting to {output_path}...")
+    torch.onnx.export(
+        full_agent,               # The wrapper model
+        (dummy_input,),                   # Dummy input
+        output_path,                   # Output filename
+        export_params=True,            # Store the trained weights inside the file
+        opset_version=18,              # 11 or 17 are usually safest for Java
+        do_constant_folding=True,      # Optimization
+        input_names=['tokens'],  # Name the input node for Java lookup
+        output_names=['card_logits', "trump_logits"],# Name the output node for Java lookup
+        dynamic_shapes=({0: Dim("batch", min=1)},),
+        external_data=False,
+    )
+    if metadata:
+        add_metadata(output_path, metadata)
+    print("✅ Export success!")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Export JassFormer PyTorch model to ONNX")
+
+    parser.add_argument(
+        "--checkpoint",
+        type=str,
+        required=True,
+        help=f"Path to the .pth checkpoint file"
+    )
+
+    parser.add_argument(
+        "--output",
+        type=str,
+        default="jass_agent.onnx",
+        help="Path where the .onnx file will be saved (default: jass_agent.onnx)"
+    )
+
+    parser.add_argument(
+        "--d_model",
+        type=int,
+        default=256,
+        help="Dimension of the model (d_model) used during training (default: 256)"
+    )
+    parser.add_argument("--rl", action="store_true", default=False)
+    parser.add_argument("--mlflow-run", help="id of the MLflow run that trained the checkpoint, stored in the ONNX "
+                                             "metadata with the run's name, git commit and latest eval metrics")
+    parser.add_argument("--mlflow-tracking-uri", help="MLflow server (default: $MLFLOW_TRACKING_URI, else rl.ppo's)")
+    args = parser.parse_args()
+    metadata = provenance(args.checkpoint, args.mlflow_run, args.mlflow_tracking_uri)
+    if args.rl:
+        export_rl_model_to_onnx(args.checkpoint, args.output, args.d_model, metadata)
+    else:
+        export_supervised_model_to_onnx(args.checkpoint, args.output, args.d_model, metadata)
+    print(json.dumps(metadata, indent=2))

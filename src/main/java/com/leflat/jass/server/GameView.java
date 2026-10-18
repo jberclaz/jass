@@ -1,21 +1,50 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.common.Card;
+import com.leflat.jass.client.ClientPlayer;
+import com.leflat.jass.common.*;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.logging.Logger;
 
 public class GameView {
     protected final static Logger LOGGER = Logger.getLogger(GameView.class.getName());
-    private final Random rand = new Random();
     private final Map<Integer, Float[]> unknownCardsInGame = new HashMap<>();
     private final List<Card>[] knownCardsInHands = new List[3];
     private final int[] handSizes = new int[3];
+    private List<Card> ownHand;
+    private PlayerPosition trumpChoser;
+    private boolean wasTrumpChosenOnFirstTurn;
+    private int ourGameScore;
+    private int opponentGameScore;
+    private int ourMatchScore;
+    private int opponentMatchScore;
+    private Plie currentTrick = new Plie();
+
+    private PlayerPosition firstToPlayTrick;
+    private final List<Plie> lastCompletedTricks = new ArrayList<>();
+    final private Map<PlayerPosition, ClientPlayer> players = new HashMap<>();
+    final private Team ourTeam = new Team(0);
 
     public GameView() {
         for (int p = 0; p < 3; p++) {
             knownCardsInHands[p] = new ArrayList<>();
         }
+        Team opponentTeam = new Team(1);
+        for (int i=0; i<4; i++) {
+            var p = new ClientPlayer(i, String.valueOf(i));
+            if (i % 2 == 0) {
+                ourTeam.addPlayer(p);
+            }
+            else {
+                opponentTeam.addPlayer(p);
+            }
+            players.put(PlayerPosition.fromCode(i), p);
+        }
+    }
+
+    BasePlayer getPlayer(PlayerPosition position) {
+        return players.get(position);
     }
 
     public void reset(List<Card> ownHand) {
@@ -31,55 +60,100 @@ public class GameView {
             }
             unknownCardsInGame.put(i, new Float[]{1 / 3f, 1 / 3f, 1 / 3f});
         }
+        this.ownHand = new ArrayList<>(ownHand);
         assert getNumberCardsInGame() == 27;
+        ourGameScore = 0;
+        opponentGameScore = 0;
+        lastCompletedTricks.clear();
+        currentTrick = new Plie();
     }
 
-    public void cardPlayed(int player, Card card) {
+    public void cardPlayed(PlayerPosition position, Card card) {
+        if (currentTrick.isEmpty()) {
+            firstToPlayTrick = position;
+        }
+        try {
+            currentTrick.playCard(card, players.get(position), null);
+        } catch (BrokenRuleException e) {
+            throw new RuntimeException(e);
+        }
+        if (currentTrick.isFull()) {
+            if (currentTrick.getOwner().getTeam() == ourTeam) {
+                ourGameScore += currentTrick.getScore();
+            } else {
+                opponentGameScore += currentTrick.getScore();
+            }
+            lastCompletedTricks.add(currentTrick);
+            currentTrick = new Plie();
+            firstToPlayTrick = null;
+        }
+        if (position == PlayerPosition.SELF) {
+            ownHand.remove(card);
+            return;
+        }
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
         var removedCardFromGame = unknownCardsInGame.remove(card.getNumber());
-        var removedCardFromHand = knownCardsInHands[player].remove(card);
+        var removedCardFromHand = knownCardsInHands[positionIndex].remove(card);
         if ((removedCardFromGame != null) == removedCardFromHand) {
-            throw new RuntimeException("Card " + card + " played by player " + player + " was not properly accounted for in GameView");
+            throw new RuntimeException("Card " + card + " played by player " + position + " was not properly accounted for in GameView");
         }
-        handSizes[player] --;
+        handSizes[positionIndex] --;
         assert getNumberCardsInGame() == (previousNumberCardsInGame - 1);
     }
 
-    public void playerHasCard(int player, int cardNumber) {
-        playerHasCard(player, new Card(cardNumber));
+    public void playerHasCard(PlayerPosition position, int cardNumber) {
+        playerHasCard(position, new Card(cardNumber));
     }
 
-    public void playerHasCard(int player, Card card) {
+    public void playerHasCard(PlayerPosition position, Card card) {
+        assert position != PlayerPosition.SELF;
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
         if (!unknownCardsInGame.containsKey(card.getNumber())) {
             return;
         }
-        if (knownCardsInHands[player].contains(card)) {
-            throw new RuntimeException("We already know player " + player + " has card " + card);
+        if (knownCardsInHands[positionIndex].contains(card)) {
+            throw new RuntimeException("We already know player " + position + " has card " + card);
         }
         unknownCardsInGame.remove(card.getNumber());
-        knownCardsInHands[player].add(card);
+        knownCardsInHands[positionIndex].add(card);
         assert getNumberCardsInGame() == previousNumberCardsInGame : getNumberCardsInGame() + " != " + previousNumberCardsInGame;
     }
 
-    public void playerDoesNotHaveCard(int player, int cardNumber) {
+    public void playerDoesNotHaveCard(PlayerPosition position, int cardNumber) {
+        assert position != PlayerPosition.SELF;
+        int positionIndex = position.getCode() - 1;
         int previousNumberCardsInGame = getNumberCardsInGame();
-        if (knownCardsInHands[player].contains(new Card(cardNumber))) {
-            throw new RuntimeException("Contradictory game view: strategy believes that player " + player + " has card " + cardNumber);
+        if (knownCardsInHands[positionIndex].contains(new Card(cardNumber))) {
+            throw new RuntimeException("Contradictory game view: strategy believes that player " + position + " has card " + cardNumber);
         }
         var prob = unknownCardsInGame.get(cardNumber);
         if (prob == null) {
             return;
         }
-        if (prob[player] > 0) {
-            prob[player] = 0f;
+        if (prob[positionIndex] > 0) {
+            prob[positionIndex] = 0f;
             normalizeCardsProbabilities(cardNumber);
         }
         assert getNumberCardsInGame() == previousNumberCardsInGame;
     }
 
-    public void playerDoesNotHaveCard(int player, Card card) {
-        playerDoesNotHaveCard(player, card.getNumber());
+    public void playerDoesNotHaveCard(PlayerPosition position, Card card) {
+        playerDoesNotHaveCard(position, card.getNumber());
+    }
+
+    public void setTrump(PlayerPosition position, boolean chosenOnFirstTurn) {
+        trumpChoser = position;
+        wasTrumpChosenOnFirstTurn = chosenOnFirstTurn;
+    }
+
+    public void addAnnouncementScore(int score, boolean ourTeam) {
+        if (ourTeam) {
+            ourGameScore += score;
+        } else {
+            opponentGameScore += score;
+        }
     }
 
     private void normalizeCardsProbabilities(int cardNumber) {
@@ -88,16 +162,16 @@ public class GameView {
         if (sum == 0) {
             throw new RuntimeException("Probabilities should not sum to zero");
         }
-        int unique = -1;
+        int uniqueIndex = -1;
         for (int p = 0; p < 3; p++) {
             if (prob[p] == sum) {
-                unique = p;
+                uniqueIndex = p;
                 break;
             }
             prob[p] /= sum;
         }
-        if (unique >= 0) {
-            playerHasCard(unique, cardNumber);
+        if (uniqueIndex >= 0) {
+            playerHasCard(PlayerPosition.fromCode(uniqueIndex + 1), cardNumber);
         }
     }
 
@@ -106,7 +180,7 @@ public class GameView {
         StringBuilder s = new StringBuilder();
         for (var card : unknownCardsInGame.entrySet()) {
             var prob = card.getValue();
-            s.append(new Card(card.getKey()).toString()).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
+            s.append(new Card(card.getKey())).append(" : ").append(prob[0]).append(", ").append(prob[1]).append(", ").append(prob[2]).append("\n");
         }
         for (int p = 0; p < 3; p++) {
             if (!knownCardsInHands[p].isEmpty()) {
@@ -173,7 +247,7 @@ public class GameView {
             int player = -1;
             do {
                 float sumProb = 0;
-                float f = rand.nextFloat();
+                float f = ThreadLocalRandom.current().nextFloat();
                 for (int p = 0; p < 3; p++) {
                     sumProb += probs[p];
                     if (f < sumProb) {
@@ -189,5 +263,172 @@ public class GameView {
 
     int getNumberCardsInGame() {
         return unknownCardsInGame.size() + knownCardsInHands[0].size() + knownCardsInHands[1].size() + knownCardsInHands[2].size();
+    }
+
+    public void updateMatchScore(int ourScore, int opponentScore) {
+        ourMatchScore = ourScore;
+        opponentMatchScore = opponentScore;
+    }
+
+    record CardProbability(int cardId, float probability) {
+    }
+
+    List<CardProbability> getKMostProbableCards(int playerIndex, int k, float threshold) {
+        return unknownCardsInGame.entrySet().stream()
+                // 1. Map each entry to a CardProbability record for the target player
+                .map(entry -> {
+                    int cardId = entry.getKey();
+                    Float[] probs = entry.getValue();
+                    return new CardProbability(cardId, probs[playerIndex]);
+                })
+                // 2. Filter out any cards this player has a 0% chance of holding
+                .filter(cp -> cp.probability() > threshold)
+                // 3. Sort by probability, descending.
+                // We use .reversed() to flip the natural ascending order.
+                .sorted(Comparator.comparingDouble(CardProbability::probability).reversed())
+                // 4. Limit the results to the top k
+                .limit(k)
+                // 5. Collect into an immutable List (requires Java 16+)
+                .toList();
+    }
+
+    public byte[] getTransformersTokensForCardChoice() {
+        List<Integer> tokens = new ArrayList<>();
+
+        // === 0: CLS ===
+        tokens.add(Tokens.CLS);
+
+        // === 1-9: GLOBALS (9 tokens) ===
+        tokens.add(Tokens.SECTION_GLOBALS);
+        tokens.add(Tokens.CHOOSE_NEXT_CARD);
+
+        // Trump signal triplet: [TYPE] [PLAYER] [COLOR]
+        tokens.add(wasTrumpChosenOnFirstTurn ? Tokens.TRUMP_FIRST_CHOICE : Tokens.TRUMP_FORCED);  // 2
+        tokens.add(Tokens.positionToken(trumpChoser));                                       // 3
+        tokens.add(Tokens.trumpToken(Card.atout));                            // 4
+
+        // Scores — pure positional
+        tokens.add(Tokens.scoreToken(ourGameScore));                              // 5
+        tokens.add(Tokens.scoreToken(opponentGameScore));                            // 6
+        tokens.add(Tokens.globalScoreToken(ourMatchScore));                   // 7
+        tokens.add(Tokens.globalScoreToken(opponentMatchScore));                 // 8
+
+        assert tokens.size() == 10;
+        // === 9-18: HAND (9 cards + pad) ===
+        tokens.add(Tokens.SECTION_HAND);
+        List<Card> sorted = new ArrayList<>(ownHand);
+        sorted.sort(Comparator.comparingInt(Card::getNumber));
+        for (int i = 0; i < 9; i++) {
+            tokens.add(i < sorted.size() ? Tokens.cardToken(sorted.get(i)) : Tokens.PAD);
+        }
+        assert tokens.size() == 20;
+
+        // === 19-24: CURRENT TRICK (≤3 cards → 6 tokens) ===
+        tokens.add(Tokens.SECTION_TRICK);
+        int played = currentTrick.getSize();
+        for (int i = 0; i < played; i++) {
+            Card c = currentTrick.getCards().get(i);
+            PlayerPosition pos = PlayerPosition.fromCode((firstToPlayTrick.getCode() + i) % 4);
+            tokens.add(Tokens.positionToken(pos));
+            tokens.add(Tokens.cardToken(c));
+        }
+        while (tokens.size() < 27) tokens.add(Tokens.PAD);  // pad to 6
+
+        assert tokens.size() == 27;
+
+        // === 25-64: HISTORY (5 tricks × 5 tokens = 40) ===
+        tokens.add(Tokens.SECTION_HISTORY);
+        for (Plie trick : lastCompletedTricks) {
+                for (var c : trick.getCards()) {
+                    tokens.add(c != null ? Tokens.cardToken(c) : Tokens.PAD);
+                }
+                boolean weWon = trick.getOwner().getTeam() == ourTeam;
+                tokens.add(weWon ? Tokens.WIN_OUR_TEAM : Tokens.WIN_OPP_TEAM);
+        }
+        for (int i=0; i<(8 - lastCompletedTricks.size()); i++) {
+            for (int j = 0; j < 5; j++) tokens.add(Tokens.PAD);
+        }
+
+        assert tokens.size() == 68;
+
+        // === 65-94: BELIEF (10 × 3 = 30 tokens) ===
+        tokens.add(Tokens.SECTION_BELIEF);
+        final int maxCardsPerPlayer = 4;
+        for (int pos : new int[]{1, 2, 3}) {
+            tokens.add(Tokens.positionToken(PlayerPosition.fromCode(pos)));
+            int cardsCount = 0;
+            for (int i=0; i<Math.min(maxCardsPerPlayer, knownCardsInHands[pos-1].size()); i++) {
+                tokens.add(Tokens.cardToken(knownCardsInHands[pos-1].get(i)));
+                tokens.add(Tokens.confidenceToken(1));
+                cardsCount++;
+            }
+            if (cardsCount < maxCardsPerPlayer) {
+                for (var items : getKMostProbableCards(pos - 1, maxCardsPerPlayer - cardsCount, 0.34f)) {
+                    tokens.add(Tokens.cardToken(items.cardId));
+                    tokens.add(Tokens.confidenceToken(items.probability));
+                    cardsCount++;
+                }
+            }
+            for (int i=cardsCount; i<maxCardsPerPlayer; i++) {
+                tokens.add(Tokens.PAD);
+                tokens.add(Tokens.PAD);
+            }
+        }
+        assert tokens.size() == 96;
+        byte[] result = new byte[tokens.size()];
+        for (int i = 0; i < tokens.size(); i++) {
+            result[i] = (byte) (tokens.get(i) & 0xFF);
+        }
+        return result;
+    }
+
+    public byte[] getTransformersTokensForTrumpChoice(boolean firstToChoose) {
+        List<Integer> tokens = new ArrayList<>();
+
+        // === 0: CLS ===
+        tokens.add(Tokens.CLS);
+
+        // === 1-9: GLOBALS (9 tokens) ===
+        tokens.add(Tokens.SECTION_GLOBALS);
+        tokens.add(Tokens.CHOOSE_TRUMP_SUIT);
+
+        // Trump signal triplet: [TYPE] [PLAYER] [COLOR]
+        tokens.add(firstToChoose ? Tokens.TRUMP_FIRST_CHOICE : Tokens.TRUMP_FORCED);  // 2
+        tokens.add(Tokens.positionToken(PlayerPosition.SELF));
+        tokens.add(Tokens.PAD);
+
+        // Scores — pure positional
+        tokens.add(Tokens.scoreToken(ourGameScore));                              // 5
+        tokens.add(Tokens.scoreToken(opponentGameScore));                            // 6
+        tokens.add(Tokens.globalScoreToken(ourMatchScore));                   // 7
+        tokens.add(Tokens.globalScoreToken(opponentMatchScore));                 // 8
+
+        assert tokens.size() == 10;
+
+        // === 9-18: HAND (9 cards + pad) ===
+        tokens.add(Tokens.SECTION_HAND);
+        List<Card> sorted = new ArrayList<>(ownHand);
+        sorted.sort(Comparator.comparingInt(Card::getNumber));
+        for (int i = 0; i < 9; i++) {
+            tokens.add(i < sorted.size() ? Tokens.cardToken(sorted.get(i)) : Tokens.PAD);
+        }
+        assert tokens.size() == 20;
+
+        tokens.add(Tokens.SECTION_TRICK);
+        while (tokens.size() < 27) tokens.add(Tokens.PAD);  // pad to 6
+
+        tokens.add(Tokens.SECTION_HISTORY);
+        while (tokens.size() < 68) tokens.add(Tokens.PAD);  // pad to 6
+
+        // === 65-94: BELIEF (10 × 3 = 30 tokens) ===
+        tokens.add(Tokens.SECTION_BELIEF);
+        while (tokens.size() < 96) tokens.add(Tokens.PAD);
+        assert tokens.size() == 96;
+
+        byte[] result = new byte[tokens.size()];
+        for (int i = 0; i < tokens.size(); i++) {
+            result[i] = (byte) (tokens.get(i) & 0xFF);
+        }
+        return result;
     }
 }

@@ -126,9 +126,9 @@ public class RemotePlayerTests {
 
     @Test
     public void set_atout_test() throws PlayerLeftExpection {
-        player.setAtout(Card.COLOR_HEART, new TestPlayer(2));
+        player.setTrump(Card.COLOR_HEART, new TestPlayer(2), true);
         assertEquals(1, network.sendParameters.size());
-        assertEquals(RemoteCommand.SET_ATOUT, Integer.parseInt(network.sendParameters.get(0).get(0)));
+        assertEquals(RemoteCommand.SET_TRUMP, Integer.parseInt(network.sendParameters.get(0).get(0)));
         assertEquals(Card.COLOR_HEART, Integer.parseInt(network.sendParameters.get(0).get(1)));
         assertEquals(2, Integer.parseInt(network.sendParameters.get(0).get(2)));
     }

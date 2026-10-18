@@ -1,9 +1,6 @@
 package com.leflat.jass.server;
 
-import com.leflat.jass.common.Announcement;
-import com.leflat.jass.common.BasePlayer;
-import com.leflat.jass.common.Card;
-import com.leflat.jass.common.Plie;
+import com.leflat.jass.common.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -17,7 +14,7 @@ public class ArtificialPlayerTests {
     ArtificialPlayer player;
     Field playersPositionField, gameViewField, currentPlieField, handField;
     ArtificialPlayer otherPlayer;
-    Map<Integer, Integer> playersPosition;
+    Map<Integer, PlayerPosition> playersPosition;
     GameView gameView;
     Plie currentPlie;
     List<Card> hand;
@@ -28,7 +25,7 @@ public class ArtificialPlayerTests {
 
     @BeforeEach
     public void setUp() throws NoSuchFieldException, IllegalAccessException {
-        player = new ArtificialPlayer(1, "name", 10, true);
+        player = new ArtificialPlayer(1, "name", new MonteCarloStrategy(10), true);
         playersPositionField = ArtificialPlayer.class.getDeclaredField("positionsByIds");
         playersPositionField.setAccessible(true);
         gameViewField = ArtificialPlayer.class.getDeclaredField("gameView");
@@ -37,10 +34,10 @@ public class ArtificialPlayerTests {
         currentPlieField.setAccessible(true);
         handField = BasePlayer.class.getDeclaredField("hand");
         handField.setAccessible(true);
-        playersPosition = (Map<Integer, Integer>) playersPositionField.get(player);
+        playersPosition = (Map<Integer, PlayerPosition>) playersPositionField.get(player);
         gameView = (GameView) gameViewField.get(player);
         hand = (List<Card>) handField.get(player);
-        otherPlayer = new ArtificialPlayer(2, "Pischus", 10, true);
+        otherPlayer = new ArtificialPlayer(2, "Pischus", new MonteCarloStrategy(10), true);
         Field unknownCardsInGameField = GameView.class.getDeclaredField("unknownCardsInGame");
         Field knownCardsInHandsField = GameView.class.getDeclaredField("knownCardsInHands");
         unknownCardsInGameField.setAccessible(true);
@@ -54,9 +51,9 @@ public class ArtificialPlayerTests {
     @Test
     public void test_set_player_info() {
         player.setPlayerInfo(otherPlayer);
-        assertEquals(playersPosition.size(), 1);
+        assertEquals(1, playersPosition.size());
         assertTrue(playersPosition.containsKey(2));
-        assertEquals(playersPosition.get(2), 1);
+        assertEquals(PlayerPosition.RIGHT, playersPosition.get(2));
     }
 
     @Test
@@ -77,13 +74,13 @@ public class ArtificialPlayerTests {
         player.setPlayerInfo(otherPlayer);
         player.setPlayerInfo(thirdPlayer);
         player.setPlayerInfo(fourthPlayer);
-        assertEquals(playersPosition.size(), 3);
-        assertEquals(playersPosition.get(0), 3);
+        assertEquals(3, playersPosition.size() );
+        assertEquals(PlayerPosition.LEFT, playersPosition.get(0));
 
         player.setPlayersOrder(Arrays.asList(3, 2, 0, 1));
-        assertEquals(playersPosition.get(3), 1);
-        assertEquals(playersPosition.get(2), 2);
-        assertEquals(playersPosition.get(0), 3);
+        assertEquals(PlayerPosition.RIGHT, playersPosition.get(3) );
+        assertEquals(PlayerPosition.ACROSS, playersPosition.get(2));
+        assertEquals(PlayerPosition.LEFT, playersPosition.get(0));
     }
 
     @Test
@@ -97,7 +94,7 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_choose_atout() throws PlayerLeftExpection {
-        var player = new ArtificialPlayer(1, "AI", 100, true);
+        var player = new ArtificialPlayer(1, "AI", new MonteCarloStrategy(100), true);
         var thirdPlayer = new ArtificialPlayer(3, "GC");
         var fourthPlayer = new ArtificialPlayer(0, "Mono");
         player.setPlayerInfo(otherPlayer);
@@ -169,7 +166,7 @@ public class ArtificialPlayerTests {
 
         var originalHand = buildHand(1, 4, 9, 10, 12, 20, 22, 30, 33);
         player.setHand(originalHand);
-        player.setAtout(Card.COLOR_HEART, otherPlayer);
+        player.setTrump(Card.COLOR_HEART, otherPlayer, true);
         var card = player.play();
         assertEquals(8, hand.size());
         assertFalse(hand.contains(card));
@@ -180,12 +177,18 @@ public class ArtificialPlayerTests {
     public void test_get_announcements() throws PlayerLeftExpection {
         var secondPlayer = new ArtificialPlayer(0, "Wein");
         var fourthPlayer = new ArtificialPlayer(3, "Hhip");
+        var team1 = new Team(0);
+        var team2 = new Team(1);
+        team1.addPlayer(player);
+        team1.addPlayer(secondPlayer);
+        team2.addPlayer(fourthPlayer);
+        team2.addPlayer(otherPlayer);
         player.setPlayerInfo(secondPlayer);
         player.setPlayerInfo(otherPlayer);
         player.setPlayerInfo(fourthPlayer);
         player.setPlayersOrder(Arrays.asList(1, 3, 0, 2));
         player.setHand(buildHand(1, 2, 3, 9, 10, 11, 12, 21, 30));
-        player.setAtout(Card.COLOR_HEART, otherPlayer);
+        player.setTrump(Card.COLOR_HEART, otherPlayer, true);
         player.play();
         assertEquals(8, hand.size());
         var an = player.getAnnouncements();
@@ -221,9 +224,10 @@ public class ArtificialPlayerTests {
 
     @Test
     public void test_stoeck() throws PlayerLeftExpection, IllegalAccessException {
+        player.setPlayerInfo(otherPlayer);
         Card.atout = Card.COLOR_DIAMOND;
         player.setHand(buildHand(0, 2, 4, 29, 30, 8, 33, 34, 6));
-        player.setAtout(Card.atout, otherPlayer);
+        player.setTrump(Card.atout, otherPlayer, true);
         hand.remove(new Card(6));
         var an = player.getAnnouncements();
         assertTrue(an.isEmpty());

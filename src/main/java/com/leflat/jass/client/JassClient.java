@@ -2,9 +2,7 @@ package com.leflat.jass.client;
 
 import com.leflat.jass.common.ConnectionError;
 import com.leflat.jass.common.IJassUi;
-import com.leflat.jass.server.ArtificialPlayer;
-import com.leflat.jass.server.GameController;
-import com.leflat.jass.server.PlayerLeftExpection;
+import com.leflat.jass.server.*;
 
 import javax.swing.*;
 import java.io.IOException;
@@ -25,7 +23,7 @@ public class JassClient {
         }
         Collections.shuffle(AI_PLAYER_NAMES);
         for (int i = 1; i < 4; ++i) {
-            var aip = new ArtificialPlayer(i, AI_PLAYER_NAMES.get(i));
+            var aip = new ArtificialPlayer(i, AI_PLAYER_NAMES.get(i), new TransformersStrategy());
             try {
                 gameController.addPlayer(aip);
             } catch (PlayerLeftExpection e) {
@@ -66,7 +64,7 @@ public class JassClient {
                 Collections.shuffle(AI_PLAYER_NAMES);
                 for (int p=1; p<= dialogInfo.nbrArtificialPlayers; ++p) {
                     var aiName = AI_PLAYER_NAMES.get(p);
-                    var aiPlayer = new ArtificialPlayer(p, aiName);
+                    var aiPlayer = new ArtificialPlayer(p, aiName, new TransformersStrategy());
                     var aiNetwork = new ClientNetwork();
                     aiNetwork.connect(dialogInfo.hostname, connectionInfo.gameId, aiName);
                     if (connectionInfo.error != ConnectionError.CONNECTION_SUCCESSFUL) {

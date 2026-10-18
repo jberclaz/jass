@@ -40,6 +40,14 @@ public class Plie {
         return highest.getRank();
     }
 
+    public Card getWinningCard() {
+        return highest;
+    }
+
+    public int getWinningIndex() {
+        return cards.indexOf(highest);
+    }
+
     public int getScore() {
         int score = cards.stream().mapToInt(Card::getValue).sum();
         return Card.atout == Card.COLOR_SPADE ? 2 * score : score;
@@ -56,6 +64,10 @@ public class Plie {
     public int getSize() {
         return cards.size();
     }
+
+    public boolean isEmpty() {return cards.isEmpty(); }
+
+    public boolean isFull() { return cards.size() == 4; }
 
     public List<Card> getCards() { return cards; }
 

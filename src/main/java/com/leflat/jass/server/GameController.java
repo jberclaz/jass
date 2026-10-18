@@ -20,6 +20,14 @@ public class GameController extends Thread {
     private final Team[] teams = new Team[2];       // les 2 équipes
     private boolean noWait = false;
     private final static Logger LOGGER = Logger.getLogger(GameController.class.getName());
+    private boolean teamSelectionEnabled = true;
+    private int playKGames = -1;
+    private final Map<Integer, Integer> matchWinCount = new HashMap<>();
+    private Runnable gameDoneListener = () -> {};
+    private Long dealSeed = null;
+    private Random dealRandom = new Random();
+    private int gamesPlayed = 0;
+    private boolean singleHandGames = false;
 
     public GameController(int id) {
         this.gameId = id;
@@ -69,14 +77,28 @@ public class GameController extends Thread {
 
                 chooseTeam();     // détermine les équipes
 
+                seedDeals(gamesPlayed);
                 playOneGame();
+                gamesPlayed++;
 
                 LOGGER.info("Game done");
+                gameDoneListener.run();
 
-                playAnotherGame = getPlayerById(0).getNewGame();
+                if (playKGames < 0) {
+                    playAnotherGame = getPlayerById(0).getNewGame();
+                }
+                else {
+                    playKGames--;
+                    playAnotherGame = playKGames > 0;
+                }
 
                 Arrays.stream(teams).forEach(Team::resetScore);
             } while (playAnotherGame);
+
+            if (!teamSelectionEnabled) {
+                LOGGER.info("Scores: team 0 (" + teams[0].getPlayer(0).getName() + " - " + teams[0].getPlayer(1).getName() + ") won " + getMatchWinCount(teams[0].getId()) + " matches.");
+                LOGGER.info("team 1 (" + teams[1].getPlayer(0).getName() + " - " + teams[1].getPlayer(1).getName() + ") won " + getMatchWinCount(teams[1].getId()) + " matches.");
+            }
 
             LOGGER.info("No longer playing");
         } catch (PlayerLeftExpection e) {
@@ -101,7 +123,7 @@ public class GameController extends Thread {
         int firstToPlay = drawCards();
         boolean gameOver;
         do {
-            gameOver = playOneHand(firstToPlay);
+            gameOver = playOneHand(firstToPlay) || singleHandGames;
 
             setTeamsScoreAsync();
 
@@ -117,8 +139,11 @@ public class GameController extends Thread {
         } while (!gameOver);
 
         // Sends the winner to all player
-        var winners = teams[0].hasWon() ? teams[0] : teams[1];
+        var winners = singleHandGames
+                ? (teams[0].getScore() >= teams[1].getScore() ? teams[0] : teams[1])
+                : (teams[0].hasWon() ? teams[0] : teams[1]);
         oneWayAsync(p -> p.setGameResult(winners));
+        matchWinCount.put(winners.getId(), matchWinCount.getOrDefault(winners.getId(), 0) + 1);
 
         /* waits a few seconds so that the players can see all the cards */
         waitSec(4);
@@ -254,20 +279,28 @@ public class GameController extends Thread {
 
     int chooseAtout(int playerNumber) throws PlayerLeftExpection {
         var playerToChooseAtout = players.get(playerNumber);
-        oneWayAsync(p -> p.setAtout(Card.COLOR_NONE, playerToChooseAtout));
+        oneWayAsync(p -> p.setTrump(Card.COLOR_NONE, playerToChooseAtout, true));
         var choice = playerToChooseAtout.chooseAtout(true);   // demande de faire atout en premier
+        var chosenOnFirstTurn = choice != Card.COLOR_NONE;
         if (choice == Card.COLOR_NONE) {     // si on passe
             var second = players.get((playerNumber + 2) % 4);
             choice = second.chooseAtout(false);   // demande de faire atout en second
         }
         int finalChoice = choice;
-        oneWayAsync(p -> p.setAtout(finalChoice, playerToChooseAtout));
+        oneWayAsync(p -> p.setTrump(finalChoice, playerToChooseAtout, chosenOnFirstTurn));
         return choice;
+    }
+
+    void seedDeals(int gameIndex) {
+        if (dealSeed != null) {
+            // same deals for game k whatever happened in the previous games
+            dealRandom = new Random(dealSeed + gameIndex);
+        }
     }
 
     int drawCards() throws PlayerLeftExpection {
         int playerWithDiamondSeven = 0;      // 7 de carreau
-        var cards = Card.shuffle(Card.DECK_SIZE);     // choisir les cartes au hasard
+        var cards = Card.shuffle(Card.DECK_SIZE, dealRandom);     // choisir les cartes au hasard
         for (int i = 0; i < 4; i++) {
             for (int j = 0; j < 9; j++) {
                 if (cards.get(i * 9 + j).getNumber() == Card.DIAMOND_SEVEN) {    // 7 de carreau
@@ -282,16 +315,21 @@ public class GameController extends Thread {
 
     void chooseTeam() throws PlayerLeftExpection {
         Arrays.stream(teams).forEach(Team::reset);
+        if (teamSelectionEnabled) {
+            var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
+            if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
+                chooseTeamsRandomly();
+            } else {       // choisir son partenaire
+                pickTeamMates();
+            }
 
-        var teamChoiceMethod = getPlayerById(0).chooseTeamSelectionMethod();
-        if (teamChoiceMethod == TeamSelectionMethod.RANDOM) { // choisir au hasard
-            chooseTeamsRandomly();
-        } else {       // choisir son partenaire
-            pickTeamMates();
+            reorderPlayers();
         }
-
-        reorderPlayers();
-
+        else {
+            for (int i=0; i<4; i++) {
+                teams[i %2].addPlayer(players.get(i));
+            }
+        }
         var order = players.stream().map(BasePlayer::getId).collect(Collectors.toList());
         oneWayAsync(p -> p.setPlayersOrder(order));
     }
@@ -411,10 +449,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -434,10 +472,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -460,10 +498,10 @@ public class GameController extends Thread {
                     }
                     return 0;
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            answers.stream().map(CompletableFuture::join).toList();
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
                 throw (PlayerLeftExpection) ex.getCause();
@@ -483,10 +521,10 @@ public class GameController extends Thread {
                     }
                     return p.getId();
                 }))
-                .collect(Collectors.toList());
+                .toList();
 
         try {
-            var result = answers.stream().map(CompletableFuture::join).collect(Collectors.toList());
+            var result = answers.stream().map(CompletableFuture::join).toList();
             assert result.size() == 3;
         } catch (CompletionException ex) {
             if (ex.getCause() instanceof PlayerLeftExpection) {
@@ -494,5 +532,38 @@ public class GameController extends Thread {
             }
             throw new RuntimeException(ex.getCause());
         }
+    }
+
+    public void enableTeamSelection(boolean enable) {
+        teamSelectionEnabled = enable;
+    }
+
+    public void playKGames(int k) {
+        playKGames = k;
+    }
+
+    /** Called on the game thread after each game (match). */
+    public void setGameDoneListener(Runnable listener) {
+        gameDoneListener = listener;
+    }
+
+    /**
+     * Makes the deals reproducible: game k (counted from 0) is dealt from a Random seeded with seed + k, so two
+     * controllers with the same seed deal the same cards to the same seats, hand after hand.
+     */
+    public void setDealSeed(long seed) {
+        dealSeed = seed;
+    }
+
+    /**
+     * Each game is a single hand, from a score of 0 - 0, won by the team with the most points (team 0 on a tie). For
+     * evaluations: hands are independent, a game to 1500 points adds the luck of several hands and a threshold.
+     */
+    public void setSingleHandGames(boolean enable) {
+        singleHandGames = enable;
+    }
+
+    public int getMatchWinCount(int teamId) {
+        return matchWinCount.getOrDefault(teamId, 0);
     }
 }

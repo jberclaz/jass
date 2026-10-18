@@ -23,7 +23,7 @@ public interface IPlayer {
 
     int chooseAtout(boolean first) throws PlayerLeftExpection;
 
-    void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection;
+    void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) throws PlayerLeftExpection;
 
     Card play() throws PlayerLeftExpection;
 

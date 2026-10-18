@@ -128,7 +128,7 @@ public class InteractivePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) {
+    public void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) {
         Card.atout = color;
         ui.setAtout(color, playersPositions.get(firstToPlay.getId()));
         if (color != Card.COLOR_NONE) {

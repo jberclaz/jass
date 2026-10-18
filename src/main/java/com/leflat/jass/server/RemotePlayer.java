@@ -97,8 +97,8 @@ public class RemotePlayer extends AbstractRemotePlayer {
     }
 
     @Override
-    public void setAtout(int color, BasePlayer firstToPlay) throws PlayerLeftExpection {
-        network.sendMessage(String.valueOf(RemoteCommand.SET_ATOUT), String.valueOf(color), String.valueOf(firstToPlay.getId()));
+    public void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) throws PlayerLeftExpection {
+        network.sendMessage(String.valueOf(RemoteCommand.SET_TRUMP), String.valueOf(color), String.valueOf(firstToPlay.getId()), String.valueOf(chosenOnFirstTurn ? 1:0));
     }
 
     @Override

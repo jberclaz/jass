@@ -1,0 +1,10 @@
+torch==2.14.1
+numpy==2.5.2
+tqdm==4.70.1
+onnx==1.23.2
+onnxscript==0.7.2
+mlflow==3.17.1
+gymnasium==1.4.0
+tyro==1.0.16
+tensorboard==2.21.0
+pytest==9.1.1
