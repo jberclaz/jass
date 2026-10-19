@@ -32,9 +32,10 @@ class JassVecEnv(gym.vector.VectorEnv):
     waiting on opponents using the same model, their next moves are computed with a single forward pass on `device`.
 
     For each game, a single model plays the 3 other players (partner included): one of the fixed opponents (the
-    supervised model by default), or, with probability 1 - fixed_opponent_fraction, one of the last pool_size
-    snapshots of the agent (add_opponent_snapshot). infos["final_info"]["episode"]["opponent"] names it: the fixed
-    opponent's group (opponent_groups), or "pool".
+    supervised model by default), or, with probability 1 - fixed_opponent_fraction, the current snapshot of the agent:
+    one of its last pool_size snapshots (add_opponent_snapshot), drawn again by next_pool_opponent. A single snapshot at
+    a time keeps the opponents' moves in a few large batches: each different model costs a forward pass per move.
+    infos["final_info"]["episode"]["opponent"] names it: the fixed opponent's group (opponent_groups), or "pool".
 
     Autoresets like SyncVectorEnv with AutoresetMode.SAME_STEP, and reports episode statistics the same way as
     RecordEpisodeStatistics does in that mode (infos["final_info"]["episode"], masked by infos["final_info"]["_episode"]),
@@ -52,6 +53,7 @@ class JassVecEnv(gym.vector.VectorEnv):
         self._fixed_opponents = [(JassEnv._load_opponent_model(path).to(self.device), group)
                                  for path, group in zip(paths, opponent_groups(paths))]
         self._pool: list[JassFormerActorCritic] = []
+        self._pool_opponent: Optional[JassFormerActorCritic] = None
         self._pool_size = pool_size
         self._fixed_opponent_fraction = fixed_opponent_fraction
         first_model = self._fixed_opponents[0][0]
@@ -124,9 +126,13 @@ class JassVecEnv(gym.vector.VectorEnv):
         return observations, rewards, terminations, truncations, infos
 
     def _choose_opponent(self) -> tuple[JassFormerActorCritic, str]:
-        if self._pool and random.random() >= self._fixed_opponent_fraction:
-            return random.choice(self._pool), "pool"
+        if self._pool_opponent is not None and random.random() >= self._fixed_opponent_fraction:
+            return self._pool_opponent, "pool"
         return random.choice(self._fixed_opponents)
+
+    def next_pool_opponent(self):
+        """Draws the snapshot of the pool that the next games play against (until the next call)."""
+        self._pool_opponent = random.choice(self._pool) if self._pool else None
 
     def add_opponent_snapshot(self, state_dict):
         """Adds a copy of the agent to the pool of opponents, replacing the oldest one when the pool is full."""

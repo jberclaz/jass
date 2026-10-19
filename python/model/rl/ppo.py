@@ -56,7 +56,8 @@ class Args:
     opponent_models: list[str] = field(default_factory=list)
     """fixed opponents: supervised (.pt) or RL (.pth) state dicts (default: --supervised-model)"""
     pool_size: int = 8
-    """number of the agent's last snapshots (one every --opponent-update-freq iterations) kept as opponents; 0 for none"""
+    """number of the agent's last snapshots (one every --opponent-update-freq iterations) kept as opponents, one of
+    them drawn for each iteration; 0 for none"""
     fixed_opponent_fraction: float = 0.5
     """share of the games against a fixed opponent, the others against a snapshot of the pool (once it has one)"""
     total_timesteps: int = 500000
@@ -208,6 +209,7 @@ if __name__ == "__main__":
     next_done = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
+        envs.next_pool_opponent()
         # During warmup, only the value head is trained. Freezing the shared backbone is required as well,
         # otherwise the value loss would still change the policy through it.
         in_warmup = global_step < args.warmup_steps

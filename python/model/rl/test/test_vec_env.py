@@ -129,13 +129,22 @@ class TestJassVecEnv(unittest.TestCase):
         self.assertEqual(envs.pool_length, 2)
         self.assertTrue(torch.equal(envs._pool[0].embedding.weight.cpu(), snapshots[1]["embedding.weight"]))
 
+        pool_models = {id(model) for model in envs._pool}
+        used_pool_models = set()
         obs, _ = envs.reset(seed=1)
         opponents = []
-        for _ in range(300):
+        for step in range(300):
+            if step % 30 == 0:
+                envs.next_pool_opponent()  # as PPO does at each iteration
+            opponent_models = set()
             for env in envs.envs:
                 # one model for the 3 other players
                 models = {id(player._strategy.model) for player in env.players[1:]}
                 self.assertEqual(len(models), 1)
+                opponent_models |= models
+            # a single snapshot at a time, plus the previous one in the games that started before the draw
+            self.assertLessEqual(len(opponent_models & pool_models), 2)
+            used_pool_models |= opponent_models & pool_models
             with torch.no_grad():
                 actions, _, _, _ = self.agent.get_action_and_value(torch.from_numpy(obs))
             obs, rewards, terminations, truncations, infos = envs.step(actions.numpy())
@@ -146,6 +155,7 @@ class TestJassVecEnv(unittest.TestCase):
         self.assertGreater(len(opponents), 100)
         self.assertEqual(set(opponents), {"random", "other", "pool"})
         self.assertAlmostEqual(opponents.count("pool") / len(opponents), 0.5, delta=0.15)
+        self.assertEqual(used_pool_models, pool_models)
 
 
 if __name__ == "__main__":
