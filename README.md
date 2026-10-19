@@ -3,25 +3,24 @@
 
 Distributed [Jass](https://en.wikipedia.org/wiki/Jass) game for the members of the FLAT(r)
 
+## How to play?
+- Install Java 21 or newer, for example [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) (Windows, macOS, Linux).
+- Download `jass-<version>.jar` from the [latest release](https://github.com/jberclaz/jass/releases/latest).
+- Launch it with `java -jar jass-<version>.jar`, or by double-clicking the file if Java is associated with `.jar` files.
+
+You can play locally against three computer players, or online with other players. To host online games, launch the server with `java -cp jass-<version>.jar com.leflat.jass.server.JassServer`; it listens on port 23107.
+
 ## How to compile?
-Make sure `JAVA_HOME` is defined. Then:
+Install a Java 21 JDK and make sure `JAVA_HOME` is defined. Then:
 
 `mvn package`
+
+The jar is created in `./target/`. The first build needs network access: Maven downloads the AI model from a GitHub release (see [The AI player](#the-ai-player-jassformer)).
 
 > [!NOTE]
 > If you experience any issue with the unit tests, you can skip them with `mvn package -DskipTests` .
 
-## How to run?
-- Compile the code as described above. You'll obtain a `.jar` file in `./target/`.
-- Launch the client with `java -jar target/jass-2.1.3-SNAPSHOT.jar`
-- Launch the server with `java -cp target/jass-2.1.3-SNAPSHOT.jar com.leflat.jass.server.JassServer`
-
-If you make the jar file executable, you can double-click on the file to launch the client.
-
-## How to run on Windows
-The game uses Java 11. Unfortunately, Oracle abandoned the JRE
-starting from version 11. You will need to install the
-[full JDK](https://www.oracle.com/java/technologies/javase-jdk14-downloads.html#license-lightbox).
+## Screenshots
 
 ### Classic UI
 ![Jass client screenshot](doc/screenjass.jpg)
@@ -150,4 +149,4 @@ More playouts don't help Monte Carlo against this model: its weakness is structu
 - Compile and test: `mvn package`
 - Compile without tests: `mvn -Dmaven.test.skip=true package`
 - Update dependencies: `mvn versions:use-latest-releases`
-- Create new release: `mvn release:prepare` and `mvn release:perform`
+- Create new release: `mvn release:prepare` and `mvn release:perform` (publishes to GitHub Packages, with a classic token having `write:packages` in `~/.m2/settings.xml`), then attach the jar to a GitHub release so users can download it
