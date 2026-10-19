@@ -39,7 +39,7 @@ The jar bundles the model as `/model/jassformer.onnx` (the default `cp:/model/ja
 
 1. Export it with its provenance, from `python/model/`:
    `python -m rl.export_checkpoint_to_onnx --rl --checkpoint <model_final.pth> --output jassformer.onnx --mlflow-run <MLflow run id>`.
-   This stores in the ONNX metadata the checkpoint (name and SHA-256), the MLflow run (id, name, experiment), the git commit it was trained from and its latest `eval/*` metrics. Java logs them when it loads the model (`Model metadata: ...`).
+   This stores in the ONNX metadata the checkpoint (name and SHA-256), the MLflow run (id, name, experiment), the git commit it was trained from and its latest `eval/*` metrics, each with the step of the checkpoint it was measured on. Java logs them when it loads the model (`Model metadata: ...`).
 2. Publish it: `gh release create jassformer-v<n> jassformer.onnx --title "JassFormer v<n>" --notes "<the run and its evaluation>"`.
 3. In `pom.xml`, update the URL, `sha256sum jassformer.onnx` and the comment saying where the model comes from, then rebuild.
 
