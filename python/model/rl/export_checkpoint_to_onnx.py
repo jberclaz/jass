@@ -27,7 +27,7 @@ def add_metadata(onnx_path: str, metadata: dict):
 def provenance(checkpoint_path: str, mlflow_run: Optional[str] = None, tracking_uri: Optional[str] = None) -> dict:
     """
     Where the model comes from: the checkpoint (name and SHA-256) and, with an MLflow run id, the run (name,
-    experiment, git commit of the training and its latest eval/* metrics).
+    experiment, git commit of the training and its latest eval/* metrics, with their step).
     """
     with open(checkpoint_path, "rb") as f:
         sha256 = hashlib.sha256(f.read()).hexdigest()
@@ -55,10 +55,19 @@ def provenance(checkpoint_path: str, mlflow_run: Optional[str] = None, tracking_
             "mlflow_tracking_uri": tracking_uri,
             "training_git_commit": tags.get("mlflow.source.git.commit", ""),
             "training_git_branch": tags.get("mlflow.source.git.branch", ""),
-            "eval_metrics": json.dumps({k: round(v, 4) for k, v in sorted(run.data.metrics.items())
-                                        if k.startswith("eval/")}),
+            "eval_metrics": json.dumps(latest_eval_metrics(client, run)),
         })
     return metadata
+
+
+def latest_eval_metrics(client, run) -> dict:
+    """The last value of each eval/* metric of the run, with the step (checkpoint) at which it was measured: the
+    evaluations do not all reach the last checkpoint."""
+    metrics = {}
+    for key in sorted(k for k in run.data.metrics if k.startswith("eval/")):
+        last = max(client.get_metric_history(run.info.run_id, key), key=lambda m: m.step)
+        metrics[key] = {"value": round(last.value, 4), "step": last.step}
+    return metrics
 
 
 class JassInferenceWrapper(nn.Module):
