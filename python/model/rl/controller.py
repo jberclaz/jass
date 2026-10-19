@@ -140,7 +140,8 @@ class Controller:
                 elif self._trick_counts[1] == 9:
                     self._scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
                     self._game_scores[1] += 200 if self._trump_suit == Suit.SPADE else 100
-                if self._single_hand:
+                # the last trick and match bonuses can also make a team win
+                if self._single_hand or any(s >= WINNING_SCORE for s in self._scores):
                     self._game_over = True
                     return
                 self._new_round()

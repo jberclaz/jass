@@ -247,4 +247,26 @@ public class ArtificialPlayerTests {
         an = player.getAnnouncements();
         assertEquals(1, an.size());
     }
+    @Test
+    public void test_long_suit_announcements() throws PlayerLeftExpection {
+        player.setPlayerInfo(otherPlayer);
+        player.setPlayerInfo(new ArtificialPlayer(3, "GC"));
+        player.setPlayerInfo(new ArtificialPlayer(0, "Mono"));
+        player.setPlayersOrder(Arrays.asList(0, 1, 2, 3));
+        player.setHand(buildHand(1, 2, 3, 4, 5, 6, 7, 8, 26));
+
+        // 6 to king of the same suit: announced as a hundred (9 to king) and three cards (6, 7, 8)
+        var otherHand = buildHand(0, 18, 19, 20, 21, 22, 23, 24, 25);
+        otherHand.sort(Comparator.comparingInt(Card::getNumber));
+        var announcements = Announcement.findAnouncements(otherHand);
+        assertEquals(List.of(Announcement.HUNDRED, Announcement.THREE_CARDS),
+                announcements.stream().map(Announcement::getType).sorted(Comparator.reverseOrder()).toList());
+
+        // the 9 is next to the three cards, but in the hundred: the player has it
+        player.setAnnouncements(otherPlayer, announcements);
+        var position = playersPosition.get(otherPlayer.getId());
+        for (int card = 18; card <= 25; card++) {
+            assertTrue(knownCardsInHands[position.getCode() - 1].contains(new Card(card)));
+        }
+    }
 }

@@ -230,6 +230,14 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             return;
         }
         var position = positionsByIds.get(player.getId());
+        // a long suit is announced as several sequences (8 cards in a row: a hundred and three cards), so the card
+        // next to a sequence can be in another one: the player then has it
+        var announcedCards = new ArrayList<Card>();
+        for (var announcement : announcements) {
+            if (announcement.getType() != Announcement.STOECK) {
+                announcedCards.addAll(Arrays.asList(announcement.getCards()));
+            }
+        }
         for (var announcement : announcements) {
             if (announcement.getType() == Announcement.STOECK) {
                 // currently we can only announce stoeck when we play the last card => by then, cards have already been played
@@ -241,7 +249,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
             if (announcement.getType() == Announcement.THREE_CARDS || announcement.getType() == Announcement.FIFTY || announcement.getType() == Announcement.HUNDRED) {
                 if (announcement.getCard().getRank() < Card.RANK_AS) {
                     int nextSuiteCard = announcement.getCard().getNumber() + 1;
-                    if (!hand.contains(new Card(nextSuiteCard))) {
+                    if (!hand.contains(new Card(nextSuiteCard)) && !announcedCards.contains(new Card(nextSuiteCard))) {
                         gameView.playerDoesNotHaveCard(position, nextSuiteCard);
                     }
                 }
@@ -251,7 +259,7 @@ public class ArtificialPlayer extends AbstractRemotePlayer implements AutoClosea
                 previousSuiteCardRank -= announcement.getType() == Announcement.THREE_CARDS ? 3 : 4;
                 if (previousSuiteCardRank >= 0) {
                     var previousSuiteCard = new Card(previousSuiteCardRank, announcement.getCard().getColor());
-                    if (!hand.contains(previousSuiteCard)) {
+                    if (!hand.contains(previousSuiteCard) && !announcedCards.contains(previousSuiteCard)) {
                         gameView.playerDoesNotHaveCard(position, previousSuiteCard);
                     }
                 }

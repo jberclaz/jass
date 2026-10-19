@@ -188,7 +188,8 @@ public class GameController extends Thread {
             waitSec(2);
         }
 
-        return plie == null;
+        // the last trick and match bonuses can also make a team win
+        return plie == null || teams[0].hasWon() || teams[1].hasWon();
     }
 
     Plie playPlie(int startingPlayer) throws PlayerLeftExpection, BrokenRuleException {
