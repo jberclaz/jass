@@ -578,5 +578,43 @@ public class ServerTests {
         assertEquals(2, game.getPlayerPosition(player3));
         assertEquals(1, game.getPlayerPosition(player4));
     }
+    /** A game where team 0 wins every trick, each worth 0 points: only the end-of-hand bonuses change the scores. */
+    private static GameController gameWonByBonuses() throws PlayerLeftExpection {
+        var game = new GameController(0) {
+            @Override
+            Plie playPlie(int startingPlayer) {
+                var owner = getTeams()[0].getPlayer(0);
+                return new Plie() {
+                    @Override
+                    public BasePlayer getOwner() { return owner; }
+
+                    @Override
+                    public int getScore() { return 0; }
+                };
+            }
+        };
+        game.setNoWait(true);
+        game.enableTeamSelection(false);
+        for (int i = 0; i < 4; i++) {
+            game.addPlayer(new MockRemotePlayer(i, "P" + i));
+        }
+        game.chooseTeam();
+        game.drawCards();
+        return game;
+    }
+
+    @Test
+    void test_bonuses_end_the_game() throws PlayerLeftExpection, BrokenRuleException {
+        // 1490: the last trick and match bonuses (at least 5 + 100) make team 0 win at the end of the hand
+        var game = gameWonByBonuses();
+        game.getTeams()[0].addScore(1490);
+        assertTrue(game.playOneHand(0));
+        assertTrue(game.getTeams()[0].hasWon());
+
+        // 1000: the game goes on
+        game = gameWonByBonuses();
+        game.getTeams()[0].addScore(1000);
+        assertFalse(game.playOneHand(0));
+    }
 }
 
