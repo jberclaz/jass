@@ -294,6 +294,19 @@ class TestPlayerBeliefs(unittest.TestCase):
         self.assertEqual(len(card_ids), 0)
         self.assertEqual(len(probs), 0)
 
+    def test_get_k_most_likely_cards_ties_like_java(self):
+        """Ties are broken by increasing card id, as GameView.getKMostProbableCards does in Java
+        (GameViewTests.test_most_probable_cards_ties pins the same values)."""
+        self._init_hand(list(range(9)))  # all the spades
+        for card_id in range(9, 36):
+            self.player._exclude_card(card_id, 0)  # opponent 0 has none of the other cards: 0.5 for the two others
+        self.player._deck_probs[30, 1] = 0.75  # and one card more likely for opponent 1
+
+        card_ids, probs = self.player._get_k_most_likely_cards(1, 4)
+
+        self.assertListEqual(card_ids.tolist(), [30, 9, 10, 11])
+        np.testing.assert_allclose(probs, [0.75, 0.5, 0.5, 0.5])
+
     # --- Test Tokenization Logic (get_state_as_tokens) ---
 
     @patch('rl.tokens.Tokens.confidence_token', return_value=999) # Mock confidence for stability

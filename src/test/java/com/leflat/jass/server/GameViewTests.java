@@ -179,4 +179,21 @@ public class GameViewTests {
         var tokens = gameView.getTransformersTokensForCardChoice();
         assertEquals(96, tokens.length);
     }
+    @Test
+    public void test_most_probable_cards_ties() throws IllegalAccessException {
+        // ties broken by increasing card id; rl/player.py must give the same cards
+        // (test_belief.py: test_get_k_most_likely_cards_ties_like_java)
+        var view = new GameView();
+        view.reset(buildHand(0, 1, 2, 3, 4, 5, 6, 7, 8));  // all the spades
+        for (int card = 9; card < 36; card++) {
+            view.playerDoesNotHaveCard(PlayerPosition.RIGHT, card);  // 0.5 for the two others
+        }
+        var unknownCards = (Map<Integer, Float[]>) unknownCardsInGameField.get(view);
+        unknownCards.get(30)[1] = 0.75f;  // one card more likely for the partner
+
+        var cards = view.getKMostProbableCards(1, 4, 0.34f);
+
+        assertEquals(List.of(30, 9, 10, 11), cards.stream().map(GameView.CardProbability::cardId).toList());
+        assertEquals(List.of(0.75f, 0.5f, 0.5f, 0.5f), cards.stream().map(GameView.CardProbability::probability).toList());
+    }
 }

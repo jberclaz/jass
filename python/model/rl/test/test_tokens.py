@@ -97,9 +97,10 @@ class TestTokenGeneration(unittest.TestCase):
         for i in range(70, 78):
             self.assertEqual(Tokens.PAD, tokens[i])
         self.assertEqual(Tokens.P_PARTNER, tokens[78])
-        self.assertEqual(Tokens.card_token(31), tokens[79])
+        # equal probabilities: increasing card ids, as in Java
+        self.assertEqual(Tokens.card_token(30), tokens[79])
         self.assertEqual(Tokens.confidence_token(1), tokens[80])
-        self.assertEqual(Tokens.card_token(30), tokens[81])
+        self.assertEqual(Tokens.card_token(31), tokens[81])
         self.assertEqual(Tokens.confidence_token(1), tokens[82])
         for i in range(83, 87):
             self.assertEqual(Tokens.PAD, tokens[i])
