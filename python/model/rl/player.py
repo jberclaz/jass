@@ -279,14 +279,16 @@ class Player:
         candidate_card_ids = np.where(player_probs > threshold)[0]
         candidate_probs = player_probs[candidate_card_ids]
 
-        # 3. Argsort: Find the indices that sort the candidate probabilities
-        sorted_candidate_indices = np.argsort(candidate_probs)
+        # 3. Sort by decreasing probability, then by increasing card id: the same order as Java's
+        # GameView.getKMostProbableCards, which the supervised data and the client use (ties are frequent: after a
+        # player fails to follow suit, the two others are at 0.5 for the whole suit)
+        sorted_candidate_indices = np.lexsort((candidate_card_ids, -candidate_probs))
 
         # 4. Determine how many to select (min of k or available candidates)
         num_to_select = min(k, len(candidate_card_ids))
 
         # 5. Final Selection: Map the top indices back to the original Card IDs and get probabilities
-        top_k_indices_in_candidates = sorted_candidate_indices[-num_to_select:][::-1]
+        top_k_indices_in_candidates = sorted_candidate_indices[:num_to_select]
 
         # FINAL RESULTS ARRAYS:
         return candidate_card_ids[top_k_indices_in_candidates], candidate_probs[top_k_indices_in_candidates]
