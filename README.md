@@ -1,7 +1,15 @@
 # jass
 ![Java CI with Maven](https://github.com/jberclaz/jass/workflows/Build/badge.svg) ![Release](https://img.shields.io/github/v/release/jberclaz/jass)
 
-Distributed [Jass](https://en.wikipedia.org/wiki/Jass) game for the members of the FLAT(r)
+The Swiss card game [Jass](https://en.wikipedia.org/wiki/Jass) (Chibre), to play alone against the computer or online with friends.
+
+![Modern UI screenshot](doc/modern_ui.png)
+
+**[Download the latest version](https://github.com/jberclaz/jass/releases/latest)** (needs Java 21, see [How to play](#how-to-play)).
+
+**The computer players are a neural network.** JassFormer, a transformer, first learned by imitating a Monte Carlo player, then improved by playing against itself (reinforcement learning). Its first version already beat the previous Monte Carlo AI by 14 points per hand, and the current one is 7.7 points per hand stronger still. See [how it was made](#the-ai-player-jassformer).
+
+Originally written for the members of the FLAT(r).
 
 ## How to play?
 - Install Java 21 or newer, for example [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) (Windows, macOS, Linux).
@@ -20,13 +28,11 @@ The jar is created in `./target/`. The first build needs network access: Maven d
 > [!NOTE]
 > If you experience any issue with the unit tests, you can skip them with `mvn package -DskipTests` .
 
-## Screenshots
+## Classic UI
 
-### Classic UI
+The client also has the original look: launch it with `java -jar jass-<version>.jar original`.
+
 ![Jass client screenshot](doc/screenjass.jpg)
-
-### Modern UI
-![Modern UI screenshot](doc/modern_ui.png)
 
 ## The AI player: JassFormer
 
