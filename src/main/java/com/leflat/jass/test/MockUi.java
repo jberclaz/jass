@@ -118,7 +118,7 @@ public class MockUi implements IJassUi {
     }
 
     @Override
-    public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
+    public void setAtout(int atout, int positionOfPlayerToChooseAtout, boolean chosenOnFirstTurn) {
 
     }
 

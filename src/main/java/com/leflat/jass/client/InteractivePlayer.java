@@ -130,7 +130,7 @@ public class InteractivePlayer extends AbstractRemotePlayer {
     @Override
     public void setTrump(int color, BasePlayer firstToPlay, boolean chosenOnFirstTurn) {
         Card.atout = color;
-        ui.setAtout(color, playersPositions.get(firstToPlay.getId()));
+        ui.setAtout(color, playersPositions.get(firstToPlay.getId()), chosenOnFirstTurn);
         if (color != Card.COLOR_NONE) {
             announcements = Announcement.findAnouncements(hand);
             hasStoeck = Announcement.findStoeck(hand);
@@ -234,6 +234,7 @@ public class InteractivePlayer extends AbstractRemotePlayer {
             sb.append(" et ").append(announcements.get(i));
         }
         ui.displayStatusMessage(sb.toString());
+        ui.setAnnouncements(playersPositions.get(player.getId()), announcements);
     }
 
     @Override

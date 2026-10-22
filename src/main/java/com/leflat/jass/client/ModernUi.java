@@ -186,7 +186,10 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public int chooseAtout(boolean allowedToPass) {
         if (allowedToPass) {
-            updatePanel(() -> gamePanel.setAtoutChooser(PlayerPosition.MYSELF));
+            updatePanel(() -> gamePanel.setTrumpChooser(PlayerPosition.MYSELF));
+        } else {
+            // our partner passed: the others only learn it once the trump is chosen
+            updatePanel(() -> gamePanel.setTrumpPassed(PlayerPosition.ACROSS));
         }
         Object[] options = new Object[allowedToPass ? 5 : 4];
         for (int i = 0; i < 4; i++) {
@@ -204,10 +207,15 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     @Override
-    public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
+    public void setAtout(int atout, int positionOfPlayerToChooseAtout, boolean chosenOnFirstTurn) {
+        var position = intToPlayerPosition(positionOfPlayerToChooseAtout);
         updatePanel(() -> {
             gamePanel.setAtoutColor(atout);
-            gamePanel.setAtoutChooser(intToPlayerPosition(positionOfPlayerToChooseAtout));
+            if (atout == Card.COLOR_NONE) {
+                gamePanel.setTrumpChooser(position);
+            } else {
+                gamePanel.setTrumpChosen(position, chosenOnFirstTurn);
+            }
         });
     }
 
@@ -286,6 +294,11 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     @Override
     public void setAnnouncementEnabled(boolean enable) {
         updatePanel(() -> gamePanel.setAnnouncementEnabled(enable));
+    }
+
+    @Override
+    public void setAnnouncements(int playerPosition, List<Announcement> announcements) {
+        updatePanel(() -> gamePanel.addAnnouncements(intToPlayerPosition(playerPosition), announcements));
     }
 
     @Override
