@@ -6,7 +6,7 @@
 - **Build only (skip test compilation too):** `mvn -Dmaven.test.skip=true package`
 - **Single test class:** `mvn test -Dtest=FunctionalTest`
 - **Update deps:** `mvn versions:use-latest-releases`
-- **Release:** `mvn release:prepare` then `mvn release:perform`
+- **Release:** `mvn release:prepare` then `mvn release:perform` (the `jass-<version>` tag pushed by `release:prepare` triggers `.github/workflows/release.yml`, which creates a draft GitHub release with the jar, to publish by hand once its notes are written)
 
 ## Architecture
 - **Java 21** Maven project (targets `release 21`), needs a full JDK (not just a JRE). CI uses Temurin JDK 21.
