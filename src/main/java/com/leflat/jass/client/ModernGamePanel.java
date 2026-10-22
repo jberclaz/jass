@@ -23,6 +23,7 @@ import static java.lang.Math.*;
  * This class implements the central canvas on the player client, including the pad where cards are played,
  * the players hands and the info area underneath the main player's cards. It also contains the logic for
  * interactive cards selection.
+ * It must only be used from the Swing thread: ModernUi runs the changes there, with runAfterAnimation.
  */
 public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
@@ -47,7 +48,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private GameMode gameMode = GameMode.IDLE;
     private final Set<Integer> drawnCards = new HashSet<>();
     private final List<Card> lastPlie = new ArrayList<>();
-    private final Map<PlayerPosition, Card> playedCards = new HashMap<>();
+    // in the order the cards were played, which is also the order of the last plie
+    private final Map<PlayerPosition, Card> playedCards = new LinkedHashMap<>();
     private final Map<PlayerPosition, Double> cardAngles = new HashMap<>();
     private int ourScore;
     private int theirScore;
@@ -56,13 +58,32 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final JButton buttonAnnounce = new JButton("Annoncer");
     private final ModernStatusPanel statusPanel = new ModernStatusPanel();
     private int hoveredCard = -1;
-    private static final float ANIMATION_DURATION_S = 0.3f;
-    private static final int ANIMATION_FRAME_RATE = 25;
+    private static final float COLLECTION_DURATION_S = 0.33f;
+    private static final float PLAY_DURATION_S = 0.2f;
+    private static final int ANIMATION_FRAME_RATE = 60;
+    // margin around the repainted cards, for their antialiased edges
+    private static final int REPAINT_MARGIN = 2;
     private final Map<PlayerPosition, Rectangle2D.Double> playedCardsPositions = new HashMap<>();
-    private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
-    private int animationFrameNumber;
+
+    // a played card moving from (x0, y0, angle0) to (x1, y1, angle1): its center relative to the carpet, in default size
+    private record CardMove(PlayerPosition position, double x0, double y0, double angle0, double x1, double y1,
+                            double angle1) {
+    }
+
+    private final List<CardMove> cardMoves = new ArrayList<>();
+    private float animationDurationS;
+    // the played cards are drawn above the hands, the collected ones under them
+    private boolean animationAboveHands;
+    private Runnable animationEnd;
+    private long animationStartNs;
     private Timer animationTimer;
-    private boolean announcementButtonPressed;
+    // where the card chosen by the player was in their hand, relative to the carpet
+    private Point2D.Double chosenCardOrigin;
+    private Card chosenCard;
+    // changes received during the animation, applied when it ends
+    private final Queue<Runnable> pendingUpdates = new ArrayDeque<>();
+    // read by the client's network thread
+    private volatile boolean announcementButtonPressed;
     private PlayerPosition atoutChooser = PlayerPosition.NONE;
     private final Random random = new Random();
 
@@ -139,16 +160,43 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         repaintPlayerArea(position);
     }
 
-    public void setPlayedCard(PlayerPosition position, Card card) {
-        while (animationTimer != null && animationTimer.isRunning()) {
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+    /**
+     * Runs a change of the panel now or, during the animation of the plie collection, when it ends, so that the
+     * changes are shown in the order they were received.
+     */
+    public void runAfterAnimation(Runnable update) {
+        if (gameMode == GameMode.ANIMATION || !pendingUpdates.isEmpty()) {
+            pendingUpdates.add(update);
+            return;
         }
+        update.run();
+    }
+
+    /** Plays a card: it moves from the player's hand to the carpet. */
+    public void setPlayedCard(PlayerPosition position, Card card) {
+        var origin = position == PlayerPosition.MYSELF && card.equals(chosenCard) ? chosenCardOrigin
+                : getHandCenter(position);
         placeCardOnCarpet(position, card);
-        repaint(toInt(getCenterArea(getRenderingDimension())));
+        var cardCenter = getPlayedCardCenter(position);
+        startAnimation(List.of(new CardMove(position, origin.x, origin.y, 0, cardCenter.x, cardCenter.y,
+                cardAngles.get(position))), PLAY_DURATION_S, true, () -> {
+        });
+    }
+
+    /** Remembers where the card the player clicked is in their hand, where it will start from when played. */
+    public void setChosenCard(Card card) {
+        var renderingArea = getRenderingDimension();
+        var hand = players.get(PlayerPosition.MYSELF).getHand();
+        int index = hand.indexOf(card);
+        if (index < 0) {
+            return;
+        }
+        var cardArea = getCardArea(index, renderingArea);
+        var centerArea = getCenterArea(renderingArea);
+        var scale = centerArea.width / DEFAULT_CENTER_WIDTH;
+        chosenCard = card;
+        chosenCardOrigin = new Point2D.Double((cardArea.getCenterX() - centerArea.x) / scale,
+                (cardArea.getCenterY() - centerArea.y) / scale);
     }
 
     public void collectPlie() {
@@ -231,7 +279,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
             return hand.get(min(cardNumber, hand.size() - 1));
-        } else {
+        } else if (gameMode == GameMode.TEAM_DRAWING) {
             var cardArea = getTeamDrawingArea(renderingArea);
             if (!cardArea.contains(x, y)) {
                 return null;
@@ -250,57 +298,91 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     public void collectCards(PlayerPosition position) {
-        Rectangle2D.Float targetArea = getPlayerAreaOriginal(position);
-        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2 - DEFAULT_CENTER_LEFT),
-                round(targetArea.y + targetArea.height / 2 - DEFAULT_CENTER_TOP));
-
-        animationFrameNumber = 0;
-        int frameDurationMs = DEBUG ? 10000 / ANIMATION_FRAME_RATE : 1000 / ANIMATION_FRAME_RATE;
-        int totalNbrSteps = DEBUG ? round(ANIMATION_DURATION_S * 10000 / frameDurationMs)
-                : round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
-
-        for (var playerPos : PlayerPosition.values()) {
-            if (playerPos == PlayerPosition.NONE) {
-                continue;
-            }
+        var target = getHandCenter(position);
+        var moves = new ArrayList<CardMove>();
+        for (var playerPos : playedCards.keySet()) {
             var cardBbox = playedCardsPositions.get(playerPos);
-            int start_x = (int) round(cardBbox.x + cardBbox.width / 2);
-            int start_y = (int) round(cardBbox.y + cardBbox.height / 2);
-            animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
-                    (animationTarget.getY() - start_y) / totalNbrSteps));
+            double angle = cardAngles.get(playerPos);
+            moves.add(new CardMove(playerPos, cardBbox.getCenterX(), cardBbox.getCenterY(), angle, target.x, target.y,
+                    angle));
         }
+        startAnimation(moves, COLLECTION_DURATION_S, false, this::collectPlie);
+    }
 
-        animationTimer = new Timer(frameDurationMs, actionEvent -> {
-            Rectangle2D.Double repaintArea = null;
-            for (var playerPos : PlayerPosition.values()) {
-                if (playerPos == PlayerPosition.NONE) {
-                    continue;
-                }
-                var cardBbox = playedCardsPositions.get(playerPos);
-                var step = animationSteps.get(playerPos);
-                // erase previous frame
-                if (repaintArea == null) {
-                    repaintArea = new Rectangle2D.Double(cardBbox.x, cardBbox.y, cardBbox.width, cardBbox.height);
-                } else {
-                    Rectangle.union(repaintArea, cardBbox, repaintArea);
-                }
-                cardBbox.x += step.x;
-                cardBbox.y += step.y;
-                Rectangle.union(repaintArea, cardBbox, repaintArea);
-            }
-            animationFrameNumber++;
-            var renderArea = getRenderingDimension();
-            var centerArea = getCenterArea(renderArea);
-            var scale = renderArea.width / DEFAULT_WIDTH;
-            repaint(new Rectangle((int) round(centerArea.x + repaintArea.x * scale), (int) round(centerArea.y + repaintArea.y * scale), (int) round(repaintArea.width * scale), (int) round(repaintArea.height * scale)));
-            if (animationFrameNumber >= totalNbrSteps) {
-                gameMode = GameMode.GAME;
-                collectPlie();
-                animationTimer.stop();
-            }
-        });
+    private void startAnimation(List<CardMove> moves, float durationS, boolean aboveHands, Runnable end) {
+        if (gameMode == GameMode.ANIMATION) {
+            // only when the panel is changed directly, without runAfterAnimation
+            completeAnimation();
+        }
+        cardMoves.clear();
+        cardMoves.addAll(moves);
+        animationDurationS = DEBUG ? durationS * 10 : durationS;
+        animationAboveHands = aboveHands;
+        animationEnd = end;
+        moveCards(0);
+        animationStartNs = System.nanoTime();
+        animationTimer = new Timer(1000 / ANIMATION_FRAME_RATE, actionEvent -> animate());
         gameMode = GameMode.ANIMATION;
         animationTimer.start();
+    }
+
+    private void animate() {
+        // from the elapsed time, so that late frames don't slow the animation down
+        double t = min(1, (System.nanoTime() - animationStartNs) / 1e9 / animationDurationS);
+        if (t < 1) {
+            moveCards(t);
+            return;
+        }
+        completeAnimation();
+        // stops if one of the changes starts a new animation
+        while (!pendingUpdates.isEmpty() && gameMode != GameMode.ANIMATION) {
+            pendingUpdates.poll().run();
+        }
+    }
+
+    private void completeAnimation() {
+        animationTimer.stop();
+        moveCards(1);
+        gameMode = GameMode.GAME;
+        animationEnd.run();
+    }
+
+    /** Moves the cards to where they are at the time t of the animation, from 0 to 1. */
+    private void moveCards(double t) {
+        // quadratic ease-out: the cards slow down as they arrive, starting at twice the average speed
+        double progress = 1 - pow(1 - t, 2);
+        // smoothstep: the cards turn slowly at first and settle at their angle as they arrive
+        double rotation = t * t * (3 - 2 * t);
+        Rectangle repaintArea = null;
+        for (var move : cardMoves) {
+            var previousArea = getPlayedCardScreenArea(playedCardsPositions.get(move.position()));
+            setPlayedCardGeometry(move.position(), move.x0() + (move.x1() - move.x0()) * progress,
+                    move.y0() + (move.y1() - move.y0()) * progress,
+                    move.angle0() + (move.angle1() - move.angle0()) * rotation);
+            var area = previousArea.union(getPlayedCardScreenArea(playedCardsPositions.get(move.position())));
+            repaintArea = repaintArea == null ? area : repaintArea.union(area);
+        }
+        if (repaintArea != null) {
+            repaint(repaintArea);
+        }
+    }
+
+    /** The middle of a player's area, relative to the carpet, in default size. */
+    private Point2D.Double getHandCenter(PlayerPosition position) {
+        Rectangle2D.Float area = getPlayerAreaOriginal(position);
+        return new Point2D.Double(area.x + area.width / 2 - DEFAULT_CENTER_LEFT,
+                area.y + area.height / 2 - DEFAULT_CENTER_TOP);
+    }
+
+    /** The screen area of a card on the carpet, whose bounding box is relative to the carpet, in default size. */
+    private Rectangle getPlayedCardScreenArea(Rectangle2D.Double cardBbox) {
+        var centerArea = getCenterArea(getRenderingDimension());
+        var scale = centerArea.width / DEFAULT_CENTER_WIDTH;
+        var area = toInt(new Rectangle2D.Float((float) (centerArea.x + cardBbox.x * scale),
+                (float) (centerArea.y + cardBbox.y * scale), (float) (cardBbox.width * scale),
+                (float) (cardBbox.height * scale)));
+        area.grow(REPAINT_MARGIN, REPAINT_MARGIN);
+        return area;
     }
 
     public void setAnnouncementEnabled(boolean enabled) {
@@ -330,11 +412,13 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     private void placeCardOnCarpet(PlayerPosition position, Card card) {
         playedCards.put(position, card);
-        var angle = toRadians(random.nextFloat() * 10 - 5f);
-        cardAngles.put(position, angle);
-
         var cardCenter = getPlayedCardCenter(position);
+        setPlayedCardGeometry(position, cardCenter.x, cardCenter.y, toRadians(random.nextFloat() * 10 - 5f));
+    }
 
+    /** Places a played card by its center, relative to the carpet in default size, and its angle. */
+    private void setPlayedCardGeometry(PlayerPosition position, double centerX, double centerY, double angle) {
+        cardAngles.put(position, angle);
         float width, height;
         if (position == PlayerPosition.MYSELF || position == PlayerPosition.ACROSS) {
             width = SwissCardImages.IMG_WIDTH * CARD_SCALE;
@@ -347,7 +431,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var abssin = abs(sin(angle));
         var rotatedWidth = width * abscos + height * abssin;
         var rotatedHeight = width * abssin + height * abscos;
-        playedCardsPositions.put(position, new Rectangle2D.Double(cardCenter.x - rotatedWidth / 2f, cardCenter.y - rotatedHeight / 2, rotatedWidth, rotatedHeight));
+        playedCardsPositions.put(position, new Rectangle2D.Double(centerX - rotatedWidth / 2, centerY - rotatedHeight / 2, rotatedWidth, rotatedHeight));
     }
 
     private void pressButtonAnnouncement(ActionEvent evt) {
@@ -674,7 +758,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
     void paintAnimation(Graphics2D g2, Rectangle2D.Float centerArea) {
         float scale = centerArea.width / DEFAULT_CENTER_WIDTH;
-        for (var playerPosition : players.keySet()) {
+        for (var playerPosition : playedCards.keySet()) {
             paintPlayedCard(g2, playerPosition, centerArea, scale);
         }
     }
@@ -724,7 +808,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             paintCenter(g2, centerArea, scale);
         }
 
-        if (gameMode == GameMode.ANIMATION) {
+        if (gameMode == GameMode.ANIMATION && !animationAboveHands) {
             paintAnimation(g2, centerArea);
         }
 
@@ -756,6 +840,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     }
                     break;
             }
+        }
+
+        if (gameMode == GameMode.ANIMATION && animationAboveHands) {
+            paintAnimation(g2, centerArea);
         }
 
         var infoArea = getInfoArea(renderingArea);
@@ -839,7 +927,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
-        return new Rectangle(round(rect.x), round(rect.y), round(rect.width), round(rect.height));
+        // rounds outwards, so that the rectangle covers every pixel the area touches
+        int x = (int) floor(rect.x);
+        int y = (int) floor(rect.y);
+        return new Rectangle(x, y, (int) ceil(rect.x + rect.width) - x, (int) ceil(rect.y + rect.height) - y);
     }
 
     Rectangle2D.Float getPlayerArea(PlayerPosition position) {
