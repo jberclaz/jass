@@ -1,5 +1,6 @@
 package com.leflat.jass.client;
 
+import com.leflat.jass.common.Announcement;
 import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.server.PlayerLeftExpection;
@@ -41,8 +42,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private static final int DEFAULT_CENTER_TOP = 120;
     private static final float ASPECT_RATIO = (float) DEFAULT_WIDTH / DEFAULT_HEIGHT;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
-    private static final int DOT_SIZE = 7;
     private static final float CARD_SCALE = (float) CardImages.IMG_HEIGHT / SwissCardImages.IMG_HEIGHT;
+    private static final Color ANNOUNCEMENT_COLOR = new Color(0, 70, 140);
+    private static final Color TRUMP_BADGE_COLOR = new Color(110, 60, 0);
+    private static final Color CROWN_COLOR = new Color(235, 180, 30);
 
     private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private GameMode gameMode = GameMode.IDLE;
@@ -84,8 +87,13 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final Queue<Runnable> pendingUpdates = new ArrayDeque<>();
     // read by the client's network thread
     private volatile boolean announcementButtonPressed;
-    private PlayerPosition atoutChooser = PlayerPosition.NONE;
+    // the trump choice, shown next to the players' names: who is choosing, then who chose and who passed
+    private PlayerPosition trumpChooser = PlayerPosition.NONE;
+    private PlayerPosition trumpMaker = PlayerPosition.NONE;
+    private PlayerPosition trumpPasser = PlayerPosition.NONE;
     private final Random random = new Random();
+    // the announcements of the hand, shown next to each player until the next hand
+    private final Map<PlayerPosition, List<Announcement>> announcements = new HashMap<>();
 
     public ModernGamePanel() {
         super();
@@ -139,6 +147,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         drawnCards.clear();
         lastPlie.clear();
         playedCards.clear();
+        announcements.clear();
+        trumpChooser = PlayerPosition.NONE;
+        trumpMaker = PlayerPosition.NONE;
+        trumpPasser = PlayerPosition.NONE;
         repaint();
     }
 
@@ -396,18 +408,39 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         return announcementButtonPressed;
     }
 
+    public void addAnnouncements(PlayerPosition position, List<Announcement> newAnnouncements) {
+        // the stoeck comes later than the other announcements: it is added to them
+        var all = new ArrayList<>(announcements.getOrDefault(position, Collections.emptyList()));
+        all.addAll(newAnnouncements);
+        announcements.put(position, all);
+        repaintPlayerArea(position);
+    }
+
     public void displayStatusMessage(String message) {
         statusPanel.displayMessage(message);
     }
 
-    public void setAtoutChooser(PlayerPosition position) {
-        if (atoutChooser != PlayerPosition.NONE) {
-            repaint(toInt(getPlayerArea(atoutChooser)));
-        }
-        atoutChooser = position;
-        if (position != PlayerPosition.NONE) {
-            repaint(toInt(getPlayerArea(position)));
-        }
+    /** The player is choosing the trump. */
+    public void setTrumpChooser(PlayerPosition position) {
+        trumpChooser = position;
+        trumpMaker = PlayerPosition.NONE;
+        repaint();
+    }
+
+    /** The player passed: their partner chooses the trump. */
+    public void setTrumpPassed(PlayerPosition position) {
+        trumpPasser = position;
+        trumpChooser = position.partner();
+        trumpMaker = PlayerPosition.NONE;
+        repaint();
+    }
+
+    /** The trump is chosen, by the player asked first or, if they passed, by their partner. */
+    public void setTrumpChosen(PlayerPosition firstPosition, boolean chosenOnFirstTurn) {
+        trumpChooser = PlayerPosition.NONE;
+        trumpMaker = chosenOnFirstTurn ? firstPosition : firstPosition.partner();
+        trumpPasser = chosenOnFirstTurn ? PlayerPosition.NONE : firstPosition;
+        repaint();
     }
 
     private void placeCardOnCarpet(PlayerPosition position, Card card) {
@@ -669,10 +702,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = playerArea.y + playerArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.MYSELF) {
-            int width = g2.getFontMetrics().stringWidth(player.getName());
-            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        float gap = g2.getFontMetrics().stringWidth("   ");
+        float x = nameX + g2.getFontMetrics().stringWidth(player.getName()) + gap;
+        float badgeWidth = getTrumpBadgeWidth(g2, PlayerPosition.MYSELF);
+        if (badgeWidth > 0) {
+            paintTrumpBadge(g2, PlayerPosition.MYSELF, x, nameY);
+            x += badgeWidth + gap;
         }
+        paintAnnouncements(g2, PlayerPosition.MYSELF, x, nameY, false, Float.MAX_VALUE);
     }
 
     void paintAcrossArea(Graphics2D g2, Rectangle2D.Float topArea, Dimension cardDimension) {
@@ -693,10 +730,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = topArea.y + topArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.ACROSS) {
-            int width = g2.getFontMetrics().stringWidth(player.getName());
-            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        float gap = g2.getFontMetrics().stringWidth("   ");
+        float x = nameX + g2.getFontMetrics().stringWidth(player.getName()) + gap;
+        float badgeWidth = getTrumpBadgeWidth(g2, PlayerPosition.ACROSS);
+        if (badgeWidth > 0) {
+            paintTrumpBadge(g2, PlayerPosition.ACROSS, x, nameY);
+            x += badgeWidth + gap;
         }
+        paintAnnouncements(g2, PlayerPosition.ACROSS, x, nameY, false, Float.MAX_VALUE);
     }
 
     void paintLeftArea(Graphics2D g2, Rectangle2D.Float leftArea, Dimension cardDimension) {
@@ -722,9 +763,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameX = leftArea.x + leftArea.width * 20f / 120f;
         float nameY = min(hand_y_offset - cardDimension.height / 10f, leftArea.y + leftArea.height / 4);
         g2.drawString(player.getName(), nameX, nameY);
-        if (atoutChooser == PlayerPosition.LEFT) {
-            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
-        }
+        paintSideTrumpBadge(g2, PlayerPosition.LEFT, player.getName(), nameX, nameY, leftArea);
+        paintAnnouncements(g2, PlayerPosition.LEFT, nameX, hand_y_offset + hand_height + g2.getFontMetrics().getHeight(),
+                true, leftArea.x + leftArea.width - 4);
     }
 
     void paintRightArea(Graphics2D g2, Rectangle2D.Float rightArea, Dimension cardDimension) {
@@ -751,9 +792,175 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = min(hand_y_offset - cardDimension.height / 10f, rightArea.y + rightArea.height / 4);
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.RIGHT) {
-            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
+        paintSideTrumpBadge(g2, PlayerPosition.RIGHT, player.getName(), nameX, nameY, rightArea);
+        paintAnnouncements(g2, PlayerPosition.RIGHT, nameX, hand_y_offset + hand_height + g2.getFontMetrics().getHeight(),
+                true, rightArea.x + rightArea.width - 4);
+    }
+
+    private float getTrumpBadgeWidth(Graphics2D g2, PlayerPosition position) {
+        var metrics = g2.getFontMetrics();
+        int iconSize = metrics.getAscent();
+        if (position == trumpMaker && atoutColor != Card.COLOR_NONE) {
+            // the crown and the suit
+            return 2 * iconSize + metrics.stringWidth(" ") / 2f;
         }
+        if (position == trumpChooser || position == trumpMaker || position == trumpPasser) {
+            return iconSize;
+        }
+        return 0;
+    }
+
+    /**
+     * Paints the trump badge of a player from (x, y), on the text baseline: an outlined crown while they choose the
+     * trump, a crown and the suit once they chose it, an arrow to their partner if they passed.
+     */
+    private void paintTrumpBadge(Graphics2D g2, PlayerPosition position, float x, float y) {
+        var metrics = g2.getFontMetrics();
+        int iconSize = metrics.getAscent();
+        float top = y - iconSize;
+        if (position == trumpChooser) {
+            paintCrown(g2, x, top, iconSize, false);
+        } else if (position == trumpMaker) {
+            paintCrown(g2, x, top, iconSize, true);
+            if (atoutColor != Card.COLOR_NONE) {
+                g2.drawImage(SwissCardImages.getColorImage(atoutColor),
+                        round(x + iconSize + metrics.stringWidth(" ") / 2f), round(top), iconSize, iconSize, this);
+            }
+        } else if (position == trumpPasser) {
+            paintArrowToPartner(g2, position, x, top, iconSize);
+        }
+    }
+
+    private void paintCrown(Graphics2D g2, float x, float y, float size, boolean filled) {
+        var crown = new java.awt.geom.Path2D.Float();
+        crown.moveTo(0, 0.85);
+        crown.lineTo(0, 0.25);
+        crown.lineTo(0.27, 0.5);
+        crown.lineTo(0.5, 0.1);
+        crown.lineTo(0.73, 0.5);
+        crown.lineTo(1, 0.25);
+        crown.lineTo(1, 0.85);
+        crown.closePath();
+        // inset by the stroke width, so that the outline stays in the icon's box
+        float stroke = max(1, size / 10);
+        var shape = AffineTransform.getTranslateInstance(x + stroke / 2, y + stroke / 2);
+        shape.scale(size - stroke, size - stroke);
+        var transformed = shape.createTransformedShape(crown);
+        var color = g2.getColor();
+        var oldStroke = g2.getStroke();
+        if (filled) {
+            g2.setColor(CROWN_COLOR);
+            g2.fill(transformed);
+        }
+        g2.setColor(TRUMP_BADGE_COLOR);
+        g2.setStroke(new BasicStroke(stroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(transformed);
+        g2.setStroke(oldStroke);
+        g2.setColor(color);
+    }
+
+    /** An arrow pointing across the table, to the partner, to whom the player passed the trump choice. */
+    private void paintArrowToPartner(Graphics2D g2, PlayerPosition position, float x, float y, float size) {
+        // pointing up, in a unit square
+        var arrow = new java.awt.geom.Path2D.Float();
+        arrow.moveTo(0.5, 0.05);
+        arrow.lineTo(0.95, 0.5);
+        arrow.lineTo(0.65, 0.5);
+        arrow.lineTo(0.65, 0.95);
+        arrow.lineTo(0.35, 0.95);
+        arrow.lineTo(0.35, 0.5);
+        arrow.lineTo(0.05, 0.5);
+        arrow.closePath();
+        double angle = switch (position) {
+            case ACROSS -> PI;
+            case LEFT -> PI / 2;
+            case RIGHT -> -PI / 2;
+            default -> 0;
+        };
+        var shape = AffineTransform.getTranslateInstance(x, y);
+        shape.scale(size, size);
+        shape.rotate(angle, 0.5, 0.5);
+        var color = g2.getColor();
+        g2.setColor(TRUMP_BADGE_COLOR);
+        g2.fill(shape.createTransformedShape(arrow));
+        g2.setColor(color);
+    }
+
+    /** The side players' badge goes after their name if it fits in their area, else on the line above it. */
+    private void paintSideTrumpBadge(Graphics2D g2, PlayerPosition position, String name, float nameX, float nameY,
+                                     Rectangle2D.Float area) {
+        float badgeWidth = getTrumpBadgeWidth(g2, position);
+        if (badgeWidth == 0) {
+            return;
+        }
+        var metrics = g2.getFontMetrics();
+        float x = nameX + metrics.stringWidth(name + "  ");
+        if (x + badgeWidth <= area.x + area.width - 4) {
+            paintTrumpBadge(g2, position, x, nameY);
+        } else {
+            paintTrumpBadge(g2, position, nameX, nameY - metrics.getHeight());
+        }
+    }
+
+    /**
+     * Paints the announcements of a player from (x, y), with the suit as an icon ("Cinquante au roi ♥"). With
+     * oneByLine, each announcement starts a new line, and words that would go past maxX wrap to the next line.
+     */
+    void paintAnnouncements(Graphics2D g2, PlayerPosition position, float x, float y, boolean oneByLine, float maxX) {
+        var playerAnnouncements = announcements.get(position);
+        if (playerAnnouncements == null) {
+            return;
+        }
+        var font = g2.getFont();
+        var color = g2.getColor();
+        g2.setFont(font.deriveFont(Font.ITALIC));
+        g2.setColor(ANNOUNCEMENT_COLOR);
+        var metrics = g2.getFontMetrics();
+        float lineHeight = metrics.getHeight();
+        int iconSize = metrics.getAscent();
+        float space = metrics.stringWidth(" ");
+        float cx = x, cy = y;
+        for (int i = 0; i < playerAnnouncements.size(); i++) {
+            var announcement = playerAnnouncements.get(i);
+            if (i > 0 && oneByLine) {
+                cx = x;
+                cy += lineHeight;
+            } else if (i > 0) {
+                cx += 3 * space;
+            }
+            var text = announcement.toString();
+            int suit = Card.COLOR_NONE;
+            if (announcement.getType() != Announcement.STOECK && announcement.getType() < Announcement.SQUARE) {
+                // "au roi de cœur": the suit is drawn as an icon
+                suit = announcement.getCard().getColor();
+                text = text.substring(0, text.length() - (" de " + Card.COLOR_NAMES[suit]).length());
+            }
+            text = text.substring(0, 1).toUpperCase() + text.substring(1);
+            var words = text.split(" ");
+            for (int w = 0; w < words.length; w++) {
+                float wordWidth = metrics.stringWidth(words[w]);
+                // the suit icon stays with the last word
+                float neededWidth = w == words.length - 1 && suit != Card.COLOR_NONE ? wordWidth + space + iconSize : wordWidth;
+                if (w > 0) {
+                    if (cx + space + neededWidth > maxX) {
+                        cx = x;
+                        cy += lineHeight;
+                    } else {
+                        cx += space;
+                    }
+                }
+                g2.drawString(words[w], cx, cy);
+                cx += wordWidth;
+            }
+            if (suit != Card.COLOR_NONE) {
+                cx += space;
+                g2.drawImage(SwissCardImages.getColorImage(suit), round(cx), round(cy - iconSize), iconSize, iconSize,
+                        this);
+                cx += iconSize;
+            }
+        }
+        g2.setFont(font);
+        g2.setColor(color);
     }
 
     void paintAnimation(Graphics2D g2, Rectangle2D.Float centerArea) {

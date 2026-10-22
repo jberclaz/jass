@@ -32,7 +32,11 @@ public interface IJassUi {
 
     int chooseAtout(boolean allowedToPass);
 
-    void setAtout(int atout, int positionOfPlayerToChooseAtout);
+    /**
+     * Before the choice, atout is COLOR_NONE and the player is the one asked to choose. After it, the player is the
+     * one who was asked first: they chose the trump, or they passed and their partner chose it.
+     */
+    void setAtout(int atout, int positionOfPlayerToChooseAtout, boolean chosenOnFirstTurn);
 
     void chooseCard(Lock lock, Condition condition);
 
@@ -57,6 +61,12 @@ public interface IJassUi {
     void canceledGame(int leavingPlayerPosition);
     
     void setAnnouncementEnabled(boolean enable);
+
+    /**
+     * The valid announcements of a player, to show until the end of the hand. The stoeck is sent on its own, later.
+     */
+    default void setAnnouncements(int playerPosition, List<Announcement> announcements) {
+    }
 
     void lostServerConnection();
 
