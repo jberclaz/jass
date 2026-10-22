@@ -298,7 +298,9 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setAnnouncements(int playerPosition, List<Announcement> announcements) {
-        updatePanel(() -> gamePanel.addAnnouncements(intToPlayerPosition(playerPosition), announcements));
+        // copied now: in a local game, this is the server's list, which it clears once sent
+        var copy = new ArrayList<>(announcements);
+        updatePanel(() -> gamePanel.addAnnouncements(intToPlayerPosition(playerPosition), copy));
     }
 
     @Override
