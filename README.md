@@ -155,4 +155,4 @@ More playouts don't help Monte Carlo against this model: its weakness is structu
 - Compile and test: `mvn package`
 - Compile without tests: `mvn -Dmaven.test.skip=true package`
 - Update dependencies: `mvn versions:use-latest-releases`
-- Create new release: `mvn release:prepare` and `mvn release:perform` (publishes to GitHub Packages, with a classic token having `write:packages` in `~/.m2/settings.xml`), then attach the jar to a GitHub release so users can download it
+- Create new release: `mvn release:prepare` and `mvn release:perform` (publishes to GitHub Packages, with a classic token having `write:packages` in `~/.m2/settings.xml`). The tag pushed by `release:prepare` makes GitHub Actions create a draft GitHub release, with the jar and the list of merged pull requests as notes. Write the notes, then publish it

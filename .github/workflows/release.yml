@@ -1,0 +1,40 @@
+# Creates the GitHub release of a version as a draft, with its jar, when `mvn release:prepare` pushes its tag.
+# Publishing it, once its notes are written, is done by hand.
+
+name: Release
+
+on:
+  push:
+    tags: [ 'jass-[0-9]*' ]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v7
+      with:
+        # the history and tags, to find the previous version
+        fetch-depth: 0
+    - name: Set up JDK 21
+      uses: actions/setup-java@v6
+      with:
+        distribution: temurin
+        java-version: 21
+        cache: maven
+    # the tests already ran in release:prepare
+    - name: Build with Maven
+      run: mvn -B package -DskipTests --file pom.xml
+    - name: Create the GitHub release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TAG: ${{ github.ref_name }}
+      # the notes start as the list of pull requests since the previous version (not since a model release)
+      run: |
+        previous=$(git describe --tags --abbrev=0 --match 'jass-[0-9]*' "$TAG^")
+        gh release create "$TAG" "target/$TAG.jar" --title "$TAG" --verify-tag --draft \
+          --generate-notes --notes-start-tag "$previous"
