@@ -180,7 +180,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void removeCardFromPlayerHand(int playerPosition) {
-        updatePanel(() -> gamePanel.removeCard(intToPlayerPosition(playerPosition)));
+        // nothing to do: setPlayedCard, called just before, already took the card out of the hand
     }
 
     @Override
@@ -226,7 +226,14 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setPlayedCard(Card card, int playerPosition) {
-        updatePanel(() -> gamePanel.setPlayedCard(intToPlayerPosition(playerPosition), card));
+        var position = intToPlayerPosition(playerPosition);
+        updatePanel(() -> {
+            // the card leaves the other players' hands as it starts moving (ours was already removed)
+            if (position != PlayerPosition.MYSELF) {
+                gamePanel.removeCard(position);
+            }
+            gamePanel.setPlayedCard(position, card);
+        });
     }
 
     @Override
@@ -336,6 +343,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             drawnCardNumber = card.getNumber();
         } else {
             playedCard = card;
+            gamePanel.setChosenCard(card);
         }
 
         assert lock != null;

@@ -26,6 +26,8 @@ public class ModernGamePanelAnimationTests {
                 panel.setHand(positions.get(i), new ArrayList<>(Collections.nCopies(5, Card.getBack())));
                 panel.setPlayedCard(positions.get(i), new Card(i * 9));
             }
+            // a played card moves to the carpet
+            assertEquals(ModernGamePanel.GameMode.ANIMATION, panel.getMode());
             panel.setSize(630, 530);
             panel.setMode(ModernGamePanel.GameMode.GAME);
             panel.setInteractive(true);
