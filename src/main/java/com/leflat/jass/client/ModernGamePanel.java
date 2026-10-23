@@ -12,6 +12,9 @@ import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
 import java.awt.image.RescaleOp;
 import java.util.List;
 import java.util.*;
@@ -44,8 +47,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
     private static final float CARD_SCALE = (float) CardImages.IMG_HEIGHT / SwissCardImages.IMG_HEIGHT;
     private static final Color ANNOUNCEMENT_COLOR = new Color(0, 70, 140);
+    private static final Color ANNOUNCEMENT_COLOR_DARK = new Color(130, 190, 255);
     private static final Color TRUMP_BADGE_COLOR = new Color(110, 60, 0);
+    private static final Color TRUMP_BADGE_COLOR_DARK = new Color(235, 165, 90);
     private static final Color CROWN_COLOR = new Color(235, 180, 30);
+    private static final Color SUIT_GLOW_COLOR_DARK = new Color(235, 235, 235);
 
     private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private GameMode gameMode = GameMode.IDLE;
@@ -92,6 +98,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private PlayerPosition trumpMaker = PlayerPosition.NONE;
     private PlayerPosition trumpPasser = PlayerPosition.NONE;
     private final Random random = new Random();
+    // the glows behind the black suits on a dark background, by suit and size
+    private final Map<Integer, BufferedImage> suitGlows = new HashMap<>();
     // the announcements of the hand, shown next to each player until the next hand
     private final Map<PlayerPosition, List<Announcement>> announcements = new HashMap<>();
 
@@ -628,10 +636,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     infoArea.y + last_plie_x);
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
             int colorSize = round(15f / 40f * infoArea.height);
-            g2.drawImage(SwissCardImages.getColorImage(atoutColor),
-                    round(infoArea.x + atout_x + stringWidth),
-                    round(infoArea.y + 8f / 40f * infoArea.height),
-                    colorSize, colorSize, this);
+            paintSuitIcon(g2, atoutColor, round(infoArea.x + atout_x + stringWidth),
+                    round(infoArea.y + 8f / 40f * infoArea.height), colorSize);
         }
         float score_label_x = 420f / 40f * infoArea.height;
         float our_score_y = 13f / 40f * infoArea.height;
@@ -823,8 +829,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         } else if (position == trumpMaker) {
             paintCrown(g2, x, top, iconSize, true);
             if (atoutColor != Card.COLOR_NONE) {
-                g2.drawImage(SwissCardImages.getColorImage(atoutColor),
-                        round(x + iconSize + metrics.stringWidth(" ") / 2f), round(top), iconSize, iconSize, this);
+                paintSuitIcon(g2, atoutColor, round(x + iconSize + metrics.stringWidth(" ") / 2f), round(top), iconSize);
             }
         } else if (position == trumpPasser) {
             paintArrowToPartner(g2, position, x, top, iconSize);
@@ -852,11 +857,63 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             g2.setColor(CROWN_COLOR);
             g2.fill(transformed);
         }
-        g2.setColor(TRUMP_BADGE_COLOR);
+        g2.setColor(getTrumpBadgeColor());
         g2.setStroke(new BasicStroke(stroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
         g2.draw(transformed);
         g2.setStroke(oldStroke);
         g2.setColor(color);
+    }
+
+    /** With a dark theme, the dark colors are hard to read on the background. */
+    private boolean isDarkBackground() {
+        var background = getBackground();
+        return 0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue() < 128;
+    }
+
+    private Color getTrumpBadgeColor() {
+        return isDarkBackground() ? TRUMP_BADGE_COLOR_DARK : TRUMP_BADGE_COLOR;
+    }
+
+    /** Paints a suit icon. On a dark background, the black suits get a light glow behind them. */
+    private void paintSuitIcon(Graphics2D g2, int suit, int x, int y, int size) {
+        if (isDarkBackground() && (suit == Card.COLOR_SPADE || suit == Card.COLOR_CLUB)) {
+            var glow = suitGlows.computeIfAbsent(suit * 10000 + size, key -> createSuitGlow(suit, size));
+            int margin = (glow.getWidth() - size) / 2;
+            g2.drawImage(glow, x - margin, y - margin, this);
+        }
+        g2.drawImage(SwissCardImages.getColorImage(suit), x, y, size, size, this);
+    }
+
+    /** The suit icon's shape in the glow color, blurred, with a margin around it for the blur. */
+    private BufferedImage createSuitGlow(int suit, int size) {
+        int radius = max(4, round(size / 2.5f));
+        // the blur leaves the borders of the image as they are: the glow needs a margin of twice its radius
+        int margin = 2 * radius;
+        int glowSize = size + 2 * margin;
+        // premultiplied: else the blur mixes in the black of the transparent pixels, and the glow turns gray
+        var shape = new BufferedImage(glowSize, glowSize, BufferedImage.TYPE_INT_ARGB_PRE);
+        var g = shape.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.drawImage(SwissCardImages.getColorImage(suit), margin, margin, size, size, null);
+        g.setComposite(AlphaComposite.SrcIn);
+        g.setColor(SUIT_GLOW_COLOR_DARK);
+        g.fillRect(0, 0, glowSize, glowSize);
+        g.dispose();
+        // gaussian blur, in two passes: horizontal, then vertical
+        float sigma = radius / 2.5f;
+        var weights = new float[2 * radius + 1];
+        float sum = 0;
+        for (int i = 0; i < weights.length; i++) {
+            weights[i] = (float) exp(-pow(i - radius, 2) / (2 * sigma * sigma));
+            sum += weights[i];
+        }
+        for (int i = 0; i < weights.length; i++) {
+            // a little stronger than a plain blur, so that the glow stays visible near the shape
+            weights[i] = weights[i] / sum * 1.4f;
+        }
+        var horizontal = new ConvolveOp(new Kernel(weights.length, 1, weights), ConvolveOp.EDGE_NO_OP, null);
+        var vertical = new ConvolveOp(new Kernel(1, weights.length, weights), ConvolveOp.EDGE_NO_OP, null);
+        return vertical.filter(horizontal.filter(shape, null), null);
     }
 
     /** An arrow pointing across the table, to the partner, to whom the player passed the trump choice. */
@@ -881,7 +938,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         shape.scale(size, size);
         shape.rotate(angle, 0.5, 0.5);
         var color = g2.getColor();
-        g2.setColor(TRUMP_BADGE_COLOR);
+        g2.setColor(getTrumpBadgeColor());
         g2.fill(shape.createTransformedShape(arrow));
         g2.setColor(color);
     }
@@ -903,7 +960,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     /**
-     * Paints the announcements of a player from (x, y), with the suit as an icon ("Cinquante au roi ♥"). With
+     * Paints the announcements of a player from (x, y), with the suit as an icon ("50 au roi ♥"). With
      * oneByLine, each announcement starts a new line, and words that would go past maxX wrap to the next line.
      */
     void paintAnnouncements(Graphics2D g2, PlayerPosition position, float x, float y, boolean oneByLine, float maxX) {
@@ -914,7 +971,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var font = g2.getFont();
         var color = g2.getColor();
         g2.setFont(font.deriveFont(Font.ITALIC));
-        g2.setColor(ANNOUNCEMENT_COLOR);
+        g2.setColor(isDarkBackground() ? ANNOUNCEMENT_COLOR_DARK : ANNOUNCEMENT_COLOR);
         var metrics = g2.getFontMetrics();
         float lineHeight = metrics.getHeight();
         int iconSize = metrics.getAscent();
@@ -929,6 +986,11 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                 cx += 3 * space;
             }
             var text = announcement.toString();
+            if (announcement.getType() >= Announcement.FIFTY) {
+                // in numbers: "50 au roi" instead of "cinquante au roi"
+                text = Announcement.VALUES[announcement.getType()]
+                        + text.substring(Announcement.NAMES[announcement.getType()].length());
+            }
             int suit = Card.COLOR_NONE;
             if (announcement.getType() != Announcement.STOECK && announcement.getType() < Announcement.SQUARE) {
                 // "au roi de cœur": the suit is drawn as an icon
@@ -954,8 +1016,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             }
             if (suit != Card.COLOR_NONE) {
                 cx += space;
-                g2.drawImage(SwissCardImages.getColorImage(suit), round(cx), round(cy - iconSize), iconSize, iconSize,
-                        this);
+                paintSuitIcon(g2, suit, round(cx), round(cy - iconSize), iconSize);
                 cx += iconSize;
             }
         }
