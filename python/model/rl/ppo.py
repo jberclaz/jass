@@ -99,6 +99,10 @@ class Args:
     """the maximum norm for the gradient clipping"""
     target_kl: Optional[float] = 0.01
     """the update stops at the first minibatch where the KL divergence from the rollout policy exceeds this (None: never)"""
+    ema_decay: Optional[float] = 0.99
+    """decay of the exponential moving average of the agent's weights, updated after each iteration (0.99: about the
+    last 100 iterations). Saved next to each checkpoint (model_iter_<n>_ema.pth) and at the end
+    (model_final_ema.pth and .onnx). The average smooths out the noise of the updates; None to disable"""
     warmup_steps: Optional[int] = None
     """number of steps (at the start) that only train the value function, the policy being frozen (default: 200k,
     0 with --init-checkpoint)"""
@@ -187,6 +191,8 @@ if __name__ == "__main__":
     else:
         JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
     agent = agent.to(device)
+    # the averaged weights only ever get evaluated: not trained, not used in the games
+    ema_state = {k: v.detach().clone() for k, v in agent.state_dict().items()} if args.ema_decay is not None else None
 
     # the value head starts from random weights: it gets its own, higher learning rate (param group 1)
     policy_params = [p for name, p in agent.named_parameters() if not name.startswith("value_head.")]
@@ -342,6 +348,14 @@ if __name__ == "__main__":
             if kl_exceeded:
                 break
 
+        if ema_state is not None:
+            with torch.no_grad():
+                for key, value in agent.state_dict().items():
+                    if value.is_floating_point():
+                        ema_state[key].lerp_(value, 1 - args.ema_decay)
+                    else:
+                        ema_state[key].copy_(value)
+
         y_pred, y_true = b_values.cpu().numpy(), b_returns.cpu().numpy()
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
@@ -410,8 +424,23 @@ if __name__ == "__main__":
             print(f"Saved {save_path}" + (", added to the pool of opponents" if args.pool_size > 0 else ""))
             if args.track and args.mlflow_log_checkpoints:
                 mlflow.log_artifact(save_path, artifact_path="checkpoints")
+            if ema_state is not None:
+                ema_path = os.path.join(run_dir, f"model_iter_{iteration}_ema.pth")
+                torch.save(ema_state, ema_path)
+                if args.track and args.mlflow_log_checkpoints:
+                    mlflow.log_artifact(ema_path, artifact_path="checkpoints")
             envs.add_opponent_snapshot(agent.state_dict())
 
+    # the average first: rl.evaluate --watch stops once model_final.pth exists
+    if ema_state is not None:
+        ema_path = os.path.join(run_dir, "model_final_ema.pth")
+        torch.save(ema_state, ema_path)
+        ema_onnx_path = os.path.join(run_dir, "model_final_ema.onnx")
+        export_rl_model_to_onnx(ema_path, ema_onnx_path, agent.embedding.embedding_dim)
+        print(f"Saved {ema_path} and {ema_onnx_path}")
+        if args.track:
+            mlflow.log_artifact(ema_path, artifact_path="checkpoints")
+            mlflow.log_artifact(ema_onnx_path)
     save_path = os.path.join(run_dir, "model_final.pth")
     torch.save(agent.state_dict(), save_path)
     onnx_path = os.path.join(run_dir, "model_final.onnx")

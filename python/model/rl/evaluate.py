@@ -43,7 +43,8 @@ class Args:
     checkpoints: tyro.conf.Positional[list[str]] = field(default_factory=list)
     """supervised (.pt) or RL (.pth) state dicts to evaluate"""
     watch: Optional[str] = None
-    """a PPO run directory (runs/<run>): evaluates each model_iter_<n>.pth as it appears, until the final model"""
+    """a PPO run directory (runs/<run>): evaluates each model_iter_<n>.pth as it appears, until the final model, and
+    the averaged weights (model_iter_<n>_ema.pth), logged as eval_ema/*"""
     hands: int = 1000
     """hands per MonteCarlo strength, each from a score of 0 - 0 (played as pairs of hands with the same deals)"""
     games: Optional[int] = None
@@ -164,10 +165,10 @@ def metric_name(model: str) -> str:
 def checkpoint_step(path: str, run_args: dict) -> Optional[int]:
     """The global_step at which PPO saved this checkpoint."""
     name = os.path.basename(path)
-    match = re.fullmatch(r"model_iter_(\d+)\.pth", name)
+    match = re.fullmatch(r"model_iter_(\d+)(_ema)?\.pth", name)
     if match:
         return int(match.group(1)) * run_args["batch_size"]
-    if name.endswith("final.pth"):
+    if name in ("model_final.pth", "model_final_ema.pth"):
         return run_args["num_iterations"] * run_args["batch_size"]
     return None
 
@@ -187,11 +188,12 @@ def watch(args: Args, jar: str):
         print(f"Logging to MLflow run {run_args['mlflow_run_id']} at {run_args['mlflow_tracking_uri']}")
     while True:
         done = evaluated_checkpoints(eval_log)
-        last_iteration = os.path.join(run_dir, f"model_iter_{run_args['num_iterations']}.pth")
+        last_iteration = os.path.join(run_dir, f"model_iter_{run_args['num_iterations']}")
         pending = [p for p in glob.glob(os.path.join(run_dir, "model_*.pth"))
                    if checkpoint_step(p, run_args) is not None and os.path.basename(p) not in done
                    # the final model is the same as the checkpoint of the last iteration, when there is one
-                   and not (p.endswith("final.pth") and os.path.exists(last_iteration))]
+                   and not (p.endswith("final.pth") and os.path.exists(last_iteration + ".pth"))
+                   and not (p.endswith("final_ema.pth") and os.path.exists(last_iteration + "_ema.pth"))]
         # the newest first: with slow evaluations, the latest model matters more than the skipped ones
         pending.sort(key=lambda p: checkpoint_step(p, run_args), reverse=True)
         if pending:
@@ -202,10 +204,11 @@ def watch(args: Args, jar: str):
             print_results(checkpoint, results)
             append_results(eval_log, os.path.basename(checkpoint), results, args.seed, step)
             metrics = {}
+            prefix = "eval_ema" if checkpoint.endswith("_ema.pth") else "eval"
             for r in results:
                 suffix = f"mc{r['strength']}" if r["strength"] is not None else metric_name(r["opponent"])
-                metrics[f"eval/points_per_{r['unit']}_{suffix}"] = r["points"]
-                metrics[f"eval/{r['unit']}_win_rate_{suffix}"] = r["win_rate"]
+                metrics[f"{prefix}/points_per_{r['unit']}_{suffix}"] = r["points"]
+                metrics[f"{prefix}/{r['unit']}_win_rate_{suffix}"] = r["win_rate"]
             for key, value in metrics.items():
                 writer.add_scalar(key, value, step)
             writer.flush()
