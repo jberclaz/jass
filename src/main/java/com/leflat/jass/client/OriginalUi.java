@@ -267,7 +267,7 @@ public class OriginalUi extends javax.swing.JFrame implements IJassUi {
     }
 
     @Override
-    public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
+    public void setAtout(int atout, int positionOfPlayerToChooseAtout, boolean chosenOnFirstTurn) {
         lastPliePanel.setAtout(atout);
         for (int i = 0; i < 4; i++) {
             var canvas = getPlayerCanvas(i);

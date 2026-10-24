@@ -1,5 +1,6 @@
 package com.leflat.jass.client;
 
+import com.leflat.jass.common.Announcement;
 import com.leflat.jass.common.BasePlayer;
 import com.leflat.jass.common.Card;
 import com.leflat.jass.server.PlayerLeftExpection;
@@ -11,6 +12,9 @@ import java.awt.event.*;
 import java.awt.geom.AffineTransform;
 import java.awt.geom.Point2D;
 import java.awt.geom.Rectangle2D;
+import java.awt.image.BufferedImage;
+import java.awt.image.ConvolveOp;
+import java.awt.image.Kernel;
 import java.awt.image.RescaleOp;
 import java.util.List;
 import java.util.*;
@@ -23,6 +27,7 @@ import static java.lang.Math.*;
  * This class implements the central canvas on the player client, including the pad where cards are played,
  * the players hands and the info area underneath the main player's cards. It also contains the logic for
  * interactive cards selection.
+ * It must only be used from the Swing thread: ModernUi runs the changes there, with runAfterAnimation.
  */
 public class ModernGamePanel extends JPanel implements MouseMotionListener {
 
@@ -40,14 +45,20 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private static final int DEFAULT_CENTER_TOP = 120;
     private static final float ASPECT_RATIO = (float) DEFAULT_WIDTH / DEFAULT_HEIGHT;
     private static final Color CARPET_COLOR = new Color(51, 102, 0);
-    private static final int DOT_SIZE = 7;
     private static final float CARD_SCALE = (float) CardImages.IMG_HEIGHT / SwissCardImages.IMG_HEIGHT;
+    private static final Color ANNOUNCEMENT_COLOR = new Color(0, 70, 140);
+    private static final Color ANNOUNCEMENT_COLOR_DARK = new Color(130, 190, 255);
+    private static final Color TRUMP_BADGE_COLOR = new Color(110, 60, 0);
+    private static final Color TRUMP_BADGE_COLOR_DARK = new Color(235, 165, 90);
+    private static final Color CROWN_COLOR = new Color(235, 180, 30);
+    private static final Color SUIT_GLOW_COLOR_DARK = new Color(235, 235, 235);
 
     private final Map<PlayerPosition, BasePlayer> players = new HashMap<>();
     private GameMode gameMode = GameMode.IDLE;
     private final Set<Integer> drawnCards = new HashSet<>();
     private final List<Card> lastPlie = new ArrayList<>();
-    private final Map<PlayerPosition, Card> playedCards = new HashMap<>();
+    // in the order the cards were played, which is also the order of the last plie
+    private final Map<PlayerPosition, Card> playedCards = new LinkedHashMap<>();
     private final Map<PlayerPosition, Double> cardAngles = new HashMap<>();
     private int ourScore;
     private int theirScore;
@@ -56,15 +67,41 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     private final JButton buttonAnnounce = new JButton("Annoncer");
     private final ModernStatusPanel statusPanel = new ModernStatusPanel();
     private int hoveredCard = -1;
-    private static final float ANIMATION_DURATION_S = 0.3f;
-    private static final int ANIMATION_FRAME_RATE = 25;
+    private static final float COLLECTION_DURATION_S = 0.33f;
+    private static final float PLAY_DURATION_S = 0.2f;
+    private static final int ANIMATION_FRAME_RATE = 60;
+    // margin around the repainted cards, for their antialiased edges
+    private static final int REPAINT_MARGIN = 2;
     private final Map<PlayerPosition, Rectangle2D.Double> playedCardsPositions = new HashMap<>();
-    private final Map<PlayerPosition, Point2D.Double> animationSteps = new HashMap<>();
-    private int animationFrameNumber;
+
+    // a played card moving from (x0, y0, angle0) to (x1, y1, angle1): its center relative to the carpet, in default size
+    private record CardMove(PlayerPosition position, double x0, double y0, double angle0, double x1, double y1,
+                            double angle1) {
+    }
+
+    private final List<CardMove> cardMoves = new ArrayList<>();
+    private float animationDurationS;
+    // the played cards are drawn above the hands, the collected ones under them
+    private boolean animationAboveHands;
+    private Runnable animationEnd;
+    private long animationStartNs;
     private Timer animationTimer;
-    private boolean announcementButtonPressed;
-    private PlayerPosition atoutChooser = PlayerPosition.NONE;
+    // where the card chosen by the player was in their hand, relative to the carpet
+    private Point2D.Double chosenCardOrigin;
+    private Card chosenCard;
+    // changes received during the animation, applied when it ends
+    private final Queue<Runnable> pendingUpdates = new ArrayDeque<>();
+    // read by the client's network thread
+    private volatile boolean announcementButtonPressed;
+    // the trump choice, shown next to the players' names: who is choosing, then who chose and who passed
+    private PlayerPosition trumpChooser = PlayerPosition.NONE;
+    private PlayerPosition trumpMaker = PlayerPosition.NONE;
+    private PlayerPosition trumpPasser = PlayerPosition.NONE;
     private final Random random = new Random();
+    // the glows behind the black suits on a dark background, by suit and size
+    private final Map<Integer, BufferedImage> suitGlows = new HashMap<>();
+    // the announcements of the hand, shown next to each player until the next hand
+    private final Map<PlayerPosition, List<Announcement>> announcements = new HashMap<>();
 
     public ModernGamePanel() {
         super();
@@ -118,6 +155,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         drawnCards.clear();
         lastPlie.clear();
         playedCards.clear();
+        announcements.clear();
+        trumpChooser = PlayerPosition.NONE;
+        trumpMaker = PlayerPosition.NONE;
+        trumpPasser = PlayerPosition.NONE;
         repaint();
     }
 
@@ -139,16 +180,43 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         repaintPlayerArea(position);
     }
 
-    public void setPlayedCard(PlayerPosition position, Card card) {
-        while (animationTimer != null && animationTimer.isRunning()) {
-            try {
-                Thread.sleep(300);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+    /**
+     * Runs a change of the panel now or, during the animation of the plie collection, when it ends, so that the
+     * changes are shown in the order they were received.
+     */
+    public void runAfterAnimation(Runnable update) {
+        if (gameMode == GameMode.ANIMATION || !pendingUpdates.isEmpty()) {
+            pendingUpdates.add(update);
+            return;
         }
+        update.run();
+    }
+
+    /** Plays a card: it moves from the player's hand to the carpet. */
+    public void setPlayedCard(PlayerPosition position, Card card) {
+        var origin = position == PlayerPosition.MYSELF && card.equals(chosenCard) ? chosenCardOrigin
+                : getHandCenter(position);
         placeCardOnCarpet(position, card);
-        repaint(toInt(getCenterArea(getRenderingDimension())));
+        var cardCenter = getPlayedCardCenter(position);
+        startAnimation(List.of(new CardMove(position, origin.x, origin.y, 0, cardCenter.x, cardCenter.y,
+                cardAngles.get(position))), PLAY_DURATION_S, true, () -> {
+        });
+    }
+
+    /** Remembers where the card the player clicked is in their hand, where it will start from when played. */
+    public void setChosenCard(Card card) {
+        var renderingArea = getRenderingDimension();
+        var hand = players.get(PlayerPosition.MYSELF).getHand();
+        int index = hand.indexOf(card);
+        if (index < 0) {
+            return;
+        }
+        var cardArea = getCardArea(index, renderingArea);
+        var centerArea = getCenterArea(renderingArea);
+        var scale = centerArea.width / DEFAULT_CENTER_WIDTH;
+        chosenCard = card;
+        chosenCardOrigin = new Point2D.Double((cardArea.getCenterX() - centerArea.x) / scale,
+                (cardArea.getCenterY() - centerArea.y) / scale);
     }
 
     public void collectPlie() {
@@ -231,7 +299,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             float card_x_step = hand.size() < 2 ? 0 : (handArea.width - cardDimension.width) / (float) (hand.size() - 1);
             int cardNumber = (int) floor((x - handArea.x) / card_x_step);
             return hand.get(min(cardNumber, hand.size() - 1));
-        } else {
+        } else if (gameMode == GameMode.TEAM_DRAWING) {
             var cardArea = getTeamDrawingArea(renderingArea);
             if (!cardArea.contains(x, y)) {
                 return null;
@@ -250,57 +318,91 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     public void collectCards(PlayerPosition position) {
-        Rectangle2D.Float targetArea = getPlayerAreaOriginal(position);
-        Point2D.Float animationTarget = new Point2D.Float(round(targetArea.x + targetArea.width / 2 - DEFAULT_CENTER_LEFT),
-                round(targetArea.y + targetArea.height / 2 - DEFAULT_CENTER_TOP));
-
-        animationFrameNumber = 0;
-        int frameDurationMs = DEBUG ? 10000 / ANIMATION_FRAME_RATE : 1000 / ANIMATION_FRAME_RATE;
-        int totalNbrSteps = DEBUG ? round(ANIMATION_DURATION_S * 10000 / frameDurationMs)
-                : round(ANIMATION_DURATION_S * 1000 / frameDurationMs);
-
-        for (var playerPos : PlayerPosition.values()) {
-            if (playerPos == PlayerPosition.NONE) {
-                continue;
-            }
+        var target = getHandCenter(position);
+        var moves = new ArrayList<CardMove>();
+        for (var playerPos : playedCards.keySet()) {
             var cardBbox = playedCardsPositions.get(playerPos);
-            int start_x = (int) round(cardBbox.x + cardBbox.width / 2);
-            int start_y = (int) round(cardBbox.y + cardBbox.height / 2);
-            animationSteps.put(playerPos, new Point2D.Double((animationTarget.getX() - start_x) / totalNbrSteps,
-                    (animationTarget.getY() - start_y) / totalNbrSteps));
+            double angle = cardAngles.get(playerPos);
+            moves.add(new CardMove(playerPos, cardBbox.getCenterX(), cardBbox.getCenterY(), angle, target.x, target.y,
+                    angle));
         }
+        startAnimation(moves, COLLECTION_DURATION_S, false, this::collectPlie);
+    }
 
-        animationTimer = new Timer(frameDurationMs, actionEvent -> {
-            Rectangle2D.Double repaintArea = null;
-            for (var playerPos : PlayerPosition.values()) {
-                if (playerPos == PlayerPosition.NONE) {
-                    continue;
-                }
-                var cardBbox = playedCardsPositions.get(playerPos);
-                var step = animationSteps.get(playerPos);
-                // erase previous frame
-                if (repaintArea == null) {
-                    repaintArea = new Rectangle2D.Double(cardBbox.x, cardBbox.y, cardBbox.width, cardBbox.height);
-                } else {
-                    Rectangle.union(repaintArea, cardBbox, repaintArea);
-                }
-                cardBbox.x += step.x;
-                cardBbox.y += step.y;
-                Rectangle.union(repaintArea, cardBbox, repaintArea);
-            }
-            animationFrameNumber++;
-            var renderArea = getRenderingDimension();
-            var centerArea = getCenterArea(renderArea);
-            var scale = renderArea.width / DEFAULT_WIDTH;
-            repaint(new Rectangle((int) round(centerArea.x + repaintArea.x * scale), (int) round(centerArea.y + repaintArea.y * scale), (int) round(repaintArea.width * scale), (int) round(repaintArea.height * scale)));
-            if (animationFrameNumber >= totalNbrSteps) {
-                gameMode = GameMode.GAME;
-                collectPlie();
-                animationTimer.stop();
-            }
-        });
+    private void startAnimation(List<CardMove> moves, float durationS, boolean aboveHands, Runnable end) {
+        if (gameMode == GameMode.ANIMATION) {
+            // only when the panel is changed directly, without runAfterAnimation
+            completeAnimation();
+        }
+        cardMoves.clear();
+        cardMoves.addAll(moves);
+        animationDurationS = DEBUG ? durationS * 10 : durationS;
+        animationAboveHands = aboveHands;
+        animationEnd = end;
+        moveCards(0);
+        animationStartNs = System.nanoTime();
+        animationTimer = new Timer(1000 / ANIMATION_FRAME_RATE, actionEvent -> animate());
         gameMode = GameMode.ANIMATION;
         animationTimer.start();
+    }
+
+    private void animate() {
+        // from the elapsed time, so that late frames don't slow the animation down
+        double t = min(1, (System.nanoTime() - animationStartNs) / 1e9 / animationDurationS);
+        if (t < 1) {
+            moveCards(t);
+            return;
+        }
+        completeAnimation();
+        // stops if one of the changes starts a new animation
+        while (!pendingUpdates.isEmpty() && gameMode != GameMode.ANIMATION) {
+            pendingUpdates.poll().run();
+        }
+    }
+
+    private void completeAnimation() {
+        animationTimer.stop();
+        moveCards(1);
+        gameMode = GameMode.GAME;
+        animationEnd.run();
+    }
+
+    /** Moves the cards to where they are at the time t of the animation, from 0 to 1. */
+    private void moveCards(double t) {
+        // quadratic ease-out: the cards slow down as they arrive, starting at twice the average speed
+        double progress = 1 - pow(1 - t, 2);
+        // smoothstep: the cards turn slowly at first and settle at their angle as they arrive
+        double rotation = t * t * (3 - 2 * t);
+        Rectangle repaintArea = null;
+        for (var move : cardMoves) {
+            var previousArea = getPlayedCardScreenArea(playedCardsPositions.get(move.position()));
+            setPlayedCardGeometry(move.position(), move.x0() + (move.x1() - move.x0()) * progress,
+                    move.y0() + (move.y1() - move.y0()) * progress,
+                    move.angle0() + (move.angle1() - move.angle0()) * rotation);
+            var area = previousArea.union(getPlayedCardScreenArea(playedCardsPositions.get(move.position())));
+            repaintArea = repaintArea == null ? area : repaintArea.union(area);
+        }
+        if (repaintArea != null) {
+            repaint(repaintArea);
+        }
+    }
+
+    /** The middle of a player's area, relative to the carpet, in default size. */
+    private Point2D.Double getHandCenter(PlayerPosition position) {
+        Rectangle2D.Float area = getPlayerAreaOriginal(position);
+        return new Point2D.Double(area.x + area.width / 2 - DEFAULT_CENTER_LEFT,
+                area.y + area.height / 2 - DEFAULT_CENTER_TOP);
+    }
+
+    /** The screen area of a card on the carpet, whose bounding box is relative to the carpet, in default size. */
+    private Rectangle getPlayedCardScreenArea(Rectangle2D.Double cardBbox) {
+        var centerArea = getCenterArea(getRenderingDimension());
+        var scale = centerArea.width / DEFAULT_CENTER_WIDTH;
+        var area = toInt(new Rectangle2D.Float((float) (centerArea.x + cardBbox.x * scale),
+                (float) (centerArea.y + cardBbox.y * scale), (float) (cardBbox.width * scale),
+                (float) (cardBbox.height * scale)));
+        area.grow(REPAINT_MARGIN, REPAINT_MARGIN);
+        return area;
     }
 
     public void setAnnouncementEnabled(boolean enabled) {
@@ -314,27 +416,50 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         return announcementButtonPressed;
     }
 
+    public void addAnnouncements(PlayerPosition position, List<Announcement> newAnnouncements) {
+        // the stoeck comes later than the other announcements: it is added to them
+        var all = new ArrayList<>(announcements.getOrDefault(position, Collections.emptyList()));
+        all.addAll(newAnnouncements);
+        announcements.put(position, all);
+        repaintPlayerArea(position);
+    }
+
     public void displayStatusMessage(String message) {
         statusPanel.displayMessage(message);
     }
 
-    public void setAtoutChooser(PlayerPosition position) {
-        if (atoutChooser != PlayerPosition.NONE) {
-            repaint(toInt(getPlayerArea(atoutChooser)));
-        }
-        atoutChooser = position;
-        if (position != PlayerPosition.NONE) {
-            repaint(toInt(getPlayerArea(position)));
-        }
+    /** The player is choosing the trump. */
+    public void setTrumpChooser(PlayerPosition position) {
+        trumpChooser = position;
+        trumpMaker = PlayerPosition.NONE;
+        repaint();
+    }
+
+    /** The player passed: their partner chooses the trump. */
+    public void setTrumpPassed(PlayerPosition position) {
+        trumpPasser = position;
+        trumpChooser = position.partner();
+        trumpMaker = PlayerPosition.NONE;
+        repaint();
+    }
+
+    /** The trump is chosen, by the player asked first or, if they passed, by their partner. */
+    public void setTrumpChosen(PlayerPosition firstPosition, boolean chosenOnFirstTurn) {
+        trumpChooser = PlayerPosition.NONE;
+        trumpMaker = chosenOnFirstTurn ? firstPosition : firstPosition.partner();
+        trumpPasser = chosenOnFirstTurn ? PlayerPosition.NONE : firstPosition;
+        repaint();
     }
 
     private void placeCardOnCarpet(PlayerPosition position, Card card) {
         playedCards.put(position, card);
-        var angle = toRadians(random.nextFloat() * 10 - 5f);
-        cardAngles.put(position, angle);
-
         var cardCenter = getPlayedCardCenter(position);
+        setPlayedCardGeometry(position, cardCenter.x, cardCenter.y, toRadians(random.nextFloat() * 10 - 5f));
+    }
 
+    /** Places a played card by its center, relative to the carpet in default size, and its angle. */
+    private void setPlayedCardGeometry(PlayerPosition position, double centerX, double centerY, double angle) {
+        cardAngles.put(position, angle);
         float width, height;
         if (position == PlayerPosition.MYSELF || position == PlayerPosition.ACROSS) {
             width = SwissCardImages.IMG_WIDTH * CARD_SCALE;
@@ -347,7 +472,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         var abssin = abs(sin(angle));
         var rotatedWidth = width * abscos + height * abssin;
         var rotatedHeight = width * abssin + height * abscos;
-        playedCardsPositions.put(position, new Rectangle2D.Double(cardCenter.x - rotatedWidth / 2f, cardCenter.y - rotatedHeight / 2, rotatedWidth, rotatedHeight));
+        playedCardsPositions.put(position, new Rectangle2D.Double(centerX - rotatedWidth / 2, centerY - rotatedHeight / 2, rotatedWidth, rotatedHeight));
     }
 
     private void pressButtonAnnouncement(ActionEvent evt) {
@@ -511,10 +636,8 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     infoArea.y + last_plie_x);
             int stringWidth = g2.getFontMetrics().stringWidth("Atout:  ");
             int colorSize = round(15f / 40f * infoArea.height);
-            g2.drawImage(SwissCardImages.getColorImage(atoutColor),
-                    round(infoArea.x + atout_x + stringWidth),
-                    round(infoArea.y + 8f / 40f * infoArea.height),
-                    colorSize, colorSize, this);
+            paintSuitIcon(g2, atoutColor, round(infoArea.x + atout_x + stringWidth),
+                    round(infoArea.y + 8f / 40f * infoArea.height), colorSize);
         }
         float score_label_x = 420f / 40f * infoArea.height;
         float our_score_y = 13f / 40f * infoArea.height;
@@ -585,10 +708,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = playerArea.y + playerArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.MYSELF) {
-            int width = g2.getFontMetrics().stringWidth(player.getName());
-            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        float gap = g2.getFontMetrics().stringWidth("   ");
+        float x = nameX + g2.getFontMetrics().stringWidth(player.getName()) + gap;
+        float badgeWidth = getTrumpBadgeWidth(g2, PlayerPosition.MYSELF);
+        if (badgeWidth > 0) {
+            paintTrumpBadge(g2, PlayerPosition.MYSELF, x, nameY);
+            x += badgeWidth + gap;
         }
+        paintAnnouncements(g2, PlayerPosition.MYSELF, x, nameY, false, Float.MAX_VALUE);
     }
 
     void paintAcrossArea(Graphics2D g2, Rectangle2D.Float topArea, Dimension cardDimension) {
@@ -609,10 +736,14 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = topArea.y + topArea.height * 15f / 120f;
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.ACROSS) {
-            int width = g2.getFontMetrics().stringWidth(player.getName());
-            g2.fillOval(round(nameX + 8 + width), round(nameY - 8), DOT_SIZE, DOT_SIZE);
+        float gap = g2.getFontMetrics().stringWidth("   ");
+        float x = nameX + g2.getFontMetrics().stringWidth(player.getName()) + gap;
+        float badgeWidth = getTrumpBadgeWidth(g2, PlayerPosition.ACROSS);
+        if (badgeWidth > 0) {
+            paintTrumpBadge(g2, PlayerPosition.ACROSS, x, nameY);
+            x += badgeWidth + gap;
         }
+        paintAnnouncements(g2, PlayerPosition.ACROSS, x, nameY, false, Float.MAX_VALUE);
     }
 
     void paintLeftArea(Graphics2D g2, Rectangle2D.Float leftArea, Dimension cardDimension) {
@@ -638,9 +769,9 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameX = leftArea.x + leftArea.width * 20f / 120f;
         float nameY = min(hand_y_offset - cardDimension.height / 10f, leftArea.y + leftArea.height / 4);
         g2.drawString(player.getName(), nameX, nameY);
-        if (atoutChooser == PlayerPosition.LEFT) {
-            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
-        }
+        paintSideTrumpBadge(g2, PlayerPosition.LEFT, player.getName(), nameX, nameY, leftArea);
+        paintAnnouncements(g2, PlayerPosition.LEFT, nameX, hand_y_offset + hand_height + g2.getFontMetrics().getHeight(),
+                true, leftArea.x + leftArea.width - 4);
     }
 
     void paintRightArea(Graphics2D g2, Rectangle2D.Float rightArea, Dimension cardDimension) {
@@ -667,14 +798,235 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
         float nameY = min(hand_y_offset - cardDimension.height / 10f, rightArea.y + rightArea.height / 4);
         g2.drawString(player.getName(), nameX, nameY);
 
-        if (atoutChooser == PlayerPosition.RIGHT) {
-            g2.fillOval(round(nameX), round(nameY + 7), DOT_SIZE, DOT_SIZE);
+        paintSideTrumpBadge(g2, PlayerPosition.RIGHT, player.getName(), nameX, nameY, rightArea);
+        paintAnnouncements(g2, PlayerPosition.RIGHT, nameX, hand_y_offset + hand_height + g2.getFontMetrics().getHeight(),
+                true, rightArea.x + rightArea.width - 4);
+    }
+
+    private float getTrumpBadgeWidth(Graphics2D g2, PlayerPosition position) {
+        var metrics = g2.getFontMetrics();
+        int iconSize = metrics.getAscent();
+        if (position == trumpMaker && atoutColor != Card.COLOR_NONE) {
+            // the crown and the suit
+            return 2 * iconSize + metrics.stringWidth(" ") / 2f;
         }
+        if (position == trumpChooser || position == trumpMaker || position == trumpPasser) {
+            return iconSize;
+        }
+        return 0;
+    }
+
+    /**
+     * Paints the trump badge of a player from (x, y), on the text baseline: an outlined crown while they choose the
+     * trump, a crown and the suit once they chose it, an arrow to their partner if they passed.
+     */
+    private void paintTrumpBadge(Graphics2D g2, PlayerPosition position, float x, float y) {
+        var metrics = g2.getFontMetrics();
+        int iconSize = metrics.getAscent();
+        float top = y - iconSize;
+        if (position == trumpChooser) {
+            paintCrown(g2, x, top, iconSize, false);
+        } else if (position == trumpMaker) {
+            paintCrown(g2, x, top, iconSize, true);
+            if (atoutColor != Card.COLOR_NONE) {
+                paintSuitIcon(g2, atoutColor, round(x + iconSize + metrics.stringWidth(" ") / 2f), round(top), iconSize);
+            }
+        } else if (position == trumpPasser) {
+            paintArrowToPartner(g2, position, x, top, iconSize);
+        }
+    }
+
+    private void paintCrown(Graphics2D g2, float x, float y, float size, boolean filled) {
+        var crown = new java.awt.geom.Path2D.Float();
+        crown.moveTo(0, 0.85);
+        crown.lineTo(0, 0.25);
+        crown.lineTo(0.27, 0.5);
+        crown.lineTo(0.5, 0.1);
+        crown.lineTo(0.73, 0.5);
+        crown.lineTo(1, 0.25);
+        crown.lineTo(1, 0.85);
+        crown.closePath();
+        // inset by the stroke width, so that the outline stays in the icon's box
+        float stroke = max(1, size / 10);
+        var shape = AffineTransform.getTranslateInstance(x + stroke / 2, y + stroke / 2);
+        shape.scale(size - stroke, size - stroke);
+        var transformed = shape.createTransformedShape(crown);
+        var color = g2.getColor();
+        var oldStroke = g2.getStroke();
+        if (filled) {
+            g2.setColor(CROWN_COLOR);
+            g2.fill(transformed);
+        }
+        g2.setColor(getTrumpBadgeColor());
+        g2.setStroke(new BasicStroke(stroke, BasicStroke.CAP_ROUND, BasicStroke.JOIN_ROUND));
+        g2.draw(transformed);
+        g2.setStroke(oldStroke);
+        g2.setColor(color);
+    }
+
+    /** With a dark theme, the dark colors are hard to read on the background. */
+    private boolean isDarkBackground() {
+        var background = getBackground();
+        return 0.299 * background.getRed() + 0.587 * background.getGreen() + 0.114 * background.getBlue() < 128;
+    }
+
+    private Color getTrumpBadgeColor() {
+        return isDarkBackground() ? TRUMP_BADGE_COLOR_DARK : TRUMP_BADGE_COLOR;
+    }
+
+    /** Paints a suit icon. On a dark background, the black suits get a light glow behind them. */
+    private void paintSuitIcon(Graphics2D g2, int suit, int x, int y, int size) {
+        if (isDarkBackground() && (suit == Card.COLOR_SPADE || suit == Card.COLOR_CLUB)) {
+            var glow = suitGlows.computeIfAbsent(suit * 10000 + size, key -> createSuitGlow(suit, size));
+            int margin = (glow.getWidth() - size) / 2;
+            g2.drawImage(glow, x - margin, y - margin, this);
+        }
+        g2.drawImage(SwissCardImages.getColorImage(suit), x, y, size, size, this);
+    }
+
+    /** The suit icon's shape in the glow color, blurred, with a margin around it for the blur. */
+    private BufferedImage createSuitGlow(int suit, int size) {
+        int radius = max(4, round(size / 2.5f));
+        // the blur leaves the borders of the image as they are: the glow needs a margin of twice its radius
+        int margin = 2 * radius;
+        int glowSize = size + 2 * margin;
+        // premultiplied: else the blur mixes in the black of the transparent pixels, and the glow turns gray
+        var shape = new BufferedImage(glowSize, glowSize, BufferedImage.TYPE_INT_ARGB_PRE);
+        var g = shape.createGraphics();
+        g.setRenderingHint(RenderingHints.KEY_INTERPOLATION, RenderingHints.VALUE_INTERPOLATION_BICUBIC);
+        g.drawImage(SwissCardImages.getColorImage(suit), margin, margin, size, size, null);
+        g.setComposite(AlphaComposite.SrcIn);
+        g.setColor(SUIT_GLOW_COLOR_DARK);
+        g.fillRect(0, 0, glowSize, glowSize);
+        g.dispose();
+        // gaussian blur, in two passes: horizontal, then vertical
+        float sigma = radius / 2.5f;
+        var weights = new float[2 * radius + 1];
+        float sum = 0;
+        for (int i = 0; i < weights.length; i++) {
+            weights[i] = (float) exp(-pow(i - radius, 2) / (2 * sigma * sigma));
+            sum += weights[i];
+        }
+        for (int i = 0; i < weights.length; i++) {
+            // a little stronger than a plain blur, so that the glow stays visible near the shape
+            weights[i] = weights[i] / sum * 1.4f;
+        }
+        var horizontal = new ConvolveOp(new Kernel(weights.length, 1, weights), ConvolveOp.EDGE_NO_OP, null);
+        var vertical = new ConvolveOp(new Kernel(1, weights.length, weights), ConvolveOp.EDGE_NO_OP, null);
+        return vertical.filter(horizontal.filter(shape, null), null);
+    }
+
+    /** An arrow pointing across the table, to the partner, to whom the player passed the trump choice. */
+    private void paintArrowToPartner(Graphics2D g2, PlayerPosition position, float x, float y, float size) {
+        // pointing up, in a unit square
+        var arrow = new java.awt.geom.Path2D.Float();
+        arrow.moveTo(0.5, 0.05);
+        arrow.lineTo(0.95, 0.5);
+        arrow.lineTo(0.65, 0.5);
+        arrow.lineTo(0.65, 0.95);
+        arrow.lineTo(0.35, 0.95);
+        arrow.lineTo(0.35, 0.5);
+        arrow.lineTo(0.05, 0.5);
+        arrow.closePath();
+        double angle = switch (position) {
+            case ACROSS -> PI;
+            case LEFT -> PI / 2;
+            case RIGHT -> -PI / 2;
+            default -> 0;
+        };
+        var shape = AffineTransform.getTranslateInstance(x, y);
+        shape.scale(size, size);
+        shape.rotate(angle, 0.5, 0.5);
+        var color = g2.getColor();
+        g2.setColor(getTrumpBadgeColor());
+        g2.fill(shape.createTransformedShape(arrow));
+        g2.setColor(color);
+    }
+
+    /** The side players' badge goes after their name if it fits in their area, else on the line above it. */
+    private void paintSideTrumpBadge(Graphics2D g2, PlayerPosition position, String name, float nameX, float nameY,
+                                     Rectangle2D.Float area) {
+        float badgeWidth = getTrumpBadgeWidth(g2, position);
+        if (badgeWidth == 0) {
+            return;
+        }
+        var metrics = g2.getFontMetrics();
+        float x = nameX + metrics.stringWidth(name + "  ");
+        if (x + badgeWidth <= area.x + area.width - 4) {
+            paintTrumpBadge(g2, position, x, nameY);
+        } else {
+            paintTrumpBadge(g2, position, nameX, nameY - metrics.getHeight());
+        }
+    }
+
+    /**
+     * Paints the announcements of a player from (x, y), with the suit as an icon ("50 au roi ♥"). With
+     * oneByLine, each announcement starts a new line, and words that would go past maxX wrap to the next line.
+     */
+    void paintAnnouncements(Graphics2D g2, PlayerPosition position, float x, float y, boolean oneByLine, float maxX) {
+        var playerAnnouncements = announcements.get(position);
+        if (playerAnnouncements == null) {
+            return;
+        }
+        var font = g2.getFont();
+        var color = g2.getColor();
+        g2.setFont(font.deriveFont(Font.ITALIC));
+        g2.setColor(isDarkBackground() ? ANNOUNCEMENT_COLOR_DARK : ANNOUNCEMENT_COLOR);
+        var metrics = g2.getFontMetrics();
+        float lineHeight = metrics.getHeight();
+        int iconSize = metrics.getAscent();
+        float space = metrics.stringWidth(" ");
+        float cx = x, cy = y;
+        for (int i = 0; i < playerAnnouncements.size(); i++) {
+            var announcement = playerAnnouncements.get(i);
+            if (i > 0 && oneByLine) {
+                cx = x;
+                cy += lineHeight;
+            } else if (i > 0) {
+                cx += 3 * space;
+            }
+            var text = announcement.toString();
+            if (announcement.getType() >= Announcement.FIFTY) {
+                // in numbers: "50 au roi" instead of "cinquante au roi"
+                text = Announcement.VALUES[announcement.getType()]
+                        + text.substring(Announcement.NAMES[announcement.getType()].length());
+            }
+            int suit = Card.COLOR_NONE;
+            if (announcement.getType() != Announcement.STOECK && announcement.getType() < Announcement.SQUARE) {
+                // "au roi de cœur": the suit is drawn as an icon
+                suit = announcement.getCard().getColor();
+                text = text.substring(0, text.length() - (" de " + Card.COLOR_NAMES[suit]).length());
+            }
+            text = text.substring(0, 1).toUpperCase() + text.substring(1);
+            var words = text.split(" ");
+            for (int w = 0; w < words.length; w++) {
+                float wordWidth = metrics.stringWidth(words[w]);
+                // the suit icon stays with the last word
+                float neededWidth = w == words.length - 1 && suit != Card.COLOR_NONE ? wordWidth + space + iconSize : wordWidth;
+                if (w > 0) {
+                    if (cx + space + neededWidth > maxX) {
+                        cx = x;
+                        cy += lineHeight;
+                    } else {
+                        cx += space;
+                    }
+                }
+                g2.drawString(words[w], cx, cy);
+                cx += wordWidth;
+            }
+            if (suit != Card.COLOR_NONE) {
+                cx += space;
+                paintSuitIcon(g2, suit, round(cx), round(cy - iconSize), iconSize);
+                cx += iconSize;
+            }
+        }
+        g2.setFont(font);
+        g2.setColor(color);
     }
 
     void paintAnimation(Graphics2D g2, Rectangle2D.Float centerArea) {
         float scale = centerArea.width / DEFAULT_CENTER_WIDTH;
-        for (var playerPosition : players.keySet()) {
+        for (var playerPosition : playedCards.keySet()) {
             paintPlayedCard(g2, playerPosition, centerArea, scale);
         }
     }
@@ -724,7 +1076,7 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
             paintCenter(g2, centerArea, scale);
         }
 
-        if (gameMode == GameMode.ANIMATION) {
+        if (gameMode == GameMode.ANIMATION && !animationAboveHands) {
             paintAnimation(g2, centerArea);
         }
 
@@ -756,6 +1108,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
                     }
                     break;
             }
+        }
+
+        if (gameMode == GameMode.ANIMATION && animationAboveHands) {
+            paintAnimation(g2, centerArea);
         }
 
         var infoArea = getInfoArea(renderingArea);
@@ -839,7 +1195,10 @@ public class ModernGamePanel extends JPanel implements MouseMotionListener {
     }
 
     Rectangle toInt(Rectangle2D.Float rect) {
-        return new Rectangle(round(rect.x), round(rect.y), round(rect.width), round(rect.height));
+        // rounds outwards, so that the rectangle covers every pixel the area touches
+        int x = (int) floor(rect.x);
+        int y = (int) floor(rect.y);
+        return new Rectangle(x, y, (int) ceil(rect.x + rect.width) - x, (int) ceil(rect.y + rect.height) - y);
     }
 
     Rectangle2D.Float getPlayerArea(PlayerPosition position) {

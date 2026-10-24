@@ -57,9 +57,17 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
     }
 
+    /**
+     * Changes the game panel on the Swing thread (the UI is called from the client's network thread), after the
+     * animation in progress if any.
+     */
+    private void updatePanel(Runnable update) {
+        SwingUtilities.invokeLater(() -> gamePanel.runAfterAnimation(update));
+    }
+
     @Override
     public void setPlayer(BasePlayer player, int relativePosition) {
-        gamePanel.setPlayer(intToPlayerPosition(relativePosition), player);
+        updatePanel(() -> gamePanel.setPlayer(intToPlayerPosition(relativePosition), player));
     }
 
     @Override
@@ -120,15 +128,17 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void prepareTeamDrawing() {
-        gamePanel.clearCards();
-        gamePanel.setMode(ModernGamePanel.GameMode.TEAM_DRAWING);
+        updatePanel(() -> {
+            gamePanel.clearCards();
+            gamePanel.setMode(ModernGamePanel.GameMode.TEAM_DRAWING);
+        });
     }
 
     @Override
     public void drawCard(Lock lock, Condition condition) {
-        gamePanel.setInteractive(true);
         this.lock = lock;
         this.condition = condition;
+        updatePanel(() -> gamePanel.setInteractive(true));
     }
 
     @Override
@@ -138,7 +148,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setDrawnCard(int playerPosition, int cardPosition, Card card) throws IndexOutOfBoundsException {
-        gamePanel.drawCard(cardPosition, card, intToPlayerPosition(playerPosition));
+        updatePanel(() -> gamePanel.drawCard(cardPosition, card, intToPlayerPosition(playerPosition)));
     }
 
     @Override
@@ -154,25 +164,32 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setPlayerHand(List<Card> hand) {
-        gamePanel.setHand(PlayerPosition.MYSELF, hand);
+        // copied now: the player changes its hand before the panel is updated
+        var cards = new ArrayList<>(hand);
+        updatePanel(() -> gamePanel.setHand(PlayerPosition.MYSELF, cards));
     }
 
     @Override
     public void setOtherPlayersHands(int numberOfCards) {
-        gamePanel.setHand(PlayerPosition.LEFT, Collections.nCopies(numberOfCards, Card.getBack()));
-        gamePanel.setHand(PlayerPosition.RIGHT, Collections.nCopies(numberOfCards, Card.getBack()));
-        gamePanel.setHand(PlayerPosition.ACROSS, Collections.nCopies(numberOfCards, Card.getBack()));
+        updatePanel(() -> {
+            gamePanel.setHand(PlayerPosition.LEFT, Collections.nCopies(numberOfCards, Card.getBack()));
+            gamePanel.setHand(PlayerPosition.RIGHT, Collections.nCopies(numberOfCards, Card.getBack()));
+            gamePanel.setHand(PlayerPosition.ACROSS, Collections.nCopies(numberOfCards, Card.getBack()));
+        });
     }
 
     @Override
     public void removeCardFromPlayerHand(int playerPosition) {
-        gamePanel.removeCard(intToPlayerPosition(playerPosition));
+        // nothing to do: setPlayedCard, called just before, already took the card out of the hand
     }
 
     @Override
     public int chooseAtout(boolean allowedToPass) {
         if (allowedToPass) {
-            gamePanel.setAtoutChooser(PlayerPosition.MYSELF);
+            updatePanel(() -> gamePanel.setTrumpChooser(PlayerPosition.MYSELF));
+        } else {
+            // our partner passed: the others only learn it once the trump is chosen
+            updatePanel(() -> gamePanel.setTrumpPassed(PlayerPosition.ACROSS));
         }
         Object[] options = new Object[allowedToPass ? 5 : 4];
         for (int i = 0; i < 4; i++) {
@@ -190,16 +207,24 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
     }
 
     @Override
-    public void setAtout(int atout, int positionOfPlayerToChooseAtout) {
-        gamePanel.setAtoutColor(atout);
-        gamePanel.setAtoutChooser(intToPlayerPosition(positionOfPlayerToChooseAtout));
+    public void setAtout(int atout, int positionOfPlayerToChooseAtout, boolean chosenOnFirstTurn) {
+        var position = intToPlayerPosition(positionOfPlayerToChooseAtout);
+        updatePanel(() -> {
+            gamePanel.setAtoutColor(atout);
+            if (atout == Card.COLOR_NONE) {
+                gamePanel.setTrumpChooser(position);
+            } else {
+                gamePanel.setTrumpChosen(position, chosenOnFirstTurn);
+            }
+        });
     }
 
     @Override
     public void chooseCard(Lock lock, Condition condition) {
         this.lock = lock;
         this.condition = condition;
-        gamePanel.setInteractive(true);
+        // after the animation in progress: no card can be chosen during it
+        updatePanel(() -> gamePanel.setInteractive(true));
     }
 
     @Override
@@ -209,23 +234,32 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setPlayedCard(Card card, int playerPosition) {
-        gamePanel.setPlayedCard(intToPlayerPosition(playerPosition), card);
+        var position = intToPlayerPosition(playerPosition);
+        updatePanel(() -> {
+            // the card leaves the other players' hands as it starts moving (ours was already removed)
+            if (position != PlayerPosition.MYSELF) {
+                gamePanel.removeCard(position);
+            }
+            gamePanel.setPlayedCard(position, card);
+        });
     }
 
     @Override
     public void prepareGame() {
-        gamePanel.clearCards();
-        gamePanel.setMode(ModernGamePanel.GameMode.GAME);
+        updatePanel(() -> {
+            gamePanel.clearCards();
+            gamePanel.setMode(ModernGamePanel.GameMode.GAME);
+        });
     }
 
     @Override
     public void collectPlie(int playerPosition) {
-        gamePanel.collectCards(intToPlayerPosition(playerPosition));
+        updatePanel(() -> gamePanel.collectCards(intToPlayerPosition(playerPosition)));
     }
 
     @Override
     public void setScore(int ourScore, int opponentScore) {
-        gamePanel.setScores(ourScore, opponentScore);
+        updatePanel(() -> gamePanel.setScores(ourScore, opponentScore));
     }
 
     @Override
@@ -235,7 +269,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void displayStatusMessage(String message) {
-        gamePanel.displayStatusMessage(message);
+        updatePanel(() -> gamePanel.displayStatusMessage(message));
     }
 
     @Override
@@ -259,7 +293,14 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
 
     @Override
     public void setAnnouncementEnabled(boolean enable) {
-        gamePanel.setAnnouncementEnabled(enable);
+        updatePanel(() -> gamePanel.setAnnouncementEnabled(enable));
+    }
+
+    @Override
+    public void setAnnouncements(int playerPosition, List<Announcement> announcements) {
+        // copied now: in a local game, this is the server's list, which it clears once sent
+        var copy = new ArrayList<>(announcements);
+        updatePanel(() -> gamePanel.addAnnouncements(intToPlayerPosition(playerPosition), copy));
     }
 
     @Override
@@ -317,6 +358,7 @@ public class ModernUi extends JFrame implements IJassUi, MouseListener {
             drawnCardNumber = card.getNumber();
         } else {
             playedCard = card;
+            gamePanel.setChosenCard(card);
         }
 
         assert lock != null;

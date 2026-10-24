@@ -1,33 +1,38 @@
 # jass
 ![Java CI with Maven](https://github.com/jberclaz/jass/workflows/Build/badge.svg) ![Release](https://img.shields.io/github/v/release/jberclaz/jass)
 
-Distributed [Jass](https://en.wikipedia.org/wiki/Jass) game for the members of the FLAT(r)
+The Swiss card game [Jass](https://en.wikipedia.org/wiki/Jass) (Chibre), to play alone against the computer or online with friends.
+
+![Modern UI screenshot](doc/modern_ui.png)
+
+**[Download the latest version](https://github.com/jberclaz/jass/releases/latest)** (needs Java 21, see [How to play](#how-to-play)).
+
+**The computer players are a neural network.** JassFormer, a transformer, first learned by imitating a Monte Carlo player, then improved by playing against itself (reinforcement learning). Its first version already beat the previous Monte Carlo AI by 14 points per hand, and the current one is 7.7 points per hand stronger still. See [how it was made](#the-ai-player-jassformer).
+
+Originally written for the members of the FLAT(r).
+
+## How to play?
+- Install Java 21 or newer, for example [Eclipse Temurin](https://adoptium.net/temurin/releases/?version=21) (Windows, macOS, Linux).
+- Download `jass-<version>.jar` from the [latest release](https://github.com/jberclaz/jass/releases/latest).
+- Launch it with `java -jar jass-<version>.jar`, or by double-clicking the file if Java is associated with `.jar` files.
+
+You can play locally against three computer players, or online with other players. To host online games, launch the server with `java -cp jass-<version>.jar com.leflat.jass.server.JassServer`; it listens on port 23107.
 
 ## How to compile?
-Make sure `JAVA_HOME` is defined. Then:
+Install a Java 21 JDK and make sure `JAVA_HOME` is defined. Then:
 
 `mvn package`
+
+The jar is created in `./target/`. The first build needs network access: Maven downloads the AI model from a GitHub release (see [The AI player](#the-ai-player-jassformer)).
 
 > [!NOTE]
 > If you experience any issue with the unit tests, you can skip them with `mvn package -DskipTests` .
 
-## How to run?
-- Compile the code as described above. You'll obtain a `.jar` file in `./target/`.
-- Launch the client with `java -jar target/jass-2.1.3-SNAPSHOT.jar`
-- Launch the server with `java -cp target/jass-2.1.3-SNAPSHOT.jar com.leflat.jass.server.JassServer`
+## Classic UI
 
-If you make the jar file executable, you can double-click on the file to launch the client.
+The client also has the original look: launch it with `java -jar jass-<version>.jar original`.
 
-## How to run on Windows
-The game uses Java 11. Unfortunately, Oracle abandoned the JRE
-starting from version 11. You will need to install the
-[full JDK](https://www.oracle.com/java/technologies/javase-jdk14-downloads.html#license-lightbox).
-
-### Classic UI
 ![Jass client screenshot](doc/screenjass.jpg)
-
-### Modern UI
-![Modern UI screenshot](doc/modern_ui.png)
 
 ## The AI player: JassFormer
 
@@ -150,4 +155,4 @@ More playouts don't help Monte Carlo against this model: its weakness is structu
 - Compile and test: `mvn package`
 - Compile without tests: `mvn -Dmaven.test.skip=true package`
 - Update dependencies: `mvn versions:use-latest-releases`
-- Create new release: `mvn release:prepare` and `mvn release:perform`
+- Create new release: `mvn release:prepare` and `mvn release:perform` (publishes to GitHub Packages, with a classic token having `write:packages` in `~/.m2/settings.xml`). The tag pushed by `release:prepare` makes GitHub Actions create a draft GitHub release, with the jar and the list of merged pull requests as notes. Write the notes, then publish it
