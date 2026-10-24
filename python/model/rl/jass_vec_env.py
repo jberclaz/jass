@@ -8,7 +8,7 @@ import torch
 from gymnasium.vector import AutoresetMode
 from gymnasium.vector.utils import batch_space
 
-from model import JassFormerActorCritic
+from model import JassFormerActorCritic, CRITIC_TOKEN_LENGTH
 from rl.jass_env import JassEnv
 from rl.rl_agent import RLAgent
 
@@ -36,6 +36,12 @@ class JassVecEnv(gym.vector.VectorEnv):
     one of its last pool_size snapshots (add_opponent_snapshot), drawn again by next_pool_opponent. A single snapshot at
     a time keeps the opponents' moves in a few large batches: each different model costs a forward pass per move.
     infos["final_info"]["episode"]["opponent"] names it: the fixed opponent's group (opponent_groups), or "pool".
+    With probability mixed_seat_fraction, each of the 3 seats is drawn on its own among the same models instead (the
+    agent then also plays with a partner that is not one of its opponents), named "mixed".
+
+    With critic_observations, infos["critic_obs"] holds the critic's observation of each game (JassEnv.critic_observation),
+    matching the returned observations. The seats' models are identified by their index among the fixed opponents,
+    and the pool's snapshots by the number of fixed opponents.
 
     Autoresets like SyncVectorEnv with AutoresetMode.SAME_STEP, and reports episode statistics the same way as
     RecordEpisodeStatistics does in that mode (infos["final_info"]["episode"], masked by infos["final_info"]["_episode"]),
@@ -46,7 +52,8 @@ class JassVecEnv(gym.vector.VectorEnv):
 
     def __init__(self, num_envs: int, device: torch.device | str = "cpu", supervised_model_path: Optional[str] = None,
                  hand_episodes: bool = False, opponent_model_paths: Optional[list[str]] = None, pool_size: int = 8,
-                 fixed_opponent_fraction: float = 0.5):
+                 fixed_opponent_fraction: float = 0.5, mixed_seat_fraction: float = 0.0,
+                 critic_observations: bool = False):
         self.device = torch.device(device)
         # the models are shared by all the games
         paths = opponent_model_paths or [supervised_model_path]
@@ -56,6 +63,8 @@ class JassVecEnv(gym.vector.VectorEnv):
         self._pool_opponent: Optional[JassFormerActorCritic] = None
         self._pool_size = pool_size
         self._fixed_opponent_fraction = fixed_opponent_fraction
+        self._mixed_seat_fraction = mixed_seat_fraction
+        self._critic_observations = critic_observations
         first_model = self._fixed_opponents[0][0]
         self.envs = [JassEnv(teacher_model=first_model, student_model=first_model, hand_episodes=hand_episodes)
                      for _ in range(num_envs)]
@@ -78,7 +87,8 @@ class JassVecEnv(gym.vector.VectorEnv):
         self._play_opponents(range(self.num_envs))
         self._episode_returns[:] = 0
         self._episode_lengths[:] = 0
-        return np.stack([env.agent_observation() for env in self.envs]), {}
+        observations = np.stack([env.agent_observation() for env in self.envs])
+        return observations, self._critic_infos(observations)
 
     def step(self, actions):
         for env, action in zip(self.envs, actions):
@@ -123,12 +133,25 @@ class JassVecEnv(gym.vector.VectorEnv):
             self._episode_returns[finished] = 0
             self._episode_lengths[finished] = 0
 
-        return observations, rewards, terminations, truncations, infos
+        return observations, rewards, terminations, truncations, infos | self._critic_infos(observations)
 
-    def _choose_opponent(self) -> tuple[JassFormerActorCritic, str]:
+    def _critic_infos(self, observations: np.ndarray) -> dict:
+        if not self._critic_observations:
+            return {}
+        return {"critic_obs": np.stack([env.critic_observation(obs) for env, obs in zip(self.envs, observations)])}
+
+    def _choose_opponent(self) -> tuple[list[tuple[JassFormerActorCritic, int]], str]:
+        """The (model, model id) of players 1, 2 and 3, and the name of the opponent group."""
+        pool_id = len(self._fixed_opponents)
+        candidates = [(model, i) for i, (model, _) in enumerate(self._fixed_opponents)]
+        if self._pool_opponent is not None:
+            candidates.append((self._pool_opponent, pool_id))
+        if random.random() < self._mixed_seat_fraction:
+            return [random.choice(candidates) for _ in range(3)], "mixed"
         if self._pool_opponent is not None and random.random() >= self._fixed_opponent_fraction:
-            return self._pool_opponent, "pool"
-        return random.choice(self._fixed_opponents)
+            return [(self._pool_opponent, pool_id)] * 3, "pool"
+        i = random.randrange(len(self._fixed_opponents))
+        return [(self._fixed_opponents[i][0], i)] * 3, self._fixed_opponents[i][1]
 
     def next_pool_opponent(self):
         """Draws the snapshot of the pool that the next games play against (until the next call)."""
@@ -143,6 +166,10 @@ class JassVecEnv(gym.vector.VectorEnv):
         model.load_state_dict(state_dict)
         self._pool.append(model.to(self.device).eval())
         del self._pool[:-self._pool_size]
+
+    @property
+    def single_critic_observation_shape(self) -> tuple[int, ...]:
+        return (CRITIC_TOKEN_LENGTH,)
 
     @property
     def fixed_opponent_groups(self) -> list[str]:

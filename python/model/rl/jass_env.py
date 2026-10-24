@@ -7,10 +7,12 @@ from gymnasium import spaces
 
 # Import your core game logic classes
 from rl.controller import Controller
-from model import JassFormerActorCritic
+from model import (JassFormerActorCritic, CRITIC_TOKEN_LENGTH, CRITIC_HAND_SLOTS, CRITIC_SEATS,
+                   seat_model_token)
 from rl.player import Player
 from rl.rl_agent import RLAgent
 from rl.strategy import Strategy, RandomStrategy, HeuristicStrategy
+from rl.tokens import Tokens
 
 logger = logging.getLogger(__name__)
 
@@ -47,10 +49,11 @@ class JassEnv(gym.Env):
             student_model = self._load_opponent_model(supervised_model_path)
         self._teacher_model = teacher_model
         self._student_model = student_model
-        # if set, called at the start of each game: (model, group) of the 3 other players, partner included; else
-        # each seat is drawn on its own (randomize_players)
-        self.opponent_chooser: Optional[Callable[[], Tuple[JassFormerActorCritic, str]]] = None
+        # if set, called at the start of each game: ([(model, model id) of players 1, 2 and 3], group); else each
+        # seat is drawn on its own (randomize_players). The model ids identify the seats' models for the critic.
+        self.opponent_chooser: Optional[Callable[[], Tuple[List[Tuple[JassFormerActorCritic, int]], str]]] = None
         self.opponent_group: Optional[str] = None
+        self.seat_model_ids: List[int] = [0] * CRITIC_SEATS
 
         self.players = None
 
@@ -162,6 +165,24 @@ class JassEnv(gym.Env):
     def agent_observation(self) -> np.ndarray:
         return self._controller.get_current_observation(0)
 
+    def critic_observation(self, agent_observation: np.ndarray) -> np.ndarray:
+        """
+        The agent's observation, then what only the critic sees: the cards in the hands of players 1, 2 and 3 (the
+        agent's right opponent, partner and left opponent), and the model of each of them. All zeros with an all-zero
+        agent observation (the end of an episode).
+        """
+        tokens = np.zeros(CRITIC_TOKEN_LENGTH, dtype=np.int64)
+        if not agent_observation.any():
+            return tokens
+        tokens[:len(agent_observation)] = agent_observation
+        offset = len(agent_observation)
+        for player in range(1, 4):
+            hand = sorted(card.number for card in self.players[player]._hand)
+            tokens[offset:offset + len(hand)] = [Tokens.card_token(card) for card in hand]
+            offset += CRITIC_HAND_SLOTS
+        tokens[offset:offset + CRITIC_SEATS] = [seat_model_token(model_id) for model_id in self.seat_model_ids]
+        return tokens
+
     def finish_step(self) -> Tuple[np.ndarray, float, bool, bool, Dict]:
         """Computes the result of the agent's last action, once it is the agent's turn again (or the game is over)."""
         reward = 0
@@ -231,8 +252,9 @@ class JassEnv(gym.Env):
 
     def randomize_players(self) -> list[Player]:
         if self.opponent_chooser is not None:
-            model, self.opponent_group = self.opponent_chooser()
-            return [Player(Strategy())] + [Player(RLAgent(model, name=self.opponent_group)) for _ in range(3)]
+            seats, self.opponent_group = self.opponent_chooser()
+            self.seat_model_ids = [model_id for _, model_id in seats]
+            return [Player(Strategy())] + [Player(RLAgent(model, name=self.opponent_group)) for model, _ in seats]
         weights = [0.95, 0.05, 0, 0]
         model_pool = [
             (self._teacher_model, "teacher"),

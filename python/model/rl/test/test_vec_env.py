@@ -9,7 +9,9 @@ import numpy as np
 import torch
 
 import rl.jass_env
-from model import JassFormer, JassFormerActorCritic
+from dataset import TOKEN_LENGTH, VOCABULARY_SIZE
+from model import (JassFormer, JassFormerActorCritic, JassCritic, CRITIC_HAND_SLOTS, CRITIC_TOKEN_LENGTH, MAX_SEAT_MODELS,
+                   seat_model_token)
 from rl.jass_env import JassEnv
 from rl.jass_rules import Card
 from rl.jass_vec_env import JassVecEnv
@@ -156,6 +158,78 @@ class TestJassVecEnv(unittest.TestCase):
         self.assertEqual(set(opponents), {"random", "other", "pool"})
         self.assertAlmostEqual(opponents.count("pool") / len(opponents), 0.5, delta=0.15)
         self.assertEqual(used_pool_models, pool_models)
+
+
+    def test_mixed_seats(self):
+        num_envs = 8
+        other = os.path.join(self._tmp_dir.name, "other.pth")
+        torch.save(JassFormer(d_model=256).state_dict(), other)
+        envs = JassVecEnv(num_envs, hand_episodes=True, opponent_model_paths=[rl.jass_env.JASSFORMER_MODEL_PATH, other],
+                          pool_size=1, fixed_opponent_fraction=0.5, mixed_seat_fraction=0.5)
+        envs.add_opponent_snapshot(JassFormerActorCritic(d_model=256).state_dict())
+        envs.next_pool_opponent()
+        models_by_id = {0: envs._fixed_opponents[0][0], 1: envs._fixed_opponents[1][0], 2: envs._pool[0]}
+        obs, _ = envs.reset(seed=1)
+        groups, mixed_with_different_models = [], 0
+        for _ in range(300):
+            for env in envs.envs:
+                models = [player._strategy.model for player in env.players[1:]]
+                # the model ids name the models that play the seats
+                self.assertEqual([models_by_id[i] for i in env.seat_model_ids], models)
+                if env.opponent_group != "mixed":
+                    self.assertEqual(len({id(m) for m in models}), 1)
+                elif len({id(m) for m in models}) > 1:
+                    mixed_with_different_models += 1
+            with torch.no_grad():
+                actions, _, _, _ = self.agent.get_action_and_value(torch.from_numpy(obs))
+            obs, rewards, terminations, truncations, infos = envs.step(actions.numpy())
+            if "final_info" in infos:
+                final_info = infos["final_info"]
+                groups += final_info["episode"]["opponent"][final_info["_episode"]].tolist()
+        envs.close()
+        self.assertEqual(set(groups), {"random", "other", "pool", "mixed"})
+        self.assertAlmostEqual(groups.count("mixed") / len(groups), 0.5, delta=0.15)
+        self.assertGreater(mixed_with_different_models, 0)
+
+    def test_critic_observations(self):
+        num_envs = 4
+        envs = JassVecEnv(num_envs, hand_episodes=True, critic_observations=True)
+        obs, infos = envs.reset(seed=1)
+        finished = 0
+        for _ in range(100):
+            critic_obs = infos["critic_obs"]
+            self.assertEqual(critic_obs.shape, (num_envs,) + envs.single_critic_observation_shape)
+            for i, env in enumerate(envs.envs):
+                # the agent's tokens, then the hands of players 1, 2 and 3, then their models
+                np.testing.assert_array_equal(critic_obs[i, :TOKEN_LENGTH], obs[i])
+                for seat in range(3):
+                    start = TOKEN_LENGTH + seat * CRITIC_HAND_SLOTS
+                    hand = sorted(card.number for card in env.players[seat + 1]._hand)
+                    slots = critic_obs[i, start:start + CRITIC_HAND_SLOTS]
+                    self.assertEqual(slots[:len(hand)].tolist(), [Tokens.card_token(c) for c in hand])
+                    self.assertTrue(np.all(slots[len(hand):] == Tokens.PAD))
+                self.assertEqual(critic_obs[i, -3:].tolist(), [seat_model_token(0)] * 3)
+            with torch.no_grad():
+                actions, _, _, _ = self.agent.get_action_and_value(torch.from_numpy(obs))
+            obs, rewards, terminations, truncations, infos = envs.step(actions.numpy())
+            # after an autoreset, the observations are the first ones of the next hand: so are the critic's
+            finished += int(terminations.sum())
+        envs.close()
+        self.assertGreater(finished, 0)
+
+    def test_critic_starts_from_the_agent(self):
+        agent = JassFormerActorCritic(d_model=256)
+        critic = JassCritic(d_model=256)
+        critic.init_from_actor_critic(agent)
+        self.assertTrue(torch.equal(critic.embedding.weight[:VOCABULARY_SIZE], agent.embedding.weight))
+        self.assertTrue(torch.equal(critic.pos_embedding[:, :TOKEN_LENGTH], agent.pos_embedding))
+        self.assertTrue(torch.equal(critic.value_head.weight, agent.value_head.weight))
+        for name, param in agent.transformer.state_dict().items():
+            self.assertTrue(torch.equal(critic.transformer.state_dict()[name], param), name)
+        tokens = torch.zeros((2, CRITIC_TOKEN_LENGTH), dtype=torch.int64)
+        tokens[:, 0] = Tokens.CLS
+        tokens[:, -3:] = seat_model_token(MAX_SEAT_MODELS - 1)
+        self.assertEqual(critic(tokens).shape, (2,))
 
 
 if __name__ == "__main__":

@@ -38,6 +38,57 @@ class JassFormer(nn.Module):
         return F.log_softmax(logits, dim=-1), F.log_softmax(trump_logits, dim=-1)
 
 
+# the critic sees the agent's tokens, then the other players' hands and the models that play them
+CRITIC_HAND_SLOTS = 9
+CRITIC_SEATS = 3  # the agent's right opponent, partner and left opponent (players 1, 2 and 3)
+CRITIC_TOKEN_LENGTH = TOKEN_LENGTH + CRITIC_SEATS * CRITIC_HAND_SLOTS + CRITIC_SEATS
+# the models of the seats are tokens after the game's vocabulary
+MAX_SEAT_MODELS = 32
+CRITIC_VOCABULARY_SIZE = VOCABULARY_SIZE + MAX_SEAT_MODELS
+
+
+def seat_model_token(model_id: int) -> int:
+    assert 0 <= model_id < MAX_SEAT_MODELS
+    return VOCABULARY_SIZE + model_id
+
+
+class JassCritic(nn.Module):
+    """
+    Privileged critic: estimates the value of a state from the agent's tokens plus what the agent cannot see, the
+    cards of the other players and which model plays each of them. Most of a hand's result comes from the cards dealt;
+    seeing them, the critic can tell the luck of the deal from the quality of the agent's moves, which makes the
+    advantages much less noisy. It is only used for training: the policy, and what gets exported, never see these
+    tokens.
+    """
+
+    def __init__(self, d_model=256, nhead=8, num_layers=6):
+        super().__init__()
+        self.embedding = nn.Embedding(CRITIC_VOCABULARY_SIZE, d_model, padding_idx=0)
+        self.pos_embedding = nn.Parameter(torch.randn(1, CRITIC_TOKEN_LENGTH, d_model) * 0.02)
+        encoder_layer = nn.TransformerEncoderLayer(
+            d_model=d_model, nhead=nhead, dim_feedforward=4*d_model, dropout=0.0, activation="gelu", batch_first=True
+        )
+        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=num_layers)
+        self.value_head = nn.Linear(d_model, 1)
+
+    def forward(self, tokens):
+        x = self.embedding(tokens) + self.pos_embedding
+        x = self.transformer(x)
+        return self.value_head(x[:, 0]).squeeze(-1)
+
+    def init_from_actor_critic(self, agent: "JassFormerActorCritic"):
+        """
+        Starts from the agent's transformer and value head: the critic first reads the game like the agent does, and
+        only has to learn what the new tokens (the hidden hands and the seats' models) add. Needs the same number of
+        layers as the agent.
+        """
+        with torch.no_grad():
+            self.embedding.weight[:VOCABULARY_SIZE].copy_(agent.embedding.weight)
+            self.pos_embedding[:, :TOKEN_LENGTH].copy_(agent.pos_embedding)
+            self.transformer.load_state_dict(agent.transformer.state_dict())
+            self.value_head.load_state_dict(agent.value_head.state_dict())
+
+
 class JassFormerActorCritic(nn.Module):
     # dropout defaults to 0: with dropout, the log-probs computed during rollout and during the PPO update
     # use different masks, which makes the importance ratio noisy

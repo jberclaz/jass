@@ -17,7 +17,7 @@ import torch.optim as optim
 import tyro
 from torch.utils.tensorboard import SummaryWriter
 
-from model import JassFormerActorCritic
+from model import JassFormerActorCritic, JassCritic
 from rl.export_checkpoint_to_onnx import export_rl_model_to_onnx
 from rl.jass_env import JASSFORMER_MODEL_PATH
 from rl.jass_vec_env import JassVecEnv
@@ -60,6 +60,17 @@ class Args:
     them drawn for each iteration; 0 for none"""
     fixed_opponent_fraction: float = 0.5
     """share of the games against a fixed opponent, the others against a snapshot of the pool (once it has one)"""
+    mixed_seat_fraction: float = 0.0
+    """share of the games where each of the 3 other seats (partner included) is drawn on its own among the fixed
+    opponents and the pool's snapshot, instead of one model playing all 3"""
+    privileged_critic: bool = False
+    """estimate the values with a separate critic (JassCritic) that also sees the other players' cards and which model
+    plays each of them, instead of the agent's value head. Only used for training"""
+    critic_layers: int = 6
+    """number of transformer layers of the privileged critic. With the agent's number (6), it starts from the agent's
+    transformer and value head (without --init-critic)"""
+    init_critic: Optional[str] = None
+    """privileged critic (critic_*.pth of a previous run) to continue from; the warmup then defaults to 0"""
     total_timesteps: int = 500000
     """total timesteps of the experiments"""
     learning_rate: float = 3e-5
@@ -105,7 +116,7 @@ class Args:
     (model_final_ema.pth and .onnx). The average smooths out the noise of the updates; None to disable"""
     warmup_steps: Optional[int] = None
     """number of steps (at the start) that only train the value function, the policy being frozen (default: 200k,
-    0 with --init-checkpoint)"""
+    0 with --init-checkpoint, unless it starts a new privileged critic)"""
 
     # to be filled in runtime
     batch_size: int = 0
@@ -134,7 +145,8 @@ if __name__ == "__main__":
     if args.gamma is None:
         args.gamma = 1.0 if args.hand_episodes else 0.99
     if args.warmup_steps is None:
-        args.warmup_steps = 0 if args.init_checkpoint else 200_000
+        new_critic = args.init_critic is None if args.privileged_critic else args.init_checkpoint is None
+        args.warmup_steps = 200_000 if new_critic else 0
     run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__{int(time.time())}"
     run_dir = f"runs/{run_name}"
     run_info = {}
@@ -178,7 +190,8 @@ if __name__ == "__main__":
     # all the games run in lockstep, with the opponents' moves batched on the training device
     envs = JassVecEnv(args.num_envs, device, args.supervised_model, hand_episodes=args.hand_episodes,
                       opponent_model_paths=args.opponent_models, pool_size=args.pool_size,
-                      fixed_opponent_fraction=args.fixed_opponent_fraction)
+                      fixed_opponent_fraction=args.fixed_opponent_fraction,
+                      mixed_seat_fraction=args.mixed_seat_fraction, critic_observations=args.privileged_critic)
     assert isinstance(envs.single_action_space, gym.spaces.Discrete), "only discrete action space is supported"
     print(f"Fixed opponents: {', '.join(envs.fixed_opponent_groups)}"
           + (f" ({args.fixed_opponent_fraction:.0%} of the games once the pool of {args.pool_size} snapshots has one)"
@@ -190,14 +203,28 @@ if __name__ == "__main__":
         print(f"Continuing from {args.init_checkpoint} (policy and value head)")
     else:
         JassFormerActorCritic.load_policy_weights(agent, args.supervised_model)
+    critic = None
+    if args.privileged_critic:
+        critic = JassCritic(d_model=agent.embedding.embedding_dim, num_layers=args.critic_layers)
+        if args.init_critic:
+            critic.load_state_dict(torch.load(args.init_critic, map_location="cpu"))
+            print(f"Privileged critic: continuing from {args.init_critic}")
+        elif args.critic_layers == len(agent.transformer.layers):
+            critic.init_from_actor_critic(agent)
+            print("Privileged critic: starting from the agent's transformer and value head")
+        else:
+            print("Privileged critic: starting from random weights")
+        critic = critic.to(device)
     agent = agent.to(device)
     # the averaged weights only ever get evaluated: not trained, not used in the games
     ema_state = {k: v.detach().clone() for k, v in agent.state_dict().items()} if args.ema_decay is not None else None
 
-    # the value head starts from random weights: it gets its own, higher learning rate (param group 1)
+    # the value function (the value head, or the privileged critic) gets its own learning rate (param group 1): it
+    # can start from random weights
     policy_params = [p for name, p in agent.named_parameters() if not name.startswith("value_head.")]
+    value_params = critic.parameters() if critic is not None else agent.value_head.parameters()
     optimizer = optim.Adam([{"params": policy_params, "lr": args.learning_rate},
-                            {"params": agent.value_head.parameters(), "lr": args.warmup_value_learning_rate}], eps=1e-5)
+                            {"params": value_params, "lr": args.warmup_value_learning_rate}], eps=1e-5)
 
     # ALGO Logic: Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape,dtype=torch.int64).to(device)
@@ -206,12 +233,16 @@ if __name__ == "__main__":
     rewards = torch.zeros((args.num_steps, args.num_envs)).to(device)
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
+    if critic is not None:
+        critic_obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_critic_observation_shape,
+                                 dtype=torch.int64).to(device)
 
     # TRY NOT TO MODIFY: start the game
     global_step = 0
     start_time = time.time()
-    next_obs, _ = envs.reset(seed=args.seed)
+    next_obs, infos = envs.reset(seed=args.seed)
     next_obs = torch.from_numpy(next_obs).to(device)
+    next_critic_obs = torch.from_numpy(infos["critic_obs"]).to(device) if critic is not None else None
     next_done = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
@@ -219,8 +250,9 @@ if __name__ == "__main__":
         # During warmup, only the value head is trained. Freezing the shared backbone is required as well,
         # otherwise the value loss would still change the policy through it.
         in_warmup = global_step < args.warmup_steps
+        # (the privileged critic is always trained)
         for name, param in agent.named_parameters():
-            param.requires_grad = not in_warmup or name.startswith("value_head.")
+            param.requires_grad = not in_warmup or (critic is None and name.startswith("value_head."))
 
         # Annealing the rate if instructed to do so.
         frac = 1.0 - (iteration - 1.0) / args.num_iterations if args.anneal_lr else 1.0
@@ -237,6 +269,9 @@ if __name__ == "__main__":
             # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
+                if critic is not None:
+                    critic_obs[step] = next_critic_obs
+                    value = critic(next_critic_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
@@ -246,6 +281,8 @@ if __name__ == "__main__":
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.from_numpy(next_obs).to(device), torch.Tensor(next_done).to(device)
+            if critic is not None:
+                next_critic_obs = torch.from_numpy(infos["critic_obs"]).to(device)
 
             # episode statistics are batched over the envs, "_episode" flags the envs that just finished
             final_info = infos.get("final_info", {})
@@ -258,7 +295,7 @@ if __name__ == "__main__":
 
         # bootstrap value if not done
         with torch.no_grad():
-            next_value = agent.get_value(next_obs).reshape(1, -1)
+            next_value = (critic(next_critic_obs) if critic is not None else agent.get_value(next_obs)).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
             lastgaelam = 0
             for t in reversed(range(args.num_steps)):
@@ -274,6 +311,8 @@ if __name__ == "__main__":
 
         # flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
+        if critic is not None:
+            b_critic_obs = critic_obs.reshape((-1,) + envs.single_critic_observation_shape)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
         b_advantages = advantages.reshape(-1)
@@ -292,6 +331,8 @@ if __name__ == "__main__":
                 mb_inds = b_inds[start:end]
 
                 _, newlogprob, entropy, newvalue = agent.get_action_and_value(b_obs[mb_inds], b_actions.long()[mb_inds])
+                if critic is not None:
+                    newvalue = critic(b_critic_obs[mb_inds])
                 logratio = newlogprob - b_logprobs[mb_inds]
                 ratio = logratio.exp()
 
@@ -342,6 +383,8 @@ if __name__ == "__main__":
                 optimizer.zero_grad()
                 loss.backward()
                 nn.utils.clip_grad_norm_(agent.parameters(), args.max_grad_norm)
+                if critic is not None:
+                    nn.utils.clip_grad_norm_(critic.parameters(), args.max_grad_norm)
                 optimizer.step()
                 minibatch_updates += 1
 
@@ -424,6 +467,8 @@ if __name__ == "__main__":
             print(f"Saved {save_path}" + (", added to the pool of opponents" if args.pool_size > 0 else ""))
             if args.track and args.mlflow_log_checkpoints:
                 mlflow.log_artifact(save_path, artifact_path="checkpoints")
+            if critic is not None:
+                torch.save(critic.state_dict(), os.path.join(run_dir, f"critic_iter_{iteration}.pth"))
             if ema_state is not None:
                 ema_path = os.path.join(run_dir, f"model_iter_{iteration}_ema.pth")
                 torch.save(ema_state, ema_path)
@@ -431,6 +476,11 @@ if __name__ == "__main__":
                     mlflow.log_artifact(ema_path, artifact_path="checkpoints")
             envs.add_opponent_snapshot(agent.state_dict())
 
+    if critic is not None:
+        critic_path = os.path.join(run_dir, "critic_final.pth")
+        torch.save(critic.state_dict(), critic_path)
+        if args.track:
+            mlflow.log_artifact(critic_path, artifact_path="checkpoints")
     # the average first: rl.evaluate --watch stops once model_final.pth exists
     if ema_state is not None:
         ema_path = os.path.join(run_dir, "model_final_ema.pth")
